@@ -47,7 +47,7 @@ typedef struct entry {
 TAILQ_HEAD(TAILQ, entry) inputq;
 typedef struct TAILQ fifo_t;
 
-static fifo_t *inputqp;              /* UART input requests queue */
+//static fifo_t *inputqp;              /* UART input requests queue */
 
 static bool m_enqueue(fifo_t *l, char *v);
 static bool m_dequeue(fifo_t *l, char *v);
@@ -280,7 +280,7 @@ static void set_blocking (int fd, int should_block)
 static int mid = 42;
 
 static void serve_reply(char *str) {
-	int len = strlen(str);
+	//int len = strlen(str);
 
 	if (strlen(str) > REPLY_LEN * 2) {
 		puts("[error] Received too long reply from the gate");
@@ -326,7 +326,7 @@ static void serve_reply(char *str) {
 			char topic[64] = {};
 			char msg[128] = {};
 
-			if (!convert_to(modid, moddata, moddatalen, (uint8_t *) &topic, (uint8_t *) &msg)) {
+			if (!convert_to(modid, moddata, moddatalen, (char *) &topic, (char *) &msg)) {
 				printf("[error] Unable to convert gate reply \"%s\" for module %d\n", str, modid);
 				return;
 			}
@@ -473,6 +473,10 @@ static void serve_reply(char *str) {
 		}
 
 		break;
+    case REPLY_PONG: {
+      // Empty
+    }
+    break;
 	}
 }
 
@@ -499,7 +503,7 @@ static void *pending_worker(void *arg) {
 
 			if (current - e->last_msg > RETRY_TIMEOUT_S) {
 				if (e->num_retries > NUM_RETRIES) {
-					printf("[fail] Unable to send message to 0x%08X after %u retransmissions, giving up\n", e->nodeid, NUM_RETRIES);
+					printf("[fail] Unable to send message to 0x%08lX after %u retransmissions, giving up\n", e->nodeid, NUM_RETRIES);
 					e->num_retries = 0;
 					m_dequeue(&e->pending_fifo, NULL);
 
@@ -510,7 +514,7 @@ static void *pending_worker(void *arg) {
 				if (!m_peek(&e->pending_fifo, buf)) /* Peek message from queue but don't remove. Will be removed on acknowledge */
 					continue;
 
-				printf("[pending] Sending message to 0x%08X: %s\n", e->nodeid, buf);
+				printf("[pending] Sending message to 0x%08lX: %s\n", e->nodeid, buf);
 
 				e->num_retries++;
 
@@ -528,6 +532,7 @@ static void *pending_worker(void *arg) {
 
 		usleep(1e3);
 	}
+  return NULL;
 }
 
 /* Polls publish queue and publishes the messages into MQTT */
@@ -714,7 +719,7 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 
 static void my_connect_callback(struct mosquitto *m, void *userdata, int result)
 {
-	int i;
+	//int i;
 	if(!result){
 		/* Subscribe to broker information topics on successful connect. */
 		printf("Subscribing to %s\n", MQTT_SUBSCRIBE_TO);
@@ -738,11 +743,11 @@ static void my_subscribe_callback(struct mosquitto *m, void *userdata, int mid, 
 
 int main(int argc, char *argv[])
 {
-	int i;
+	//int i;
 	char *host = "localhost";
 	int port = 1883;
 	int keepalive = 60;
-	bool clean_session = true;
+	//bool clean_session = true;
 
 	printf("=== MQTT-LoRa gate (version: %s) ===\n", VERSION);
 
