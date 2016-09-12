@@ -35,12 +35,12 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 
 		strcpy(topic, "lmt01");
 		
-		if (strcmp(moddata, "ok") == 0) {
+		if (strcmp((const char *)moddata, "ok") == 0) {
 			strcpy(msg, "ok");
 			return true;
 		}
 
-		char reply[128];
+		//char reply[128];
 		strcpy(msg, "{ ");
 
 		int i;

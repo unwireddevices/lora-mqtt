@@ -37,6 +37,8 @@ static pthread_mutex_t mutex_uart;
 static pthread_mutex_t mutex_queue;
 static pthread_mutex_t mutex_pending;
 
+static bool retain = false; 
+
 #define REPLY_LEN 128
 
 typedef struct entry {
@@ -341,7 +343,7 @@ static void serve_reply(char *str) {
 
 			printf("[mqtt] Publishing to the topic %s the message \"%s\"\n", mqtt_topic, msg);
 
-			mosquitto_publish(mosq, &mid, mqtt_topic, strlen(msg), msg, 1, false);
+			mosquitto_publish(mosq, &mid, mqtt_topic, strlen(msg), msg, 1, retain);
 
 			free(mqtt_topic);			
 		}
@@ -752,7 +754,7 @@ int main(int argc, char *argv[])
 	printf("=== MQTT-LoRa gate (version: %s) ===\n", VERSION);
 
 	if (argc < 2) {
-		printf("Usage: mqtt <serial>\nExample: mqtt /dev/ttyS0\n");
+		printf("Usage: mqtt <serial> <retain>\nExample: mqtt /dev/ttyS0 -r\n");
 		return -1;
 	}
 
@@ -790,6 +792,10 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Error creating pending queue worker thread");
 		return 1;
 	}
+
+  if ((argc > 2) && (strcmp(argv[2], "-r"))) {
+    retain = true;
+  }
 
 	mosquitto_lib_init();
 	mosq = mosquitto_new(NULL, true, NULL);
