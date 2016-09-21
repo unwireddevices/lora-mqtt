@@ -22,25 +22,37 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 	case 01:	/* GPIO */
 		break;
 
+	case 02:	/* 4BTN */
+		strcpy(topic, "4btn");
+		uint8_t btn = moddata[0];
+
+		if (btn < 1 || btn > 4)
+			return false;
+		
+		sprintf(msg, "{ btn: %d }", btn);
+		return true;
+
+		break;
+
 	case 06: /* LMT01 */ {
 		if (moddatalen < 2)
 			return false;
 
-		puts("moddata: ");
+		/*puts("moddata: ");
 		int j;
 		for (j = 0; j < moddatalen; j++) {
 			printf("%02x", moddata[j]);
 		}
-		puts("");
+		puts("");*/
 
 		strcpy(topic, "lmt01");
 		
-		if (strcmp((const char *)moddata, "ok") == 0) {
+		if (strcmp(moddata, "ok") == 0) {
 			strcpy(msg, "ok");
 			return true;
 		}
 
-		//char reply[128];
+		char reply[128];
 		strcpy(msg, "{ ");
 
 		int i;
