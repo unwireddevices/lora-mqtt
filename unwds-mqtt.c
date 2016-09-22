@@ -82,8 +82,39 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 		break;
 	}
 
-	case 07: /* UART */
-		break;
+	case 07: {/* UART */
+		uint8_t reply_type = moddata[0];
+
+		strcat(topic, "uart");
+
+		switch (reply_type) {
+			case 0: /* UMDK_UART_REPLY_SENT */
+				strcat(msg, "{ type: 0, msg: \"sent ok\" }");
+				return true;			
+
+			case 1: { /* UMDK_UART_REPLY_RECEIVED */
+				char hexbuf[255] = {};
+				bytes_to_hex(moddata + 1, moddatalen - 1, hexbuf, false);
+
+				sprintf(msg, "{ type: 1, msg: \"%s\" }", hexbuf);
+				return true;
+			}
+
+			case 253: /* UMDK_UART_REPLY_ERR_OVF */
+				strcat(msg, "{ type: 253, msg: \"rx buffer overrun\" }");
+				return true;
+
+			case 254: /* UMDK_UART_REPLY_ERR_FMT */
+				strcat(msg, "{ type: 254, msg: \"invalid format\" }");
+				return true;
+
+			case 255: /* UMDK_UART_REPLY_ERR */
+				strcat(msg, "{ type: 255, msg: \"UART interface error\" }");
+				return true;
+		}
+
+		return false;
+	}
 
 	default:
 		return false;
@@ -113,6 +144,17 @@ bool convert_from(char *type, char *param, char *out) {
 			while ((gpio = strtol(param, param, 10))
 
 			sprintf(out, "0602");*/
+		}
+	} else if (strcmp(type, "uart") == 0) {
+		if (strstr(param, "send ") == param) {
+			uint8_t bytes[200] = {};
+			char *hex = param + 5; // Skip command
+			
+			if (!hex_to_bytes(hex, bytes, true)) {
+				return false;
+			}
+
+			sprintf(out, "0700%s", hex);
 		}
 	} else
 		return false;
