@@ -18,7 +18,7 @@
 
 #include "utils.h"
 
-#define VERSION "1.00"
+#define VERSION "1.01"
 
 #define MQTT_SUBSCRIBE_TO "devices/lora/#"
 #define MQTT_PUBLISH_TO "devices/lora/"
@@ -37,9 +37,7 @@ static pthread_mutex_t mutex_uart;
 static pthread_mutex_t mutex_queue;
 static pthread_mutex_t mutex_pending;
 
-static bool retain = false; 
-
-#define REPLY_LEN 128
+#define REPLY_LEN 1024
 
 typedef struct entry {
 	TAILQ_ENTRY(entry) entries;   /* Circular queue. */	
@@ -49,7 +47,7 @@ typedef struct entry {
 TAILQ_HEAD(TAILQ, entry) inputq;
 typedef struct TAILQ fifo_t;
 
-//static fifo_t *inputqp;              /* UART input requests queue */
+static fifo_t *inputqp;              /* UART input requests queue */
 
 static bool m_enqueue(fifo_t *l, char *v);
 static bool m_dequeue(fifo_t *l, char *v);
@@ -282,7 +280,7 @@ static void set_blocking (int fd, int should_block)
 static int mid = 42;
 
 static void serve_reply(char *str) {
-	//int len = strlen(str);
+	int len = strlen(str);
 
 	if (strlen(str) > REPLY_LEN * 2) {
 		puts("[error] Received too long reply from the gate");
@@ -316,7 +314,7 @@ static void serve_reply(char *str) {
 	
 			uint8_t bytes[REPLY_LEN] = {};
 			if (!hex_to_bytes(str,  (uint8_t *) &bytes, false)) {
-				printf("[error] Unable to parse gate reply: \"%s\"\n", str);
+				printf("[error] Unable to parse gate reply: \"%s\" | len: %d\n", str, strlen(str));
 				return;
 			}
 
@@ -328,7 +326,7 @@ static void serve_reply(char *str) {
 			char topic[64] = {};
 			char msg[128] = {};
 
-			if (!convert_to(modid, moddata, moddatalen, (char *) &topic, (char *) &msg)) {
+			if (!convert_to(modid, moddata, moddatalen, (uint8_t *) &topic, (uint8_t *) &msg)) {
 				printf("[error] Unable to convert gate reply \"%s\" for module %d\n", str, modid);
 				return;
 			}
@@ -343,7 +341,7 @@ static void serve_reply(char *str) {
 
 			printf("[mqtt] Publishing to the topic %s the message \"%s\"\n", mqtt_topic, msg);
 
-			mosquitto_publish(mosq, &mid, mqtt_topic, strlen(msg), msg, 1, retain);
+			mosquitto_publish(mosq, &mid, mqtt_topic, strlen(msg), msg, 1, false);
 
 			free(mqtt_topic);			
 		}
@@ -475,10 +473,6 @@ static void serve_reply(char *str) {
 		}
 
 		break;
-    case REPLY_PONG: {
-      // Empty
-    }
-    break;
 	}
 }
 
@@ -505,7 +499,7 @@ static void *pending_worker(void *arg) {
 
 			if (current - e->last_msg > RETRY_TIMEOUT_S) {
 				if (e->num_retries > NUM_RETRIES) {
-					printf("[fail] Unable to send message to 0x%08lX after %u retransmissions, giving up\n", e->nodeid, NUM_RETRIES);
+					printf("[fail] Unable to send message to 0x%08X after %u retransmissions, giving up\n", e->nodeid, NUM_RETRIES);
 					e->num_retries = 0;
 					m_dequeue(&e->pending_fifo, NULL);
 
@@ -516,7 +510,7 @@ static void *pending_worker(void *arg) {
 				if (!m_peek(&e->pending_fifo, buf)) /* Peek message from queue but don't remove. Will be removed on acknowledge */
 					continue;
 
-				printf("[pending] Sending message to 0x%08lX: %s\n", e->nodeid, buf);
+				printf("[pending] Sending message to 0x%08X: %s\n", e->nodeid, buf);
 
 				e->num_retries++;
 
@@ -534,7 +528,6 @@ static void *pending_worker(void *arg) {
 
 		usleep(1e3);
 	}
-  return NULL;
 }
 
 /* Polls publish queue and publishes the messages into MQTT */
@@ -627,7 +620,23 @@ static void message_to_mote(uint64_t addr, char *payload)
 
 	pending_item_t *e = pending_to_nodeid(addr);
 	if (e == NULL) {
-		printf("[error] Mote with id = %08X%08X is not found!\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));	
+		printf("[error] Mote with id = %08X%08X is not found!\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
+
+		/* Say about that */
+		char addr_s[17] = {};
+		char *topic = "/error";
+
+		sprintf(addr_s, "%08X%08X", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
+		char *mqtt_topic = malloc(strlen(MQTT_PUBLISH_TO) + strlen(addr_s) + 1 + strlen(topic));
+
+		strcpy(mqtt_topic, MQTT_PUBLISH_TO);
+		strcat(mqtt_topic, addr_s);
+		strcat(mqtt_topic, topic);
+
+		char *msg = "not in network";
+
+		mosquitto_publish(mosq, &mid, mqtt_topic, strlen(msg), msg, 1, false);
+
 		return;
 	}
 
@@ -721,7 +730,7 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 
 static void my_connect_callback(struct mosquitto *m, void *userdata, int result)
 {
-	//int i;
+	int i;
 	if(!result){
 		/* Subscribe to broker information topics on successful connect. */
 		printf("Subscribing to %s\n", MQTT_SUBSCRIBE_TO);
@@ -745,16 +754,16 @@ static void my_subscribe_callback(struct mosquitto *m, void *userdata, int mid, 
 
 int main(int argc, char *argv[])
 {
-	//int i;
+	int i;
 	char *host = "localhost";
 	int port = 1883;
 	int keepalive = 60;
-	//bool clean_session = true;
+	bool clean_session = true;
 
 	printf("=== MQTT-LoRa gate (version: %s) ===\n", VERSION);
 
 	if (argc < 2) {
-		printf("Usage: mqtt <serial> <retain>\nExample: mqtt /dev/ttyS0 -r\n");
+		printf("Usage: mqtt <serial>\nExample: mqtt /dev/ttyS0\n");
 		return -1;
 	}
 
@@ -792,10 +801,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Error creating pending queue worker thread");
 		return 1;
 	}
-
-  if ((argc > 2) && (strcmp(argv[2], "-r"))) {
-    retain = true;
-  }
 
 	mosquitto_lib_init();
 	mosq = mosquitto_new(NULL, true, NULL);
