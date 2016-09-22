@@ -26,7 +26,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 		strcpy(topic, "4btn");
 		uint8_t btn = moddata[0];
 
-		if (btn < 1 || btn > 4)
+		if (moddatalen != 1 || btn < 1 || btn > 4)
 			return false;
 		
 		sprintf(msg, "{ btn: %d }", btn);
