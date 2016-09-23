@@ -100,6 +100,10 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 				return true;
 			}
 
+			case 2:
+				strcat(msg, "{ type: 2, msg: \"baud rate set\" }");
+				return true;
+
 			case 253: /* UMDK_UART_REPLY_ERR_OVF */
 				strcat(msg, "{ type: 253, msg: \"rx buffer overrun\" }");
 				return true;
@@ -155,6 +159,16 @@ bool convert_from(char *type, char *param, char *out) {
 			}
 
 			sprintf(out, "0700%s", hex);
+		} else if (strstr(param, "set baudrate ") == param) {
+			param += 13; // Skip commands
+
+			uint8_t baudrate = atoi(param);
+			printf("baudrate: %d\n", baudrate);
+			if (baudrate > 10) {
+				return false;
+			}
+
+			sprintf(out, "0701%02x", baudrate);
 		}
 	} else
 		return false;
