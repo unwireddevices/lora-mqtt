@@ -120,6 +120,18 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 		return false;
 	}
 
+	case 12:	/* PIR */
+		strcpy(topic, "pir");
+		uint8_t pir = moddata[0];
+
+		if (moddatalen != 1 || pir < 1 || pir > 4)
+			return false;
+		
+		sprintf(msg, "{ pir: rising }", pir);
+		return true;
+
+		break;
+
 	default:
 		return false;
 	}
