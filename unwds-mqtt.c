@@ -120,17 +120,65 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 		return false;
 	}
 
-	case 12:	/* PIR */
+	case 9:	/* PIR */
 		strcpy(topic, "pir");
 		uint8_t pir = moddata[0];
 
 		if (moddatalen != 1 || pir < 1 || pir > 4)
 			return false;
 		
-		sprintf(msg, "{ pir: rising }", pir);
+		sprintf(msg, "{ pir: rising, num: %d }", pir);
 		return true;
 
 		break;
+
+	case 10: {	/* 6ADC */
+		strcpy(topic, "6adc");
+
+		puts("moddata: ");
+		int j;
+		for (j = 0; j < moddatalen; j++) {
+			printf("%02x", moddata[j]);
+		}
+		puts("");
+		
+		if (strcmp(moddata, "ok") == 0) {
+			strcpy(msg, "ok");
+			return true;
+		}
+
+		if (strcmp(moddata, "fail") == 0) {
+			strcpy(msg, "fail");
+			return true;
+		}
+
+		char reply[128];
+		strcpy(msg, "{ ");
+
+		int i;
+		for (i = 0; i < 12; i += 2) {
+			uint32_t sensor = 0;
+			if (is_big_endian())
+				sensor = (moddata[i + 1] << 8) | moddata[i]; /* We're in big endian there, swap bytes */
+			else
+				sensor = (moddata[i] << 8) | moddata[i + 1];
+
+			char buf[16] = {};
+
+			if (sensor == 0xFFFF)
+				sprintf(buf, "s%d: null", (i / 2) + 1);
+			else {
+				sprintf(buf, "s%d: %.3f", (i / 2) + 1, sensor);
+			}
+			
+			strcat(msg, buf);
+
+			if (i != 10)
+				strcat(msg, ", ");
+		}
+
+		strcat(msg, " }");		
+	}
 
 	default:
 		return false;
@@ -144,7 +192,27 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
  */
 bool convert_from(char *type, char *param, char *out) {
 	if (strcmp(type, "gpio") == 0) {
-		
+		if (strstr(param, "set ") == param) {
+			param += 4; // skip command
+
+			uint8_t pin = strtol(param, &param, 10);
+			uint8_t value = strtol(param, NULL, 10);
+
+			uint8_t gpio_cmd = 0;
+			if (value == 1)
+				gpio_cmd = 2 << 6;	// 10 in upper two bits of cmd byte is SET TO ONE command
+			else if (value == 0)
+				gpio_cmd = 1 << 7;	// 01 in upper two bits of cmd byte is SET TO ZERO command
+
+			// Append pin number bits and mask exceeding bits just in case
+			gpio_cmd |= pin & 0x3F;
+
+			printf("[mqtt-gpio] Set command | Pin: %d, value: %d, cmd: 0x%02x\n", pin, value, gpio_cmd);
+
+			sprintf(out, "01%02x", gpio_cmd);
+		} else if (strstr(param, "get ") == param) {
+		} else if (strstr(param, "toggle ") == param) {
+		}
 	} else if (strcmp(type, "lmt01") == 0) {
 		if (strstr(param, "set_period ") == param) {
 			param += 11;	// Skip command
