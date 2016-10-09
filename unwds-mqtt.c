@@ -135,7 +135,9 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 	case 10: {	/* 6ADC */
 		strcpy(topic, "6adc");
 
-		puts("moddata: ");
+		printf("[6adc] moddatalen: %d\n", moddatalen);
+		printf("[6adc] moddata: ");
+
 		int j;
 		for (j = 0; j < moddatalen; j++) {
 			printf("%02x", moddata[j]);
@@ -154,10 +156,10 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 
 		char reply[128];
 		strcpy(msg, "{ ");
-
+	
 		int i;
 		for (i = 0; i < 12; i += 2) {
-			uint32_t sensor = 0;
+			uint16_t sensor = 0;
 			if (is_big_endian())
 				sensor = (moddata[i + 1] << 8) | moddata[i]; /* We're in big endian there, swap bytes */
 			else
@@ -166,9 +168,9 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 			char buf[16] = {};
 
 			if (sensor == 0xFFFF)
-				sprintf(buf, "s%d: null", (i / 2) + 1);
+				sprintf(buf, "adc%d: null", (i / 2) + 1);
 			else {
-				sprintf(buf, "s%d: %.3f", (i / 2) + 1, sensor);
+				sprintf(buf, "adc%d: %d", (i / 2) + 1, sensor);
 			}
 			
 			strcat(msg, buf);
@@ -178,6 +180,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 		}
 
 		strcat(msg, " }");		
+		break;
 	}
 
 	default:
@@ -228,6 +231,32 @@ bool convert_from(char *type, char *param, char *out) {
 			while ((gpio = strtol(param, param, 10))
 
 			sprintf(out, "0602");*/
+		}
+	} else if (strcmp(type, "6adc") == 0) {
+		if (strstr(param, "set_period ") == param) {
+			param += 11;	// Skip command
+
+			uint8_t period = atoi(param);
+			sprintf(out, "0a00%02x", period);
+		} else if (strstr(param, "get") == param) {
+			sprintf(out, "0a01");
+		} else if (strstr(param, "set_gpio ") == param) {
+			param += 9;	// Skip command			
+	
+			uint8_t gpio = atoi(param);
+
+			sprintf(out, "0a02%02x", gpio);
+		} else if (strstr(param, "set_lines ") == param) {
+			param += 10;	// Skip command			
+	
+			uint8_t lines_en = 0;
+			uint8_t line = 0;
+			while (line = (uint8_t) strtol(param, &param, 10)) {
+				if (line > 0 && line <= 6)
+					lines_en |= 1 << (line - 1);
+			}
+
+			sprintf(out, "0a03%02x", lines_en);
 		}
 	} else if (strcmp(type, "uart") == 0) {
 		if (strstr(param, "send ") == param) {
