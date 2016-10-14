@@ -181,13 +181,58 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 
 		strcat(msg, " }");		
 		break;
-	}
+  }
 
-	default:
-		return false;
-	}
+  case 11: /* LPS331 */ {
+    if (moddatalen < 4)
+      return false;
+  
+    strcpy(topic, "lps331");
+  
+    if (strcmp(moddata, "ok") == 0) {
+      strcpy(msg, "ok");
+      return true;
+    }   
+  
+    strcpy(msg, "{ ");
+  
+    /* Extract temperature */
+    int16_t temperature = 0;
+  
+    if (is_big_endian()) {
+      temperature = moddata[0];
+      temperature += (moddata[1] << 8); 
+    }   
+    else {
+      temperature = moddata[1];
+      temperature += (moddata[0] << 8); 
+    }   
+  
+    /* Extract pressure */
+    uint16_t pressure = 0;
+  
+    if (is_big_endian()) {
+      pressure = moddata[2];
+      pressure += (moddata[3] << 8); 
+    }   
+    else {
+      pressure = moddata[3];
+      pressure += (moddata[2] << 8); 
+    }
+  
+    char buf[40] = {}; 
+    snprintf(buf, 40, "temperature: %.1f, pressure: %d", temperature / 1000.0, pressure);
+  
+    strcat(msg, buf);
+    strcat(msg, " }");
+  
+    break;
+  }
+  default:
+                        return false;
+  }
 
-	return true;
+  return true;
 }
 
 /**
