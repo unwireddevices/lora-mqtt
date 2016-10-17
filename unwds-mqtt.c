@@ -19,10 +19,10 @@
  */
 bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, char *msg) {
 	switch (modid) {
-	case 01:	/* GPIO */
+	case 1:	/* GPIO */
 		break;
 
-	case 02:	/* 4BTN */
+	case 2:	/* 4BTN */
 		strcpy(topic, "4btn");
 		uint8_t btn = moddata[0];
 
@@ -34,7 +34,51 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 
 		break;
 
-	case 06: /* LMT01 */ {
+	case 3: /* GPS */
+		strcpy(topic, "gps");
+		
+		if (moddatalen < 1)
+			return false;
+
+		uint8_t reply = moddata[0] & 3; /* Last 4 bits is reply type */
+		switch (reply) {
+		case 0: /* GPS data */
+			if (moddatalen != 1 + 6) /* There must be 6 bytes of GPS data + 1 byte of reply type */
+				return false;
+
+			uint8_t *bytes = (uint8_t *) (moddata + 1);
+
+			float lat, lon;
+
+			/* This code is endian-safe */
+			lat = (bytes[0] + (bytes[1] << 8) + (bytes[2] << 16)) / 1000.0f;
+			lon = (bytes[3] + (bytes[4] << 8) + (bytes[5] << 16)) / 1000.0f;
+
+			/* Apply sign bits from reply */
+			if ((moddata[0] >> 5) & 1)
+				lat = -lat;
+
+			if ((moddata[0] >> 6) & 1)
+				lon = -lon;
+
+			sprintf(msg, "{ has_data: true, lat: %.3f, lon: %.3f }", lat, lon);	
+			break;
+
+		case 1:	/* No data yet */
+			strcpy(msg, "{ has_data: false, lat: null, lon: null }");
+			break;
+
+		case 3: /* Error occured */
+			strcpy(msg, "{ has_data: false, msg: \"error\" }");
+			break;
+
+		default:
+			return false;
+		}
+
+	break;
+
+	case 6: /* LMT01 */ {
 		if (moddatalen < 2)
 			return false;
 
@@ -82,7 +126,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 		break;
 	}
 
-	case 07: {/* UART */
+	case 7: {/* UART */
 		uint8_t reply_type = moddata[0];
 
 		strcat(topic, "uart");
@@ -134,15 +178,6 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 
 	case 10: {	/* 6ADC */
 		strcpy(topic, "6adc");
-
-		printf("[6adc] moddatalen: %d\n", moddatalen);
-		printf("[6adc] moddata: ");
-
-		int j;
-		for (j = 0; j < moddatalen; j++) {
-			printf("%02x", moddata[j]);
-		}
-		puts("");
 		
 		if (strcmp(moddata, "ok") == 0) {
 			strcpy(msg, "ok");
@@ -260,6 +295,10 @@ bool convert_from(char *type, char *param, char *out) {
 			sprintf(out, "01%02x", gpio_cmd);
 		} else if (strstr(param, "get ") == param) {
 		} else if (strstr(param, "toggle ") == param) {
+		}
+	} else if (strcmp(type, "gps") == 0) {
+		if (strstr(param, "get") == param) {
+			sprintf(out, "0300");
 		}
 	} else if (strcmp(type, "lmt01") == 0) {
 		if (strstr(param, "set_period ") == param) {
