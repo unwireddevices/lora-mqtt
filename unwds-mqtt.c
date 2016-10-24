@@ -362,7 +362,8 @@ bool convert_from(char *type, char *param, char *out) {
 			}
 
 			sprintf(out, "0701%02x", baudrate);
-		}
+		} else
+			return false;
 	} else
 		return false;
 
