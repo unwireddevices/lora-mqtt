@@ -292,8 +292,83 @@ static void serve_reply(char *str) {
 
 	switch (reply) {
 		case REPLY_LIST: {
-			//Append an MQTT topic path to the topic from the reply
-			/*char *mqtt_topic = malloc(strlen(MQTT_PUBLISH_TO) + strlen(topic) + 1);
+			printf("[L] %s\n", str);
+
+			/* Read EUI64 */
+			char addr[17] = {};
+			memcpy(addr, str, 16);
+			str += 16;
+
+			printf("[L] Addr: %s\n", addr);
+
+			uint64_t nodeid;
+			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
+				printf("[error] Unable to parse list reply: %s", str - 16);
+				return;
+			}
+
+			/* Read APPID64 */
+			char appid[17] = {};
+			memcpy(appid, str, 16);
+			str += 16;
+
+			uint64_t appid64;
+			if (!hex_to_bytes(appid, (uint8_t *) &appid64, !is_big_endian())) {
+				printf("[error] Unable to parse list reply: %s", str - 32);
+				return;
+			}
+
+			printf("[L] Appid: %s\n", appid);
+
+			/* Read ability mask */
+			char ability[17] = {};
+			memcpy(ability, str, 16);
+			str += 16;
+
+			printf("[L] Ability: %s\n", ability);
+
+			uint64_t abil64;
+			if (!hex_to_bytes(ability, (uint8_t *) &abil64, !is_big_endian())) {
+				printf("[error] Unable to parse list reply: %s", str - 48);
+				return;
+			}
+
+			/* Read last seen time */
+			char lastseen[5] = {};
+			memcpy(lastseen, str, 4);
+			str += 4;
+
+			printf("[L] Lastseen: %s\n", lastseen);
+
+			uint16_t lseen;
+			if (!hex_to_bytes(lastseen, (uint8_t *) &lseen, !is_big_endian())) {
+				printf("[error] Unable to parse list reply: %s", str - 52);
+				return;
+			}
+
+			/* Read class */
+			char class[5] = {};
+			memcpy(class, str, 4);
+			str += 4;
+
+			printf("[L] Class: %s\n", class);
+
+			uint16_t cl;
+			if (!hex_to_bytes(class, (uint8_t *) &cl, !is_big_endian())) {
+				printf("[error] Unable to parse list reply: %s", str - 52);
+				return;
+			}
+
+			char topic[22] = {};
+			strcpy(topic, "list/");
+			strcat(topic, addr);
+
+			char msg[128] = {};
+			sprintf(msg, "{ appid64: 0x%s, ability: 0x%s, last_seen: %d, class: %d }", 
+					appid, ability, (unsigned) lseen, (unsigned) cl);
+
+			/* Publish message */
+			char *mqtt_topic = malloc(strlen(MQTT_PUBLISH_TO) + strlen(topic) + 1);
 			strcpy(mqtt_topic, MQTT_PUBLISH_TO);
 			strcat(mqtt_topic, topic);
 
@@ -301,7 +376,7 @@ static void serve_reply(char *str) {
 
 			mosquitto_publish(mosq, 0, mqtt_topic, strlen(msg), msg, 1, false);
 
-			free(mqtt_topic);*/
+			free(mqtt_topic);
 		}
 		break;
 
