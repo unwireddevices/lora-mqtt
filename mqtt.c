@@ -18,7 +18,7 @@
 
 #include "utils.h"
 
-#define VERSION "1.02"
+#define VERSION "1.3"
 
 #define MQTT_SUBSCRIBE_TO "devices/lora/#"
 #define MQTT_PUBLISH_TO "devices/lora/"
@@ -36,6 +36,7 @@ static pthread_t pending_thread;
 static pthread_mutex_t mutex_uart;
 static pthread_mutex_t mutex_queue;
 static pthread_mutex_t mutex_pending;
+static pthread_mutex_t mutex_pong;
 
 #define REPLY_LEN 1024
 
@@ -72,6 +73,14 @@ typedef struct {
 } pending_item_t;
 
 static pending_item_t pending[MAX_NODES];
+
+/* The devices list is requested for gate needs, so don't post in MQTT it's results */
+static bool list_for_gate = false;
+static bool devlist_needed = false;
+static void devices_list(bool internal);
+
+/* If last ping was skipped by gate, the connection might be faulty */
+static bool ping_skipped = false;
 
 static void init_pending(void) {
 	int i;	
@@ -292,18 +301,14 @@ static void serve_reply(char *str) {
 
 	switch (reply) {
 		case REPLY_LIST: {
-			printf("[L] %s\n", str);
-
 			/* Read EUI64 */
 			char addr[17] = {};
 			memcpy(addr, str, 16);
 			str += 16;
 
-			printf("[L] Addr: %s\n", addr);
-
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				printf("[error] Unable to parse list reply: %s", str - 16);
+				printf("[error] Unable to parse list reply: %s\n", str - 16);
 				return;
 			}
 
@@ -314,22 +319,18 @@ static void serve_reply(char *str) {
 
 			uint64_t appid64;
 			if (!hex_to_bytes(appid, (uint8_t *) &appid64, !is_big_endian())) {
-				printf("[error] Unable to parse list reply: %s", str - 32);
+				printf("[error] Unable to parse list reply: %s\n", str - 32);
 				return;
 			}
-
-			printf("[L] Appid: %s\n", appid);
 
 			/* Read ability mask */
 			char ability[17] = {};
 			memcpy(ability, str, 16);
 			str += 16;
 
-			printf("[L] Ability: %s\n", ability);
-
 			uint64_t abil64;
 			if (!hex_to_bytes(ability, (uint8_t *) &abil64, !is_big_endian())) {
-				printf("[error] Unable to parse list reply: %s", str - 48);
+				printf("[error] Unable to parse list reply: %s\n", str - 48);
 				return;
 			}
 
@@ -338,11 +339,9 @@ static void serve_reply(char *str) {
 			memcpy(lastseen, str, 4);
 			str += 4;
 
-			printf("[L] Lastseen: %s\n", lastseen);
-
 			uint16_t lseen;
 			if (!hex_to_bytes(lastseen, (uint8_t *) &lseen, !is_big_endian())) {
-				printf("[error] Unable to parse list reply: %s", str - 52);
+				printf("[error] Unable to parse list reply: %s\n", str - 52);
 				return;
 			}
 
@@ -351,13 +350,22 @@ static void serve_reply(char *str) {
 			memcpy(class, str, 4);
 			str += 4;
 
-			printf("[L] Class: %s\n", class);
-
 			uint16_t cl;
 			if (!hex_to_bytes(class, (uint8_t *) &cl, !is_big_endian())) {
-				printf("[error] Unable to parse list reply: %s", str - 52);
+				printf("[error] Unable to parse list reply: %s\n", str - 52);
 				return;
 			}
+
+			/* Refresh our internal device list info for that node */
+			if (!add_device(nodeid, cl)) {
+				printf("[error] Was unable to add device 0x%s with class %s to our device list!\n", addr, class);
+				return;
+			}
+
+
+			/* The device list was requested by gate, don't post results in MQTT then */
+			if (list_for_gate) 
+				return;
 
 			char topic[22] = {};
 			strcpy(topic, "list/");
@@ -384,12 +392,20 @@ static void serve_reply(char *str) {
 			char addr[17] = {};
 			memcpy(addr, str, 16);
 			str += 16;
-
-			printf("[ind] Reply from %s\n", addr);
 	
+			uint16_t rssi_buf;
+			if (!hex_to_bytesn(str, 4, (uint8_t *) &rssi_buf, !is_big_endian())) {
+				printf("[error] Unable to parse RSSI from gate reply: %s\n", str);
+				return;
+			}
+			int16_t rssi = -rssi_buf;
+
+			/* Skip RSSI hex */
+			str += 4;
+
 			uint8_t bytes[REPLY_LEN] = {};
 			if (!hex_to_bytes(str,  (uint8_t *) &bytes, false)) {
-				printf("[error] Unable to parse gate reply: \"%s\" | len: %d\n", str, strlen(str));
+				printf("[error] Unable to parse payload bytes gate reply: \"%s\" | len: %d\n", str, strlen(str));
 				return;
 			}
 
@@ -414,7 +430,7 @@ static void serve_reply(char *str) {
 			strcat(mqtt_topic, "/");
 			strcat(mqtt_topic, topic);
 
-			printf("[mqtt] Publishing to the topic %s the message \"%s\"\n", mqtt_topic, msg);
+			printf("[mqtt] Publishing to the topic %s the message \"%s\" | RSSI: %d\n", mqtt_topic, msg, rssi);
 
 			mosquitto_publish(mosq, &mid, mqtt_topic, strlen(msg), msg, 1, false);
 
@@ -448,7 +464,8 @@ static void serve_reply(char *str) {
 				if (e->num_pending) {
 					/* Notify gate about pending messages */
 					pthread_mutex_lock(&mutex_uart);
-					dprintf(uart, "%c%08X%08X%02x\r", CMD_HAS_PENDING, (unsigned int) (nodeid >> 32), (unsigned int) (nodeid & 0xFFFFFFFF), e->num_pending);
+					dprintf(uart, "%c%08X%08X%02x\r", CMD_HAS_PENDING, 
+						(unsigned int) (nodeid >> 32), (unsigned int) (nodeid & 0xFFFFFFFF), e->num_pending);
 					pthread_mutex_unlock(&mutex_uart);	
 				}				
 			}
@@ -530,21 +547,43 @@ static void serve_reply(char *str) {
 				return;
 			}
 
+			uint16_t rssi_buf;
+			if (!hex_to_bytesn(str, 4, (uint8_t *) &rssi_buf, !is_big_endian())) {
+				printf("[error] Unable to parse RSSI from gate reply: %s\n", str);
+				return;
+			}
+			int16_t rssi = -rssi_buf;
+
+			/* Skip RSSI hex */
+			str += 4;
+
 			pending_item_t *e = pending_to_nodeid(nodeid);
-			if (e == NULL)
+			if (e == NULL) {
+				printf("[error] Link of with 0x%s but device is not joined\n", addr);
 				break;
+			}
+
+			printf("[lnkchk] Link ok with 0x%s, RSSI = %d\n", addr, rssi);
 
 			if (e->class != LS_ED_CLASS_A)
 				break;
 
-			// Link check from Class A, it's time to send pending frames
+			/* Link check from Class A, it's time to send pending frames */
 			pthread_mutex_lock(&mutex_pending);
 			e->can_send = true;		
 			pthread_mutex_unlock(&mutex_pending);
 
-			printf("[lnkchk] Link check with device with id = 0x%08X%08X ok, frames pending = %d\n", 
+			printf("[lnkchk] Link check with device with id = 0x%08X%08X ok, frames pending = %d, rssi = %d\n", 
 				(unsigned int) (nodeid >> 32), 
-				(unsigned int) (nodeid & 0xFFFFFFFF), e->num_pending);
+				(unsigned int) (nodeid & 0xFFFFFFFF), e->num_pending, rssi);
+		}
+
+		break;
+
+		case REPLY_PONG: {
+			pthread_mutex_lock(&mutex_pong);
+			ping_skipped = false;
+			pthread_mutex_unlock(&mutex_pong);
 		}
 
 		break;
@@ -643,11 +682,23 @@ static void *uart_reader(void *arg)
 		char c;
 		int r = 0, i = 0;
 
+		if (!ping_skipped) {
+			pthread_mutex_lock(&mutex_pong);
+			ping_skipped = true;
+			pthread_mutex_unlock(&mutex_pong);
+		} else {
+			puts("[!!!] No response from LoRa gate! Check the connection!");
+		}
+
 		pthread_mutex_lock(&mutex_uart);
+
+		dprintf(uart, "%c\r", CMD_PING);
 		dprintf(uart, "%c\r", CMD_FLUSH);
+
 		while ((r = read(uart, &c, 1)) != 0) {
 			buf[i++] = c;
 		}
+
 		pthread_mutex_unlock(&mutex_uart);
 
 		buf[i] = '\0';
@@ -675,13 +726,24 @@ static void *uart_reader(void *arg)
 		}
 
 		usleep(1e3 * UART_POLLING_INTERVAL);
+		
+		/*  Request devices list on demand */
+		if (devlist_needed) {
+			puts("[!] Device list required");
+			devlist_needed = false; /* No more devices lists needed */
+			devices_list(true);
+
+			usleep(1e3 * 150);
+		}
 	}
 
 	return NULL;
 }
 
-static void devices_list(void) 
+static void devices_list(bool internal) 
 {
+	list_for_gate = internal;
+
 	pthread_mutex_lock(&mutex_uart);
 	dprintf(uart, "%c\r", CMD_DEVLIST);
 	pthread_mutex_unlock(&mutex_uart);
@@ -752,8 +814,6 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 	int topic_count = 0;
 
 	while (strlen(token = strsep(&running, delims))) {
-		printf("topic token: %s\n", token);
-
 		strcpy(topics[topic_count], token);
 		topic_count++;
 
@@ -779,7 +839,7 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 
 	if (topic_count == 3 && memcmp(topics[2], "get", 3) == 0) {
 		puts("[mqtt] Devices list requested");
-		devices_list();
+		devices_list(false);
 	}
 
 	if (topic_count > 3) {
@@ -847,6 +907,10 @@ int main(int argc, char *argv[])
 	pthread_mutex_init(&mutex_uart, NULL);
 	pthread_mutex_init(&mutex_queue, NULL);
 	pthread_mutex_init(&mutex_pending, NULL);
+	pthread_mutex_init(&mutex_pong, NULL);
+
+	/* Request a devices list on a first launch */
+	devlist_needed = true;
 
 	init_pending();
 
