@@ -18,7 +18,7 @@
 
 #include "utils.h"
 
-#define VERSION "1.3"
+#define VERSION "1.4"
 
 #define MQTT_SUBSCRIBE_TO "devices/lora/#"
 #define MQTT_PUBLISH_TO "devices/lora/"
