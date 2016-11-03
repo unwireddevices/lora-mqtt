@@ -175,6 +175,38 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             return false;
         }
 
+		case 8: /* SHT21 */
+            if (moddatalen < 2) {
+                return false;
+            }
+
+            /*puts("moddata: ");
+               int j;
+               for (j = 0; j < moddatalen; j++) {
+                printf("%02x", moddata[j]);
+               }
+               puts("");*/
+
+            strcpy(topic, "sht21");
+
+            if (strcmp(moddata, "ok") == 0) {
+                strcpy(msg, "ok");
+                return true;
+            }
+
+			uint16_t temp = 0;
+			if (is_big_endian()) {
+				temp = (moddata[1] << 8) | moddata[0]; /* We're in big endian there, swap bytes */
+			}
+			else {
+				temp = (moddata[0] << 8) | moddata[1];
+			}
+
+			uint8_t humid = moddata[2];
+			sprintf(msg, "{ temp: %.02f, humid: %d }", (float) (temp / 16.0 - 100), humid);
+			
+			return true;
+
         case 9: /* PIR */
             strcpy(topic, "pir");
             uint8_t pir = moddata[0];
@@ -334,13 +366,13 @@ bool convert_from(char *type, char *param, char *out)
         else if (strstr(param, "get") == param) {
             sprintf(out, "0601");
         }
-        else if (strstr(param, "set_gpios ") == param) {  /*
-                                                             param += 10;	// Skip command
+        else if (strstr(param, "set_gpios ") == param) {
+		/*	 param += 10;	// Skip command
 
-                                                             uint8_t gpio = 0;
-                                                             while ((gpio = strtol(param, param, 10))
+		     uint8_t gpio = 0;
+		     while ((gpio = strtol(param, param, 10))
 
-                                                             sprintf(out, "0602");*/
+		     sprintf(out, "0602");*/
         }
     }
     else if (strcmp(type, "6adc") == 0) {
@@ -385,7 +417,7 @@ bool convert_from(char *type, char *param, char *out)
 
             sprintf(out, "0700%s", hex);
         }
-        else if (strstr(param, "set baudrate ") == param) {
+        else if (strstr(param, "set_baudrate ") == param) {
             param += 13; // Skip commands
 
             uint8_t baudrate = atoi(param);
@@ -398,6 +430,24 @@ bool convert_from(char *type, char *param, char *out)
         }
         else {
             return false;
+        }
+    }
+    else if (strcmp(type, "sht21") == 0) {
+        if (strstr(param, "set_period ") == param) {
+            param += 11;    // Skip command
+
+            uint8_t period = atoi(param);
+            sprintf(out, "0800%02x", period);
+        }
+        else if (strstr(param, "get") == param) {
+            sprintf(out, "0801");
+        }
+        else if (strstr(param, "set_i2c ") == param) { 
+             param += 8;	// Skip command
+
+             uint8_t i2c = atoi(param);
+
+             sprintf(out, "0802%02x", i2c);
         }
     }
     else {
