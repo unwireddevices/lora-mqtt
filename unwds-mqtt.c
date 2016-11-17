@@ -22,6 +22,31 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
     switch (modid) {
         case 1: /* GPIO */
 		{
+			uint8_t reply_type = moddata[0];
+            strcat(topic, "gpio");
+			
+            switch (reply_type) {
+				case 0: { /* UNWD_GPIO_REPLY_OK_0 */
+					strcat(msg, "{ type: 0, msg: \"0\" }");
+					return true;
+				}
+				case 1: { /* UNWD_GPIO_REPLY_OK_1 */
+					strcat(msg, "{ type: 1, msg: \"1\" }");
+					return true;
+				}
+				case 2: { /* UNWD_GPIO_REPLY_OK */
+					strcat(msg, "{ type: 2, msg: \"set ok\" }");
+					return true;
+				}
+				case 3: { /* UNWD_GPIO_REPLY_ERR_PIN */
+					strcat(msg, "{ type: 3, msg: \"invalid pin\" }");
+					return true;
+				}
+				case 4: { /* UNWD_GPIO_REPLY_ERR_FORMAT */
+					strcat(msg, "{ type: 4, msg: \"invalid format\" }");
+					return true;
+				}
+			}
             break;
 		}
         case 2: /* 4BTN */
