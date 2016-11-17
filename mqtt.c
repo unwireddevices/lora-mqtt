@@ -888,7 +888,9 @@ static void my_subscribe_callback(struct mosquitto *m, void *userdata, int mid, 
 }
 
 void usage(void) {
-	printf("Usage: mqtt <serial>\nExample: mqtt [-d] [-r] -p /dev/ttyS0\n");
+	printf("Usage: mqtt <serial>\nExample: mqtt [-ihdp] -p /dev/ttyS0\n");
+	printf("  -i\tIgnore /etc/lora-mqtt/mqtt.conf.\n");
+	printf("  -h\tPrint this help.\n");
 	printf("  -d\tFork to background.\n");
 //	printf("  -r\tRetain last MQTT message.\n");
 	printf("  -p <port>\tserial port device URI, e.g. /dev/ttyATH0.\n");
@@ -903,21 +905,24 @@ int main(int argc, char *argv[])
 //	bool clean_session = true;
 
 	printf("=== MQTT-LoRa gate (version: %s) ===\n", VERSION);
-
-	if (argc < 2) {
-		usage();
-		return -1;
-	}
 	
 	bool daemonize = 0;
 //	bool retain = 0;
 	char serialport[100];
+	bool ignoreconfig = 0;
 	
 	int c;
-	while ((c = getopt (argc, argv, "drp:")) != -1)
+	while ((c = getopt (argc, argv, "ihdrp:")) != -1)
     switch (c) {
 		case 'd':
 			daemonize = 1;
+			break;
+		case 'i':
+			ignoreconfig = 1;
+			break;
+		case 'h':
+			usage();
+			return 0;
 			break;
 //		case 'r':
 //			retain = 1;
@@ -934,6 +939,39 @@ int main(int argc, char *argv[])
 			usage();
 			return -1;
     }
+	
+	FILE* config = NULL;
+    char line[255] ;
+    char* token;
+	
+	if (!ignoreconfig)
+        {
+            config = fopen( "/etc/lora-mqtt/mqtt.conf", "r" );
+            if (config)
+            {
+                while(fgets(line, 254, config) != NULL)
+                {
+                    token = strtok(line, "\t =\n\r");
+                    if (token != NULL && token[0] != '#')
+                    {
+                        if (!strcmp(token, "port"))
+                        {
+                            strcpy(serialport, strtok(NULL, "\t\n\r"));
+                            while( (*serialport == ' ') || (*serialport == '=') )
+                            {
+                                memmove(serialport, serialport+1, strlen(serialport));
+                            }
+                        }
+                    }
+                }
+                fclose(config);
+            }
+			else
+			{
+				printf("Configuration file /etc/lora-mqtt/mqtt.conf not found\n");
+				return -1;
+			}
+        }
 
 	printf("Using serial port device: %s\n", serialport);
 	
@@ -952,7 +990,8 @@ int main(int argc, char *argv[])
 	uart = open(serialport, O_RDWR | O_NOCTTY | O_SYNC);
 	if (uart < 0)
 	{
-		fprintf(stderr, "error %d opening %s: %s", errno, serialport, strerror (errno));
+		fprintf(stderr, "error %d opening %s: %s\n", errno, serialport, strerror (errno));
+		usage();
 		return 1;
 	}
 	
@@ -963,6 +1002,8 @@ int main(int argc, char *argv[])
     int pidfile;
     if (daemonize)
     {
+		printf("Attempting to run in the background\n");
+		
         if (daemon(0, 0))
         {
             printf("Error forking to background\n");

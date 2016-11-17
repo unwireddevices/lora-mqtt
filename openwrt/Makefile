@@ -38,8 +38,10 @@ endef
 define Package/lora-mqtt/install
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_DIR) $(1)/etc/lora-mqtt
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/mqtt $(1)/usr/bin/
 	$(INSTALL_BIN) ./files/mqtt.lora.init $(1)/etc/init.d/mqtt.lora
+	$(INSTALL_BIN) ./files/mqtt.conf $(1)/etc/lora-mqtt/mqtt.conf
 endef
 
 $(eval $(call BuildPackage,lora-mqtt))

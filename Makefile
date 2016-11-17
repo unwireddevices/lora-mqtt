@@ -26,7 +26,7 @@ lora-mqtt: create_dirs $(OBJ) $(SOURCES)
 	@echo -e '\tCompiling mqtt.c'
 	$(CXX) $(CFLAGS) -c mqtt.c -o $(BUILD_DIR)mqtt.o
 	@echo -e '\tLinking lora-mqtt'
-	$(CXX) $(CFLAGS) $(OBJ) $(BUILD_DIR)mqtt.o $(LIBS) -o mqtt.lora
+	$(CXX) $(CFLAGS) $(OBJ) $(BUILD_DIR)mqtt.o $(LIBS) -o mqtt
 
 create_dirs:
 	@mkdir -p $(BUILD_DIR)
