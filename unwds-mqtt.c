@@ -10,7 +10,7 @@
 
 /*
     =========
-        TODO: split and move this routines into RIOT/unwired-modules/ and build against .c files there to have one undivided code space for modules and drivers for both MQTT and ARM devices
+        TODO: split and move those routines into RIOT/unwired-modules/ and build against .c files there to have one undivided code space for modules and drivers for both MQTT and ARM devices
     =========
  */
 
@@ -21,10 +21,12 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 {
     switch (modid) {
         case 1: /* GPIO */
+		{
             break;
-
+		}
         case 2: /* 4BTN */
-            strcpy(topic, "4btn");
+		{
+			strcpy(topic, "4btn");
             uint8_t btn = moddata[0];
 
             if (moddatalen != 1 || btn < 1 || btn > 4) {
@@ -35,8 +37,9 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             return true;
 
             break;
-
+		}
         case 3: /* GPS */
+		{
             strcpy(topic, "gps");
 
             if (moddatalen < 1) {
@@ -45,7 +48,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 
             uint8_t reply = moddata[0] & 3; /* Last 4 bits is reply type */
             switch (reply) {
-                case 0:                     /* GPS data */
+                case 0: { /* GPS data */
                     if (moddatalen != 1 + 6) { /* There must be 6 bytes of GPS data + 1 byte of reply type */
                         return false;
                     }
@@ -69,23 +72,24 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 
                     sprintf(msg, "{ has_data: true, lat: %.3f, lon: %.3f }", lat, lon);
                     break;
-
-                case 1: /* No data yet */
+				}
+                case 1: { /* No data yet */
                     strcpy(msg, "{ has_data: false, lat: null, lon: null }");
                     break;
-
-                case 3: /* Error occured */
+				}
+                case 3: { /* Error occured */
                     strcpy(msg, "{ has_data: false, msg: \"error\" }");
                     break;
-
+				}
                 default:
                     return false;
             }
 
             break;
+		}
 
         case 6: /* LMT01 */ {
-            if (moddatalen < 2) {
+			if (moddatalen < 2) {
                 return false;
             }
 
@@ -98,12 +102,11 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 
             strcpy(topic, "lmt01");
 
-            if (strcmp(moddata, "ok") == 0) {
+            if (strcmp((const char *)moddata, "ok") == 0) {
                 strcpy(msg, "ok");
                 return true;
             }
 
-            char reply[128];
             strcpy(msg, "{ ");
 
             int i;
@@ -135,8 +138,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             strcat(msg, " }");
 
             break;
-        }
-
+		}
         case 7: { /* UART */
             uint8_t reply_type = moddata[0];
 
@@ -173,9 +175,9 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             }
 
             return false;
-        }
-
+		}
 		case 8: /* SHT21 */
+		{
             if (moddatalen < 2) {
                 return false;
             }
@@ -189,7 +191,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 
             strcpy(topic, "sht21");
 
-            if (strcmp(moddata, "ok") == 0) {
+            if (strcmp((const char*)moddata, "ok") == 0) {
                 strcpy(msg, "ok");
                 return true;
             }
@@ -206,8 +208,9 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 			sprintf(msg, "{ temp: %.02f, humid: %d }", (float) (temp / 16.0 - 100), humid);
 			
 			return true;
-
+		}
         case 9: /* PIR */
+		{
             strcpy(topic, "pir");
             uint8_t pir = moddata[0];
 
@@ -219,21 +222,21 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             return true;
 
             break;
-
+		}
         case 10: { /* 6ADC */
             strcpy(topic, "6adc");
 
-            if (strcmp(moddata, "ok") == 0) {
+            if (strcmp((const char*)moddata, "ok") == 0) {
                 strcpy(msg, "ok");
                 return true;
             }
 
-            if (strcmp(moddata, "fail") == 0) {
+            if (strcmp((const char*)moddata, "fail") == 0) {
                 strcpy(msg, "fail");
                 return true;
             }
 
-            char reply[128];
+//            char reply[128];
             strcpy(msg, "{ ");
 
             int i;
@@ -265,15 +268,15 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             strcat(msg, " }");
             break;
         }
-
-        case 11: /* LPS331 */ {
+        case 11: /* LPS331 */
+		{
             if (moddatalen < 4) {
                 return false;
             }
 
             strcpy(topic, "lps331");
 
-            if (strcmp(moddata, "ok") == 0) {
+            if (strcmp((const char*)moddata, "ok") == 0) {
                 strcpy(msg, "ok");
                 return true;
             }
@@ -333,10 +336,10 @@ bool convert_from(char *type, char *param, char *out)
 
             uint8_t gpio_cmd = 0;
             if (value == 1) {
-                gpio_cmd = 2 << 6;  // 10 in upper two bits of cmd byte is SET TO ONE command
+                gpio_cmd = 1 << 7;  // 10 in upper two bits of cmd byte is SET TO ONE command
             }
             else if (value == 0) {
-                gpio_cmd = 1 << 7;  // 01 in upper two bits of cmd byte is SET TO ZERO command
+                gpio_cmd = 1 << 6;  // 01 in upper two bits of cmd byte is SET TO ZERO command
 
             }
             // Append pin number bits and mask exceeding bits just in case
@@ -397,7 +400,7 @@ bool convert_from(char *type, char *param, char *out)
 
             uint8_t lines_en = 0;
             uint8_t line = 0;
-            while (line = (uint8_t) strtol(param, &param, 10)) {
+            while ( (line = (uint8_t)strtol(param, &param, 10)) ) {
                 if (line > 0 && line <= 6) {
                     lines_en |= 1 << (line - 1);
                 }

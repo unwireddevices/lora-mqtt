@@ -15,10 +15,9 @@
 
 #include "mqtt.h"
 #include "unwds-mqtt.h"
-
 #include "utils.h"
 
-#define VERSION "1.4"
+#define VERSION "1.4.1"
 
 #define MQTT_SUBSCRIBE_TO "devices/lora/#"
 #define MQTT_PUBLISH_TO "devices/lora/"
@@ -48,7 +47,7 @@ typedef struct entry {
 TAILQ_HEAD(TAILQ, entry) inputq;
 typedef struct TAILQ fifo_t;
 
-static fifo_t *inputqp;              /* UART input requests queue */
+// static fifo_t *inputqp;              /* UART input requests queue */
 
 static bool m_enqueue(fifo_t *l, char *v);
 static bool m_dequeue(fifo_t *l, char *v);
@@ -62,7 +61,7 @@ static bool is_fifo_empty(fifo_t *l);
 static bool pending_free[MAX_NODES];
 typedef struct {
 	unsigned long nodeid;
-	unsigned short class;
+	unsigned short nodeclass;
 
 	fifo_t pending_fifo;
 
@@ -87,7 +86,7 @@ static void init_pending(void) {
 	for (i = 0; i < MAX_NODES; i++) {
 		pending_free[i] = true;
 		pending[i].nodeid = 0;
-		pending[i].class = 0;
+		pending[i].nodeclass = 0;
 		pending[i].last_msg = 0;
 		pending[i].num_retries = 0;
 		pending[i].can_send = false;
@@ -109,14 +108,14 @@ static pending_item_t *pending_to_nodeid(unsigned long nodeid) {
 	return NULL;
 }
 
-static bool add_device(unsigned long nodeid, unsigned short class) {
+static bool add_device(unsigned long nodeid, unsigned short nodeclass) {
 	pthread_mutex_lock(&mutex_pending);
 
 	pending_item_t *e = pending_to_nodeid(nodeid);
 
-	/* Just in case, update device class for existing device */
+	/* Just in case, update device nodeclass for existing device */
 	if (e != NULL) {
-		e->class = class;
+		e->nodeclass = nodeclass;
 		pthread_mutex_unlock(&mutex_pending);
 		return true;
 	}
@@ -129,7 +128,7 @@ static bool add_device(unsigned long nodeid, unsigned short class) {
 
 			/* Initialize cell */
 			pending[i].nodeid = nodeid;
-			pending[i].class = class;
+			pending[i].nodeclass = nodeclass;
 
 			pending[i].last_msg = 0;
 			pending[i].num_retries = 0;
@@ -178,7 +177,7 @@ static bool kick_device(uint64_t nodeid) {
 static bool m_enqueue(fifo_t *l, char *v)
 {
 	cq_entry_t *val;
-	val = malloc(sizeof(cq_entry_t));
+	val = (cq_entry_t *)malloc(sizeof(cq_entry_t));
 	if (val != NULL) {
 		memcpy(val->buf, v, REPLY_LEN);
 		TAILQ_INSERT_TAIL(l, val, entries);
@@ -289,14 +288,14 @@ static void set_blocking (int fd, int should_block)
 static int mid = 42;
 
 static void serve_reply(char *str) {
-	int len = strlen(str);
+//	int len = strlen(str);
 
 	if (strlen(str) > REPLY_LEN * 2) {
 		puts("[error] Received too long reply from the gate");
 		return;
 	}
 
-	gate_reply_type_t reply = str[0];
+	gate_reply_type_t reply = (gate_reply_type_t)str[0];
 	str += 1;
 
 	switch (reply) {
@@ -345,20 +344,20 @@ static void serve_reply(char *str) {
 				return;
 			}
 
-			/* Read class */
-			char class[5] = {};
-			memcpy(class, str, 4);
+			/* Read nodeclass */
+			char nodeclass[5] = {};
+			memcpy(nodeclass, str, 4);
 			str += 4;
 
 			uint16_t cl;
-			if (!hex_to_bytes(class, (uint8_t *) &cl, !is_big_endian())) {
+			if (!hex_to_bytes(nodeclass, (uint8_t *) &cl, !is_big_endian())) {
 				printf("[error] Unable to parse list reply: %s\n", str - 52);
 				return;
 			}
 
 			/* Refresh our internal device list info for that node */
 			if (!add_device(nodeid, cl)) {
-				printf("[error] Was unable to add device 0x%s with class %s to our device list!\n", addr, class);
+				printf("[error] Was unable to add device 0x%s with nodeclass %s to our device list!\n", addr, nodeclass);
 				return;
 			}
 
@@ -372,11 +371,11 @@ static void serve_reply(char *str) {
 			strcat(topic, addr);
 
 			char msg[128] = {};
-			sprintf(msg, "{ appid64: 0x%s, ability: 0x%s, last_seen: %d, class: %d }", 
+			sprintf(msg, "{ appid64: 0x%s, ability: 0x%s, last_seen: %d, nodeclass: %d }", 
 					appid, ability, (unsigned) lseen, (unsigned) cl);
 
 			/* Publish message */
-			char *mqtt_topic = malloc(strlen(MQTT_PUBLISH_TO) + strlen(topic) + 1);
+			char *mqtt_topic = (char *)malloc(strlen(MQTT_PUBLISH_TO) + strlen(topic) + 1);
 			strcpy(mqtt_topic, MQTT_PUBLISH_TO);
 			strcat(mqtt_topic, topic);
 
@@ -417,13 +416,13 @@ static void serve_reply(char *str) {
 			char topic[64] = {};
 			char msg[128] = {};
 
-			if (!convert_to(modid, moddata, moddatalen, (uint8_t *) &topic, (uint8_t *) &msg)) {
+			if (!convert_to(modid, moddata, moddatalen, (char *) &topic, (char *) &msg)) {
 				printf("[error] Unable to convert gate reply \"%s\" for module %d\n", str, modid);
 				return;
 			}
 
 			// Append an MQTT topic path to the topic from the reply
-			char *mqtt_topic = malloc(strlen(MQTT_PUBLISH_TO) + strlen(addr) + 1 + strlen(topic));
+			char *mqtt_topic = (char *)malloc(strlen(MQTT_PUBLISH_TO) + strlen(addr) + 1 + strlen(topic));
 
 			strcpy(mqtt_topic, MQTT_PUBLISH_TO);
 			strcat(mqtt_topic, addr);
@@ -449,16 +448,16 @@ static void serve_reply(char *str) {
 				return;
 			}
 
-			unsigned short class = atoi(str);
+			unsigned short nodeclass = atoi(str);
 
-			printf("[join] Joined device with id = 0x%08X%08X and class = %d\n", 
+			printf("[join] Joined device with id = 0x%08X%08X and nodeclass = %d\n", 
 				(unsigned int) (nodeid >> 32), 
-				(unsigned int) (nodeid & 0xFFFFFFFF), class);
+				(unsigned int) (nodeid & 0xFFFFFFFF), nodeclass);
 
 			pending_item_t *e = pending_to_nodeid(nodeid);
 			/* If device is not added yet, add it */
 			if (e == NULL)
-				add_device(nodeid, class);
+				add_device(nodeid, nodeclass);
 			else {
 				/* If device is rejoined, check the pending messages */
 				if (e->num_pending) {
@@ -525,10 +524,10 @@ static void serve_reply(char *str) {
 			e->num_retries = 0;
 			pthread_mutex_unlock(&mutex_pending);
 
-			if (e->class != LS_ED_CLASS_A || e->num_pending == 0)
+			if (e->nodeclass != LS_ED_CLASS_A || e->num_pending == 0)
 				break;
 
-			// Ack from Class A, it's time to send pending frames
+			// Ack from nodeclass A, it's time to send pending frames
 			pthread_mutex_lock(&mutex_pending);
 			e->can_send = true;
 			pthread_mutex_unlock(&mutex_pending);
@@ -565,10 +564,10 @@ static void serve_reply(char *str) {
 
 			printf("[lnkchk] Link ok with 0x%s, RSSI = %d\n", addr, rssi);
 
-			if (e->class != LS_ED_CLASS_A)
+			if (e->nodeclass != LS_ED_CLASS_A)
 				break;
 
-			/* Link check from Class A, it's time to send pending frames */
+			/* Link check from nodeclass A, it's time to send pending frames */
 			pthread_mutex_lock(&mutex_pending);
 			e->can_send = true;		
 			pthread_mutex_unlock(&mutex_pending);
@@ -590,7 +589,7 @@ static void serve_reply(char *str) {
 	}
 }
 
-static void *pending_worker(void *arg) {
+static void* pending_worker(void *arg) {
 	(void) arg;
 
 	while (1) {
@@ -607,13 +606,13 @@ static void *pending_worker(void *arg) {
 			if (is_fifo_empty(&e->pending_fifo))
 				continue;
 
-			/* Messages for "Class A" devices will be sended only on demand */
-			if (e->class == LS_ED_CLASS_A && !e->can_send)
+			/* Messages for "nodeclass A" devices will be sended only on demand */
+			if (e->nodeclass == LS_ED_CLASS_A && !e->can_send)
 				continue;
 
 			if (current - e->last_msg > RETRY_TIMEOUT_S) {
 				if (e->num_retries > NUM_RETRIES) {
-					printf("[fail] Unable to send message to 0x%08X after %u retransmissions, giving up\n", e->nodeid, NUM_RETRIES);
+					printf("[fail] Unable to send message to 0x%08lX after %u retransmissions, giving up\n", e->nodeid, NUM_RETRIES);
 					e->num_retries = 0;
 					m_dequeue(&e->pending_fifo, NULL);
 
@@ -624,7 +623,7 @@ static void *pending_worker(void *arg) {
 				if (!m_peek(&e->pending_fifo, buf)) /* Peek message from queue but don't remove. Will be removed on acknowledge */
 					continue;
 
-				printf("[pending] Sending message to 0x%08X: %s\n", e->nodeid, buf);
+				printf("[pending] Sending message to 0x%08lX: %s\n", e->nodeid, buf);
 
 				e->num_retries++;
 
@@ -642,6 +641,7 @@ static void *pending_worker(void *arg) {
 
 		usleep(1e3);
 	}
+	return 0;
 }
 
 /* Polls publish queue and publishes the messages into MQTT */
@@ -707,7 +707,7 @@ static void *uart_reader(void *arg)
 			pthread_mutex_lock(&mutex_queue);
 			
 			char *running = strdup(buf), *token;
-			char *delims = "\n";
+			const char *delims = "\n";
 
 			while (strlen(token = strsep(&running, delims))) {
 				char buf[REPLY_LEN] = {};
@@ -761,16 +761,16 @@ static void message_to_mote(uint64_t addr, char *payload)
 
 		/* Say about that */
 		char addr_s[17] = {};
-		char *topic = "/error";
+		const char *topic = "/error";
 
 		sprintf(addr_s, "%08X%08X", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
-		char *mqtt_topic = malloc(strlen(MQTT_PUBLISH_TO) + strlen(addr_s) + 1 + strlen(topic));
+		char *mqtt_topic = (char *)malloc(strlen(MQTT_PUBLISH_TO) + strlen(addr_s) + 1 + strlen(topic));
 
 		strcpy(mqtt_topic, MQTT_PUBLISH_TO);
 		strcat(mqtt_topic, addr_s);
 		strcat(mqtt_topic, topic);
 
-		char *msg = "not in network";
+		const char *msg = "not in network";
 
 		mosquitto_publish(mosq, &mid, mqtt_topic, strlen(msg), msg, 1, false);
 
@@ -788,7 +788,7 @@ static void message_to_mote(uint64_t addr, char *payload)
 		return;
 	}
 
-	if (e->class == LS_ED_CLASS_A) {
+	if (e->nodeclass == LS_ED_CLASS_A) {
 		puts("[pending] Message is delayed until next link check");
 
 		e->num_pending++;
@@ -808,7 +808,7 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 		return;
 
 	char *running = strdup(message->topic), *token;
-	char *delims = "/";
+	const char *delims = "/";
 
 	char topics[5][128] = {};
 	int topic_count = 0;
@@ -854,7 +854,7 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 		char *type = topics[3];
 		
 		char buf[REPLY_LEN] = {};
-		if (!convert_from(type, message->payload, buf)) {
+		if (!convert_from(type, (char *)message->payload, buf)) {
 			printf("[error] Unable to parse mqtt message: devices/lora/%s : %s\n", addr, type);
 			return;
 		}
@@ -865,7 +865,7 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 
 static void my_connect_callback(struct mosquitto *m, void *userdata, int result)
 {
-	int i;
+//	int i;
 	if(!result){
 		/* Subscribe to broker information topics on successful connect. */
 		printf("Subscribing to %s\n", MQTT_SUBSCRIBE_TO);
@@ -887,23 +887,56 @@ static void my_subscribe_callback(struct mosquitto *m, void *userdata, int mid, 
 	printf("\n");
 }
 
+void usage(void) {
+	printf("Usage: mqtt <serial>\nExample: mqtt [-d] [-r] -p /dev/ttyS0\n");
+	printf("  -d\tFork to background.\n");
+//	printf("  -r\tRetain last MQTT message.\n");
+	printf("  -p <port>\tserial port device URI, e.g. /dev/ttyATH0.\n");
+}
+
 int main(int argc, char *argv[])
 {
-	int i;
-	char *host = "localhost";
+//	int i;
+	const char *host = "localhost";
 	int port = 1883;
 	int keepalive = 60;
-	bool clean_session = true;
+//	bool clean_session = true;
 
 	printf("=== MQTT-LoRa gate (version: %s) ===\n", VERSION);
 
 	if (argc < 2) {
-		printf("Usage: mqtt <serial>\nExample: mqtt /dev/ttyS0\n");
+		usage();
 		return -1;
 	}
+	
+	bool daemonize = 0;
+//	bool retain = 0;
+	char serialport[100];
+	
+	int c;
+	while ((c = getopt (argc, argv, "drp:")) != -1)
+    switch (c) {
+		case 'd':
+			daemonize = 1;
+			break;
+//		case 'r':
+//			retain = 1;
+//			break;
+		case 'p':
+			if (strlen(optarg) > 100) {
+				printf("Error: serial device URI is too long\n");
+			}
+			else {
+				strncpy(serialport, optarg, 100);
+			}
+			break;
+		default:
+			usage();
+			return -1;
+    }
 
 	printf("Using serial port device: %s\n", argv[1]);
-
+	
 	pthread_mutex_init(&mutex_uart, NULL);
 	pthread_mutex_init(&mutex_queue, NULL);
 	pthread_mutex_init(&mutex_pending, NULL);
@@ -916,15 +949,35 @@ int main(int argc, char *argv[])
 
 	TAILQ_INIT(&inputq);
 
-	uart = open(argv[1], O_RDWR | O_NOCTTY | O_SYNC);
+	uart = open(serialport, O_RDWR | O_NOCTTY | O_SYNC);
 	if (uart < 0)
 	{
-		fprintf(stderr, "error %d opening %s: %s", errno, argv[1], strerror (errno));
+		fprintf(stderr, "error %d opening %s: %s", errno, serialport, strerror (errno));
 		return 1;
 	}
 	
 	set_interface_attribs(uart, B115200, 0);  // set speed to 115,200 bps, 8n1 (no parity)
 	set_blocking(uart, 0);                	 // set no blocking
+	
+	// fork to background if needed and create pid file
+    int pidfile;
+    if (daemonize)
+    {
+        if (daemon(0, 0))
+        {
+            printf("Error forking to background\n");
+            exit(EXIT_FAILURE);
+        }
+        
+        char pidval[10];
+        pidfile = open("/var/run/mqtt-lora.pid", O_CREAT | O_RDWR, 0666);
+        if (lockf(pidfile, F_TLOCK, 0) == -1)
+        {
+            exit(EXIT_FAILURE);
+        }
+        sprintf(pidval, "%d\n", getpid());
+        write(pidfile, pidval, strlen(pidval));
+    }
 
 	if(pthread_create(&reader_thread, NULL, uart_reader, NULL)) {
 		fprintf(stderr, "Error creating reader thread\n");
@@ -963,5 +1016,13 @@ int main(int argc, char *argv[])
 
 	mosquitto_destroy(mosq);
 	mosquitto_lib_cleanup();
+	
+	if (pidfile)
+    {
+        lockf(pidfile, F_ULOCK, 0);
+        close(pidfile);
+        remove("/var/run/mqtt-lora.pid");
+    }
+	
 	return 0;
 }

@@ -16,10 +16,6 @@
  * @author      Evgeniy Ponomarev
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
@@ -61,7 +57,7 @@ bool hex_to_bytesn(char *hexstr, int len, uint8_t *bytes, bool reverse_order) {
 }
 
 void bytes_to_hex(uint8_t *bytes, size_t num_bytes, char *str, bool reverse_order) {
-	int i;
+	size_t i;
 	for (i = 0; i < num_bytes; i++) {
 		char buf[2];
 		sprintf(buf, "%02x", bytes[(reverse_order) ? num_bytes - 1 - i : i]);
@@ -78,7 +74,3 @@ bool is_big_endian(void)
 
     return bint.c[0] == 1; 
 }
-
-#ifdef __cplusplus
-}
-#endif
