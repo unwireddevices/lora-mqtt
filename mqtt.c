@@ -1,11 +1,3 @@
-/*
- * Copyright (C) 2016 Unwired Devices [info@unwds.com]
- *
- * This file is subject to the terms and conditions of the GNU Lesser
- * General Public License v2.1. See the file LICENSE in the top level
- * directory for more details.
- */
-
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -943,7 +935,7 @@ int main(int argc, char *argv[])
 			return -1;
     }
 
-	printf("Using serial port device: %s\n", argv[1]);
+	printf("Using serial port device: %s\n", serialport);
 	
 	pthread_mutex_init(&mutex_uart, NULL);
 	pthread_mutex_init(&mutex_queue, NULL);
