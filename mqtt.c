@@ -179,7 +179,7 @@ static bool m_enqueue(fifo_t *l, char *v)
 	cq_entry_t *val;
 	val = (cq_entry_t *)malloc(sizeof(cq_entry_t));
 	if (val != NULL) {
-		memcpy(val->buf, v, REPLY_LEN);
+		memcpy(val->buf, v, strlen(v)+1);
 		TAILQ_INSERT_TAIL(l, val, entries);
 		return true;
 	}
@@ -193,7 +193,7 @@ static bool m_dequeue(fifo_t *l, char *v)
 	
 	if (e != NULL) {
 		if (v != NULL)
-			memcpy(v, e->buf, REPLY_LEN);
+			memcpy(v, e->buf, strlen(e->buf)+1);
 
 		TAILQ_REMOVE(l, e, entries);
 		free(e);
@@ -210,7 +210,7 @@ static bool m_peek(fifo_t *l, char *v)
 	
 	if (e != NULL) {
 		if (v != NULL)
-			memcpy(v, e->buf, REPLY_LEN);
+			memcpy(v, e->buf, strlen(e->buf)+1);
 		else
 			return false;	/* Makes no sense to peek into NULL buffer */
 
@@ -711,11 +711,15 @@ static void *uart_reader(void *arg)
 
 			while (strlen(token = strsep(&running, delims))) {
 				char buf[REPLY_LEN] = {};
-				memcpy(buf, token, REPLY_LEN);
+				memcpy(buf, token, strlen(token));
 
 				/* Insert reply to the queue */
-				if (!m_enqueue(&inputq, buf))
+				if (!m_enqueue(&inputq, buf)) {
+					if (!running) {
+						free(running);
+					}
 					break;
+				}
 
 				if (running == NULL)
 					break;
