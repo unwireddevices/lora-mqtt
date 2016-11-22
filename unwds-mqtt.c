@@ -361,10 +361,10 @@ bool convert_from(char *type, char *param, char *out)
 
             uint8_t gpio_cmd = 0;
             if (value == 1) {
-                gpio_cmd = 1 << 7;  // 10 in upper two bits of cmd byte is SET TO ONE command
+                gpio_cmd = UNWDS_GPIO_SET_1 << 6;  // 10 in upper two bits of cmd byte is SET TO ONE command
             }
             else if (value == 0) {
-                gpio_cmd = 1 << 6;  // 01 in upper two bits of cmd byte is SET TO ZERO command
+                gpio_cmd = UNWDS_GPIO_SET_0 << 6;  // 01 in upper two bits of cmd byte is SET TO ZERO command
 
             }
             // Append pin number bits and mask exceeding bits just in case
@@ -375,8 +375,30 @@ bool convert_from(char *type, char *param, char *out)
             sprintf(out, "01%02x", gpio_cmd);
         }
         else if (strstr(param, "get ") == param) {
+			param += 4; // skip command
+
+            uint8_t pin = strtol(param, &param, 10);
+
+            uint8_t gpio_cmd = UNWDS_GPIO_GET << 6;
+            // Append pin number bits and mask exceeding bits just in case
+            gpio_cmd |= pin & 0x3F;
+
+            printf("[mqtt-gpio] Get command | Pin: %d, cmd: 0x%02x\n", pin, gpio_cmd);
+
+            sprintf(out, "01%02x", gpio_cmd);
         }
         else if (strstr(param, "toggle ") == param) {
+			param += 7; // skip command
+
+            uint8_t pin = strtol(param, &param, 10);
+
+            uint8_t gpio_cmd = UNWDS_GPIO_TOGGLE << 6;
+            // Append pin number bits and mask exceeding bits just in case
+            gpio_cmd |= pin & 0x3F;
+
+            printf("[mqtt-gpio] Get command | Pin: %d, cmd: 0x%02x\n", pin, gpio_cmd);
+
+            sprintf(out, "01%02x", gpio_cmd);
         }
     }
     else if (strcmp(type, "gps") == 0) {
