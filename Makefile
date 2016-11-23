@@ -4,7 +4,7 @@ LIBS = -lcares -lcrypto -lssl -lmosquitto -lpthread -pthread
 
 SOURCES = unwds-mqtt.c utils.c
 BUILD_DIR = build/
-CC = gcc
+CC = mips-openwrt-linux-gcc
 
 ifndef V
 	V = 0

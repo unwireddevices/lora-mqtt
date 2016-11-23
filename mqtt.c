@@ -395,6 +395,12 @@ static void serve_reply(char *str) {
 			char addr[17] = {};
 			memcpy(addr, str, 16);
 			str += 16;
+
+			uint64_t nodeid;
+			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
+				printf("[error] Unable to parse device app. data: %s", str - 16);
+				return;
+			}
 	
 			uint16_t rssi_buf;
 			if (!hex_to_bytesn(str, 4, (uint8_t *) &rssi_buf, !is_big_endian())) {
@@ -437,7 +443,28 @@ static void serve_reply(char *str) {
 
 			mosquitto_publish(mosq, &mid, mqtt_topic, strlen(msg), msg, 1, false);
 
-			free(mqtt_topic);			
+			free(mqtt_topic);	
+
+			pending_item_t *e = pending_to_nodeid(nodeid);
+			if (e != NULL) {
+				/* Send pending frame on class A device app. data */
+				if (e->nodeclass != LS_ED_CLASS_A || e->num_pending == 0)
+					break;
+
+				// Ack from nodeclass A, it's time to send pending frames
+	
+				/* [!] Waiting while gate is sending appdata acknowledge to the node
+				 * [!] Without pause, overlapping may occurr because LoRa gate haven't queue for app. data frames from top level gate
+				 */
+				//usleep(1e3 * 500);
+
+				/*
+				 *	Allow to send app. data
+				 */
+				pthread_mutex_lock(&mutex_pending);
+				e->can_send = true;
+				pthread_mutex_unlock(&mutex_pending);		
+			}
 		}
 		break;
 
@@ -526,16 +553,7 @@ static void serve_reply(char *str) {
 				e->num_pending--;
 
 			e->num_retries = 0;
-			pthread_mutex_unlock(&mutex_pending);
-
-			if (e->nodeclass != LS_ED_CLASS_A || e->num_pending == 0)
-				break;
-
-			// Ack from nodeclass A, it's time to send pending frames
-			pthread_mutex_lock(&mutex_pending);
-			e->can_send = true;
-			pthread_mutex_unlock(&mutex_pending);
-			
+			pthread_mutex_unlock(&mutex_pending);			
 		}
 		break;
 
@@ -643,7 +661,7 @@ static void* pending_worker(void *arg) {
 
 		pthread_mutex_unlock(&mutex_pending);
 
-		usleep(1e3);
+		//usleep(1e3);
 	}
 	return 0;
 }
