@@ -25,6 +25,7 @@ typedef enum {
 typedef enum {
 	LS_ED_CLASS_A = 0,
 	LS_ED_CLASS_B = 1,
+	LS_ED_CLASS_C = 2,
 } ls_node_class_t;
 
 #endif
