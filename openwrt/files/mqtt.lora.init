@@ -2,7 +2,7 @@
 
 # OpenWRT lora-mqtt init script
 
-START=70
+START=98
 
 start() {
     echo start
