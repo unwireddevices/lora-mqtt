@@ -565,7 +565,10 @@ static void serve_reply(char *str) {
 				break;
 
 			pthread_mutex_lock(&mutex_pending);
-			// Dequeue pending message
+			/* No need to invite device */
+			e->has_been_invited = false;
+
+			/* Dequeue pending message */
 			if (!is_fifo_empty(&e->pending_fifo))
 				m_dequeue(&e->pending_fifo, NULL);
 
