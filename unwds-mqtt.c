@@ -265,7 +265,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             strcpy(msg, "{ ");
 
             int i;
-            for (i = 0; i < 14; i += 2) {
+            for (i = 0; i < 16; i += 2) {
                 uint16_t sensor = 0;
                 if (is_big_endian()) {
                     sensor = (moddata[i + 1] << 8) | moddata[i]; /* We're in big endian there, swap bytes */
@@ -285,7 +285,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 
                 strcat(msg, buf);
 
-                if (i != 10) {
+                if (i != 14) {
                     strcat(msg, ", ");
                 }
             }
