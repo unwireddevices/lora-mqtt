@@ -21,7 +21,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "1.4.5"
+#define VERSION "1.5.0"
 
 #define MQTT_SUBSCRIBE_TO "devices/lora/#"
 #define MQTT_PUBLISH_TO "devices/lora/"
@@ -64,8 +64,10 @@ static bool is_fifo_empty(fifo_t *l);
 /* Pending messages queue pool */
 static bool pending_free[MAX_NODES];
 typedef struct {
-	unsigned long nodeid;
+	uint64_t nodeid;
 	unsigned short nodeclass;
+
+	bool has_been_invited;
 
 	fifo_t pending_fifo;
 
@@ -82,8 +84,25 @@ static bool list_for_gate = false;
 static bool devlist_needed = false;
 static void devices_list(bool internal);
 
-/* If last ping was skipped by gate, the connection might be faulty */
-static bool ping_skipped = false;
+/* If too many pings was skipped by gate, the connection might be faulty */
+static int pings_skipped = 0;
+static const int MIN_PINGS_SKIPPED = 10;
+
+static char get_node_class(unsigned short nodeclass) {
+	switch (nodeclass) {
+		case 0:
+			return 'A';
+
+		case 1:
+			return 'B';
+
+		case 2:
+			return 'C';
+
+		default:
+			return '?';
+	}
+}
 
 static void init_pending(void) {
 	int i;	
@@ -98,7 +117,7 @@ static void init_pending(void) {
 	}
 }
 
-static pending_item_t *pending_to_nodeid(unsigned long nodeid) {
+static pending_item_t *pending_to_nodeid(uint64_t nodeid) {
 	int i;	
 	for (i = 0; i < MAX_NODES; i++) {
 		if (pending_free[i])
@@ -112,15 +131,25 @@ static pending_item_t *pending_to_nodeid(unsigned long nodeid) {
 	return NULL;
 }
 
-static bool add_device(unsigned long nodeid, unsigned short nodeclass) {
+static bool add_device(uint64_t nodeid, unsigned short nodeclass, bool was_joined) {
 	pthread_mutex_lock(&mutex_pending);
 
 	pending_item_t *e = pending_to_nodeid(nodeid);
 
-	/* Just in case, update device nodeclass for existing device */
+	/* Update device info for existing record */
 	if (e != NULL) {
+		/* Clear invitation flag */
+		if (nodeclass == LS_ED_CLASS_C && e->has_been_invited && was_joined) {
+			puts("[+] Device successfully invited");
+			e->has_been_invited = false;
+		}
+
 		e->nodeclass = nodeclass;
 		pthread_mutex_unlock(&mutex_pending);
+
+		/* Reset number of retransmission/invite attempts */
+		e->num_retries = 0;
+
 		return true;
 	}
 
@@ -133,6 +162,7 @@ static bool add_device(unsigned long nodeid, unsigned short nodeclass) {
 			/* Initialize cell */
 			pending[i].nodeid = nodeid;
 			pending[i].nodeclass = nodeclass;
+			pending[i].has_been_invited = !was_joined; /* Node added without actual join via invitation */
 
 			pending[i].last_msg = 0;
 			pending[i].num_retries = 0;
@@ -293,8 +323,6 @@ static void set_blocking (int fd, int should_block)
 static int mid = 42;
 
 static void serve_reply(char *str) {
-//	int len = strlen(str);
-
 	if (strlen(str) > REPLY_LEN * 2) {
 		puts("[error] Received too long reply from the gate");
 		return;
@@ -361,7 +389,7 @@ static void serve_reply(char *str) {
 			}
 
 			/* Refresh our internal device list info for that node */
-			if (!add_device(nodeid, cl)) {
+			if (!add_device(nodeid, cl, true)) {
 				printf("[error] Was unable to add device 0x%s with nodeclass %s to our device list!\n", addr, nodeclass);
 				return;
 			}
@@ -452,13 +480,6 @@ static void serve_reply(char *str) {
 				if (e->nodeclass != LS_ED_CLASS_A || e->num_pending == 0)
 					break;
 
-				// Ack from nodeclass A, it's time to send pending frames
-	
-				/* [!] Waiting while gate is sending appdata acknowledge to the node
-				 * [!] Without pause, overlapping may occurr because LoRa gate haven't queue for app. data frames from top level gate
-				 */
-				//usleep(1e3 * 500);
-
 				/*
 				 *	Allow to send app. data
 				 */
@@ -482,15 +503,14 @@ static void serve_reply(char *str) {
 
 			unsigned short nodeclass = atoi(str);
 
-			printf("[join] Joined device with id = 0x%08X%08X and nodeclass = %d\n", 
+			printf("[join] Joined device with id = 0x%08X%08X and class = %c\n", 
 				(unsigned int) (nodeid >> 32), 
-				(unsigned int) (nodeid & 0xFFFFFFFF), nodeclass);
+				(unsigned int) (nodeid & 0xFFFFFFFF), get_node_class(nodeclass));
+
+			add_device(nodeid, nodeclass, true);
 
 			pending_item_t *e = pending_to_nodeid(nodeid);
-			/* If device is not added yet, add it */
-			if (e == NULL)
-				add_device(nodeid, nodeclass);
-			else {
+			if (e != NULL) {
 				/* If device is rejoined, check the pending messages */
 				if (e->num_pending) {
 					/* Notify gate about pending messages */
@@ -546,7 +566,10 @@ static void serve_reply(char *str) {
 				break;
 
 			pthread_mutex_lock(&mutex_pending);
-			// Dequeue pending message
+			/* No need to invite device */
+			e->has_been_invited = false;
+
+			/* Dequeue pending message */
 			if (!is_fifo_empty(&e->pending_fifo))
 				m_dequeue(&e->pending_fifo, NULL);
 
@@ -558,58 +581,23 @@ static void serve_reply(char *str) {
 		}
 		break;
 
-		case REPLY_LNKCHK: {
-			char addr[17] = {};
-			memcpy(addr, str, 16);
-			str += 16;
-
-			uint64_t nodeid;
-			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				printf("[error] Unable to parse join link check: %s", str - 16);
-				return;
-			}
-
-			uint16_t rssi_buf;
-			if (!hex_to_bytesn(str, 4, (uint8_t *) &rssi_buf, !is_big_endian())) {
-				printf("[error] Unable to parse RSSI from gate reply: %s\n", str);
-				return;
-			}
-			int16_t rssi = -rssi_buf;
-
-			/* Skip RSSI hex */
-			str += 4;
-
-			pending_item_t *e = pending_to_nodeid(nodeid);
-			if (e == NULL) {
-				printf("[error] Link of with 0x%s but device is not joined\n", addr);
-				break;
-			}
-
-			printf("[lnkchk] Link ok with 0x%s, RSSI = %d\n", addr, rssi);
-
-			if (e->nodeclass != LS_ED_CLASS_A)
-				break;
-
-			/* Link check from nodeclass A, it's time to send pending frames */
-			pthread_mutex_lock(&mutex_pending);
-			e->can_send = true;		
-			pthread_mutex_unlock(&mutex_pending);
-
-			printf("[lnkchk] Link check with device with id = 0x%08X%08X ok, frames pending = %d, rssi = %d\n", 
-				(unsigned int) (nodeid >> 32), 
-				(unsigned int) (nodeid & 0xFFFFFFFF), e->num_pending, rssi);
-		}
-
-		break;
-
 		case REPLY_PONG: {
 			pthread_mutex_lock(&mutex_pong);
-			ping_skipped = false;
+			pings_skipped = 0;
 			pthread_mutex_unlock(&mutex_pong);
 		}
 
 		break;
 	}
+}
+
+static void invite_mote(uint64_t addr) 
+{
+	printf("[inv] Sending invitation to node with address 0x%08X%08X\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
+
+	pthread_mutex_lock(&mutex_uart);
+	dprintf(uart, "%c%08X%08X\r", CMD_INVITE, (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
+	pthread_mutex_unlock(&mutex_uart);
 }
 
 static void* pending_worker(void *arg) {
@@ -634,11 +622,22 @@ static void* pending_worker(void *arg) {
 				continue;
 
 			if (current - e->last_msg > RETRY_TIMEOUT_S) {
-				if (e->num_retries > NUM_RETRIES) {
-					printf("[fail] Unable to send message to 0x%08lX after %u retransmissions, giving up\n", e->nodeid, NUM_RETRIES);
+				if (e->num_retries >= NUM_RETRIES) {
+					printf("[fail] Unable to send message to 0x%08X%08X after %u attempts, giving up\n", 
+						(unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF), NUM_RETRIES);
 					e->num_retries = 0;
 					m_dequeue(&e->pending_fifo, NULL);
 
+					continue;
+				}
+
+				/* Must wait for device to join before sending messages */
+				if (e->nodeclass == LS_ED_CLASS_C && e->has_been_invited) {
+					/* Retry invitation */
+					invite_mote(e->nodeid);
+					
+					e->num_retries++;
+					e->last_msg = current;		
 					continue;
 				}
 
@@ -646,7 +645,7 @@ static void* pending_worker(void *arg) {
 				if (!m_peek(&e->pending_fifo, buf)) /* Peek message from queue but don't remove. Will be removed on acknowledge */
 					continue;
 
-				printf("[pending] Sending message to 0x%08lX: %s\n", e->nodeid, buf);
+				printf("[pending] Sending message to 0x%08X%08X: %s\n", (unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF), buf);
 
 				e->num_retries++;
 
@@ -654,6 +653,10 @@ static void* pending_worker(void *arg) {
 				pthread_mutex_lock(&mutex_uart);
 				dprintf(uart, "%s\r", buf);
 				pthread_mutex_unlock(&mutex_uart);
+
+				/* Reset invitaion flag. If device doesn't respond on message sended, a new invitation attempt will occur */
+				if (e->nodeclass == LS_ED_CLASS_C)
+					e->has_been_invited = true;
 
 				e->can_send = false;
 				e->last_msg = current;			
@@ -664,6 +667,7 @@ static void* pending_worker(void *arg) {
 
 		//usleep(1e3);
 	}
+
 	return 0;
 }
 
@@ -705,13 +709,11 @@ static void *uart_reader(void *arg)
 		char c;
 		int r = 0, i = 0;
 
-		if (!ping_skipped) {
-			pthread_mutex_lock(&mutex_pong);
-			ping_skipped = true;
-			pthread_mutex_unlock(&mutex_pong);
-		} else {
+		pthread_mutex_lock(&mutex_pong);
+		if (pings_skipped++ >= MIN_PINGS_SKIPPED) {
 			puts("[!!!] No response from LoRa gate! Check the connection!");
 		}
+		pthread_mutex_unlock(&mutex_pong);
 
 		pthread_mutex_lock(&mutex_uart);
 
@@ -754,9 +756,9 @@ static void *uart_reader(void *arg)
 
 		usleep(1e3 * UART_POLLING_INTERVAL);
 		
-		/*  Request devices list on demand */
+		/* Request devices list on demand */
 		if (devlist_needed) {
-			puts("[!] Device list required");
+			puts("[!] Device list requested");
 			devlist_needed = false; /* No more devices lists needed */
 			devices_list(true);
 
@@ -784,23 +786,13 @@ static void message_to_mote(uint64_t addr, char *payload)
 
 	pending_item_t *e = pending_to_nodeid(addr);
 	if (e == NULL) {
-		printf("[error] Mote with id = %08X%08X is not found!\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
+		printf("[error] Mote with id = %08X%08X is not in network, an invite will be sended\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
+		add_device(addr, LS_ED_CLASS_C, false);
+		e = pending_to_nodeid(addr);
+	}
 
-		/* Say about that */
-		char addr_s[17] = {};
-		const char *topic = "/error";
-
-		sprintf(addr_s, "%08X%08X", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
-		char *mqtt_topic = (char *)malloc(strlen(MQTT_PUBLISH_TO) + strlen(addr_s) + 1 + strlen(topic));
-
-		strcpy(mqtt_topic, MQTT_PUBLISH_TO);
-		strcat(mqtt_topic, addr_s);
-		strcat(mqtt_topic, topic);
-
-		const char *msg = "not in network";
-
-		mosquitto_publish(mosq, &mid, mqtt_topic, strlen(msg), msg, 1, false);
-
+	if (e == NULL) {
+		puts("[error] Unable to add new device. Is devices list overflowed?\n");	
 		return;
 	}
 
@@ -816,7 +808,7 @@ static void message_to_mote(uint64_t addr, char *payload)
 	}
 
 	if (e->nodeclass == LS_ED_CLASS_A) {
-		puts("[pending] Message is delayed until next link check");
+		puts("[pending] Message is delayed");
 
 		e->num_pending++;
 		
