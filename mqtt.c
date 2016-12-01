@@ -21,7 +21,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "1.4.4"
+#define VERSION "1.4.5"
 
 #define MQTT_SUBSCRIBE_TO "devices/lora/#"
 #define MQTT_PUBLISH_TO "devices/lora/"
@@ -248,7 +248,8 @@ static int set_interface_attribs (int fd, int speed, int parity)
         tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
         // disable IGNBRK for mismatched speed tests; otherwise receive break
         // as \000 chars
-        tty.c_iflag &= ~IGNBRK;         // disable break processing
+        // tty.c_iflag &= ~IGNBRK;         // disable break processing
+		tty.c_iflag |= IGNBRK;         // disable break processing
         tty.c_lflag = 0;                // no signaling chars, no echo,
                                         // no canonical processing
         tty.c_oflag = 0;                // no remapping, no delays
@@ -966,6 +967,35 @@ int main(int argc, char *argv[])
 			return -1;
     }
 	
+	// fork to background if needed and create pid file
+    int pidfile;
+    if (daemonize)
+    {
+		printf("Attempting to run in the background\n");
+		
+        if (daemon(0, 0))
+        {
+            printf("Error forking to background\n");
+            exit(EXIT_FAILURE);
+        }
+        
+        char pidval[10];
+        pidfile = open("/var/run/mqtt-lora.pid", O_CREAT | O_RDWR, 0666);
+        if (lockf(pidfile, F_TLOCK, 0) == -1)
+        {
+            exit(EXIT_FAILURE);
+        }
+        sprintf(pidval, "%d\n", getpid());
+        write(pidfile, pidval, strlen(pidval));
+    }
+	
+	/* wait for 60 seconds */
+	/*
+	if (daemonize) {
+		usleep(60*1e6);
+	}
+	*/
+	
 	FILE* config = NULL;
     char line[255] ;
     char* token;
@@ -1023,28 +1053,6 @@ int main(int argc, char *argv[])
 	
 	set_interface_attribs(uart, B115200, 0);  // set speed to 115,200 bps, 8n1 (no parity)
 	set_blocking(uart, 0);                	 // set no blocking
-	
-	// fork to background if needed and create pid file
-    int pidfile;
-    if (daemonize)
-    {
-		printf("Attempting to run in the background\n");
-		
-        if (daemon(0, 0))
-        {
-            printf("Error forking to background\n");
-            exit(EXIT_FAILURE);
-        }
-        
-        char pidval[10];
-        pidfile = open("/var/run/mqtt-lora.pid", O_CREAT | O_RDWR, 0666);
-        if (lockf(pidfile, F_TLOCK, 0) == -1)
-        {
-            exit(EXIT_FAILURE);
-        }
-        sprintf(pidval, "%d\n", getpid());
-        write(pidfile, pidval, strlen(pidval));
-    }
 
 	if(pthread_create(&reader_thread, NULL, uart_reader, NULL)) {
 		fprintf(stderr, "Error creating reader thread\n");
