@@ -333,7 +333,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             }
 
             char buf[40] = {};
-            snprintf(buf, 40, "temperature: %.1f, pressure: %d", temperature / 1000.0, pressure);
+            snprintf(buf, 40, "temperature: %.1f, pressure: %d", ((float)temperature / 16.0) - 100.0, pressure);
 
             strcat(msg, buf);
             strcat(msg, " }");
