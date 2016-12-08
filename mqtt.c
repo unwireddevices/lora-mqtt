@@ -480,6 +480,9 @@ static void serve_reply(char *str) {
 				if (e->nodeclass != LS_ED_CLASS_A || e->num_pending == 0)
 					break;
 
+				/* Wait for acknowledge is sended and received by the gate */
+				usleep(1e6 * 500);
+
 				/*
 				 *	Allow to send app. data
 				 */
