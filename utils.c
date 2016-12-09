@@ -74,3 +74,10 @@ bool is_big_endian(void)
 
     return bint.c[0] == 1; 
 }
+
+void logprint(char *str)
+{
+	time_t t = time(NULL);
+	struct tm tm = *localtime(&t);
+	printf("[%02d:%02d:%02d]%s\n", tm.tm_hour, tm.tm_min, tm.tm_sec, str);
+}
