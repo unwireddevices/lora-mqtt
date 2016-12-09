@@ -500,6 +500,24 @@ bool convert_from(char *type, char *param, char *out)
              sprintf(out, "0802%02x", i2c);
         }
     }
+	else if (strcmp(type, "lps331") == 0) {
+        if (strstr(param, "set_period ") == param) {
+            param += 11;    // Skip command
+
+            uint8_t period = atoi(param);
+            sprintf(out, "0800%02x", period);
+        }
+        else if (strstr(param, "get") == param) {
+            sprintf(out, "0801");
+        }
+        else if (strstr(param, "set_i2c ") == param) { 
+             param += 8;	// Skip command
+
+             uint8_t i2c = atoi(param);
+
+             sprintf(out, "0802%02x", i2c);
+        }
+    }
     else {
         return false;
     }
