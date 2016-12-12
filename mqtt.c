@@ -14,6 +14,7 @@
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
+#include <syslog.h>
 
 #include <sys/queue.h>
 
@@ -21,7 +22,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "1.5.2"
+#define VERSION "1.5.3"
 
 #define MQTT_SUBSCRIBE_TO "devices/lora/#"
 #define MQTT_PUBLISH_TO "devices/lora/"
@@ -343,8 +344,7 @@ static void serve_reply(char *str) {
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
 				sprintf(logbuf, "[error] Unable to parse list reply: %s\n", str - 16);
-				logprint(logbuf);
-				logprint(logbuf);
+
 				return;
 			}
 
@@ -920,11 +920,13 @@ static void my_connect_callback(struct mosquitto *m, void *userdata, int result)
 //	int i;
 	if(!result){
 		/* Subscribe to broker information topics on successful connect. */
-		printf("Subscribing to %s\n", MQTT_SUBSCRIBE_TO);
+		sprintf(logbuf, "Subscribing to %s\n", MQTT_SUBSCRIBE_TO);
+		logprint(logbuf);
 
 		mosquitto_subscribe(mosq, NULL, MQTT_SUBSCRIBE_TO, 2);
 	}else{
-		fprintf(stderr, "Connect failed\n");
+		sprintf(logbuf, "Connect failed\n");
+		logprint(logbuf);
 	}
 }
 
@@ -934,7 +936,8 @@ static void my_subscribe_callback(struct mosquitto *m, void *userdata, int mid, 
 
 	printf("Subscribed (mid: %d): %d", mid, granted_qos[0]);
 	for(i=1; i<qos_count; i++){
-		printf(", %d", granted_qos[i]);
+		sprintf(logbuf, ", %d", granted_qos[i]);
+		logprint(logbuf);
 	}
 	printf("\n");
 }
@@ -956,7 +959,10 @@ int main(int argc, char *argv[])
 	int keepalive = 60;
 //	bool clean_session = true;
 
-	printf("=== MQTT-LoRa gate (version: %s) ===\n", VERSION);
+	openlog("lora-mqtt", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_DAEMON);
+
+	sprintf(logbuf, "=== MQTT-LoRa gate (version: %s) ===\n", VERSION);
+	logprint(logbuf);
 	
 	bool daemonize = 0;
 //	bool retain = 0;
@@ -981,7 +987,8 @@ int main(int argc, char *argv[])
 //			break;
 		case 'p':
 			if (strlen(optarg) > 100) {
-				printf("Error: serial device URI is too long\n");
+				sprintf(logbuf, "Error: serial device URI is too long\n");
+				logprint(logbuf);
 			}
 			else {
 				strncpy(serialport, optarg, 100);
@@ -996,11 +1003,13 @@ int main(int argc, char *argv[])
     int pidfile;
     if (daemonize)
     {
-		printf("Attempting to run in the background\n");
+		sprintf(logbuf, "Attempting to run in the background\n");
+		logprint(logbuf);
 		
         if (daemon(0, 0))
         {
-            printf("Error forking to background\n");
+            sprintf(logbuf, "Error forking to background\n");
+			logprint(logbuf);
             exit(EXIT_FAILURE);
         }
         
@@ -1011,7 +1020,6 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
         sprintf(pidval, "%d\n", getpid());
-		logprint(logbuf);
         write(pidfile, pidval, strlen(pidval));
     }
 	
@@ -1050,7 +1058,8 @@ int main(int argc, char *argv[])
             }
 			else
 			{
-				printf("Configuration file /etc/lora-mqtt/mqtt.conf not found\n");
+				sprintf(logbuf, "Configuration file /etc/lora-mqtt/mqtt.conf not found\n");
+				logprint(logbuf);
 				return -1;
 			}
         }
@@ -1072,7 +1081,8 @@ int main(int argc, char *argv[])
 	uart = open(serialport, O_RDWR | O_NOCTTY | O_SYNC);
 	if (uart < 0)
 	{
-		fprintf(stderr, "error %d opening %s: %s\n", errno, serialport, strerror (errno));
+		sprintf(logbuf, "error %d opening %s: %s\n", errno, serialport, strerror (errno));
+		logprint(logbuf);
 		usage();
 		return 1;
 	}
@@ -1081,24 +1091,28 @@ int main(int argc, char *argv[])
 	set_blocking(uart, 0);                	 // set no blocking
 
 	if(pthread_create(&reader_thread, NULL, uart_reader, NULL)) {
-		fprintf(stderr, "Error creating reader thread\n");
+		sprintf(logbuf, "Error creating reader thread\n");
+		logprint(logbuf);
 		return 1;
 	}
 
 	if(pthread_create(&publisher_thread, NULL, publisher, NULL)) {
-		fprintf(stderr, "Error creating publisher thread\n");
+		sprintf(logbuf, "Error creating publisher thread\n");
+		logprint(logbuf);
 		return 1;
 	}
 
 	if (pthread_create(&pending_thread, NULL, pending_worker, NULL)) {
-		fprintf(stderr, "Error creating pending queue worker thread");
+		sprintf(logbuf, "Error creating pending queue worker thread");
+		logprint(logbuf);
 		return 1;
 	}
 
 	mosquitto_lib_init();
 	mosq = mosquitto_new(NULL, true, NULL);
 	if(!mosq){
-		fprintf(stderr, "Error: Out of memory.\n");
+		sprintf(logbuf, "Error: Out of memory.\n");
+		logprint(logbuf);
 		return 1;
 	}
 	
@@ -1107,11 +1121,13 @@ int main(int argc, char *argv[])
 	mosquitto_subscribe_callback_set(mosq, my_subscribe_callback);
 
 	if(mosquitto_connect(mosq, host, port, keepalive)){
-		fprintf(stderr, "Unable to connect.\n");
+		sprintf(logbuf, "Unable to connect.\n");
+		logprint(logbuf);
 		return 1;
 	}
 
-	puts("[mqtt] Entering event loop");
+	sprintf(logbuf, "[mqtt] Entering event loop");
+	logprint(logbuf);
 
 	mosquitto_loop_forever(mosq, -1, 1);
 
@@ -1124,6 +1140,9 @@ int main(int argc, char *argv[])
         close(pidfile);
         remove("/var/run/mqtt-lora.pid");
     }
+	
+	syslog(LOG_INFO, "lora-mqtt service stopped");
+    closelog();
 	
 	return 0;
 }

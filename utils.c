@@ -20,6 +20,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <syslog.h>
 
 #include "utils.h"
 
@@ -80,4 +81,5 @@ void logprint(char *str)
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);
 	printf("[%02d:%02d:%02d]%s\n", tm.tm_hour, tm.tm_min, tm.tm_sec, str);
+	syslog(LOG_INFO, str);
 }
