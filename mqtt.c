@@ -344,7 +344,7 @@ static void serve_reply(char *str) {
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
 				sprintf(logbuf, "[error] Unable to parse list reply: %s\n", str - 16);
-
+				logprint(logbuf);
 				return;
 			}
 
@@ -415,7 +415,6 @@ static void serve_reply(char *str) {
 			char msg[128] = {};
 			sprintf(msg, "{ appid64: 0x%s, ability: 0x%s, last_seen: %d, nodeclass: %d }", 
 					appid, ability, (unsigned) lseen, (unsigned) cl);
-			logprint(logbuf);
 
 			/* Publish message */
 			char *mqtt_topic = (char *)malloc(strlen(MQTT_PUBLISH_TO) + strlen(topic) + 1);
@@ -934,12 +933,14 @@ static void my_subscribe_callback(struct mosquitto *m, void *userdata, int mid, 
 {
 	int i;
 
-	printf("Subscribed (mid: %d): %d", mid, granted_qos[0]);
+	char tmpbuf[100];
+	sprintf(logbuf, "Subscribed (mid: %d): %d", mid, granted_qos[0]);
 	for(i=1; i<qos_count; i++){
-		sprintf(logbuf, ", %d", granted_qos[i]);
-		logprint(logbuf);
+		sprintf(tmpbuf, ", %d", granted_qos[i]);
+		strcat(logbuf, tmpbuf);
 	}
-	printf("\n");
+	strcat(logbuf, "\n");
+	logprint(logbuf);
 }
 
 void usage(void) {
