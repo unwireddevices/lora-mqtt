@@ -61,7 +61,7 @@ static bool m_dequeue(fifo_t *l, char *v);
 static bool is_fifo_empty(fifo_t *l);
 
 #define MAX_NODES 128
-#define RETRY_TIMEOUT_S 10
+#define RETRY_TIMEOUT_S 20
 #define NUM_RETRIES 5
 
 /* Pending messages queue pool */
