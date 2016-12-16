@@ -396,7 +396,7 @@ bool convert_from(char *type, char *param, char *out)
             // Append pin number bits and mask exceeding bits just in case
             gpio_cmd |= pin & 0x3F;
 
-            printf("[mqtt-gpio] Get command | Pin: %d, cmd: 0x%02x\n", pin, gpio_cmd);
+            printf("[mqtt-gpio] Toggle command | Pin: %d, cmd: 0x%02x\n", pin, gpio_cmd);
 
             sprintf(out, "01%02x", gpio_cmd);
         }
