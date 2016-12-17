@@ -22,7 +22,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "1.5.3"
+#define VERSION "1.5.4"
 
 #define MQTT_SUBSCRIBE_TO "devices/lora/#"
 #define MQTT_PUBLISH_TO "devices/lora/"
