@@ -340,6 +340,35 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 
             break;
         }
+
+		case 13: { /* RSSI echo */
+            if (moddatalen < 2) {
+                return false;
+            }
+
+            strcpy(topic, "rssiecho");
+            strcpy(msg, "{ ");
+
+            /* Extract RSSI value */
+            int16_t rssi = 0;
+
+            if (is_big_endian()) {
+                rssi = moddata[0];
+				rssi += (moddata[1] << 8);
+            }
+            else {
+                rssi = moddata[1];
+				rssi += (moddata[0] << 8);
+            }
+
+			char buf[10] = {};
+			snprintf(buf, 10, "rssi: %d", rssi);
+			strcat(msg, buf);
+			strcat(msg, " }");
+
+			break;
+		}
+
         default:
             return false;
     }
@@ -516,6 +545,11 @@ bool convert_from(char *type, char *param, char *out)
              uint8_t i2c = atoi(param);
 
              sprintf(out, "0b02%02x", i2c);
+        }
+    }
+	else if (strcmp(type, "rssiecho") == 0) {
+        if (strstr(param, "get") == param) {
+            sprintf(out, "0d00");
         }
     }
     else {
