@@ -346,7 +346,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
                 return false;
             }
 
-            strcpy(topic, "rssiecho");
+            strcpy(topic, "echo");
             strcpy(msg, "{ ");
 
             /* Extract RSSI value */
@@ -547,7 +547,7 @@ bool convert_from(char *type, char *param, char *out)
              sprintf(out, "0b02%02x", i2c);
         }
     }
-	else if (strcmp(type, "rssiecho") == 0) {
+	else if (strcmp(type, "echo") == 0) {
         if (strstr(param, "get") == param) {
             sprintf(out, "0d00");
         }
