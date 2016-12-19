@@ -431,6 +431,10 @@ static void serve_reply(char *str) {
 		break;
 
 		case REPLY_IND: {
+			pthread_mutex_lock(&mutex_pong);
+			pings_skipped = 0;
+			pthread_mutex_unlock(&mutex_pong);
+
 			char addr[17] = {};
 			memcpy(addr, str, 16);
 			str += 16;
@@ -493,22 +497,24 @@ static void serve_reply(char *str) {
 			if (e != NULL) {
 				/* Send pending frame on class A device app. data */
 				if (e->nodeclass != LS_ED_CLASS_A || e->num_pending == 0)
-					break;
-
-				/* Wait for acknowledge is sended and received by the gate */
-				usleep(1e6 * 500);
 
 				/*
 				 *	Allow to send app. data
 				 */
+				logprint("[mqtt] Sending of delayed frames allowed");
 				pthread_mutex_lock(&mutex_pending);
 				e->can_send = true;
+				e->last_msg = 0; /* Force immediate sending */
 				pthread_mutex_unlock(&mutex_pending);		
 			}
 		}
 		break;
 
 		case REPLY_JOIN: {
+			pthread_mutex_lock(&mutex_pong);
+			pings_skipped = 0;
+			pthread_mutex_unlock(&mutex_pong);
+
 			char addr[17] = {};
 			memcpy(addr, str, 16);
 			str += 16;
@@ -569,6 +575,10 @@ static void serve_reply(char *str) {
 		break;
 
 		case REPLY_ACK: {
+			pthread_mutex_lock(&mutex_pong);
+			pings_skipped = 0;
+			pthread_mutex_unlock(&mutex_pong);
+
 			char addr[17] = {};
 			memcpy(addr, str, 16);
 			str += 16;
