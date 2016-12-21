@@ -913,7 +913,7 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 		char *type = topics[3];
 		
 		char buf[REPLY_LEN] = {};
-		if (!convert_from(type, (char *)message->payload, buf)) {
+		if (!strlen(buf) || !convert_from(type, (char *)message->payload, buf)) {
 			sprintf(logbuf, "[error] Unable to parse mqtt message: devices/lora/%s : %s\n", addr, type);
 			logprint(logbuf);
 			return;
