@@ -501,7 +501,8 @@ static void serve_reply(char *str) {
 				/*
 				 *	Allow to send app. data
 				 */
-				logprint("[mqtt] Sending of delayed frames allowed");
+				sprintf(logbuf, "[mqtt] Sending of delayed frames allowed");
+				logprint(logbuf);
 				pthread_mutex_lock(&mutex_pending);
 				e->can_send = true;
 				e->last_msg = 0; /* Force immediate sending */
