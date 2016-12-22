@@ -251,17 +251,18 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
         case 10: { /* 6ADC */
             strcpy(topic, "6adc");
 
-            if (strcmp((const char*)moddata, "ok") == 0) {
-                strcpy(msg, "ok");
-                return true;
-            }
+			if (moddatalen == 1) {
+				uint8_t fail = moddata[0];
 
-            if (strcmp((const char*)moddata, "fail") == 0) {
-                strcpy(msg, "fail");
-                return true;
-            }
+				if (fail) {
+	                strcpy(msg, "fail");
+				} else {
+		            strcpy(msg, "ok");
+				}
 
-//            char reply[128];
+				return true;
+			}
+
             strcpy(msg, "{ ");
 
             int i;
