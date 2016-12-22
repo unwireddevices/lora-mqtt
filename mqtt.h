@@ -12,14 +12,16 @@ typedef enum {
 } gate_cmd_type_t;
 
 typedef enum {
-	REPLY_PONG = '!',	/* Reply for ping command from client */
-	REPLY_LIST = 'L',	/* Reply for the device list command */
-	REPLY_IND = 'I',	/* Reply from the individual mote */
+	REPLY_PONG = '!',		/* Reply for ping command from client */
+	REPLY_LIST = 'L',		/* Reply for the device list command */
+	REPLY_IND = 'I',		/* Reply from the individual mote */
 
-	REPLY_JOIN = 'J',	/* Node is joined to the network */
-	REPLY_KICK = 'K',	/* Node is kicked from the network */
+	REPLY_JOIN = 'J',		/* Node is joined to the network */
+	REPLY_KICK = 'K',		/* Node is kicked from the network */
 
-	REPLY_ACK = 'A',	/* Application data acknowledged by the node */
+	REPLY_ACK = 'A',		/* Application data acknowledged by the node */
+
+	REPLY_PENDING_REQ = 'R', /* Gate requesting pending frames from upper layer */
 } gate_reply_type_t;
 
 typedef enum {
