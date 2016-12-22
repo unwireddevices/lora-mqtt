@@ -500,24 +500,6 @@ static void serve_reply(char *str) {
 			mosquitto_publish(mosq, &mid, mqtt_topic, strlen(msg), msg, 1, false);
 
 			free(mqtt_topic);	
-
-			pending_item_t *e = pending_to_nodeid(nodeid);
-			if (e != NULL) {
-				if (e->nodeclass == LS_ED_CLASS_C && e->has_been_invited) {
-					e->has_been_invited = false;
-				}
-
-				/* Send pending frame on class A device app. data */
-				if (e->nodeclass == LS_ED_CLASS_A) {
-					/*
-					 *	Allow to send app. data
-					 */
-					pthread_mutex_lock(&mutex_pending);
-					e->can_send = true;
-					e->last_msg = 0; /* Force immediate sending */
-					pthread_mutex_unlock(&mutex_pending);		
-				}
-			}
 		}
 		break;
 
@@ -631,7 +613,39 @@ static void serve_reply(char *str) {
 			pings_skipped = 0;
 			pthread_mutex_unlock(&mutex_pong);
 		}
+		break;
 
+		case REPLY_PENDING_REQ: {
+			pthread_mutex_lock(&mutex_pong);
+			pings_skipped = 0;
+			pthread_mutex_unlock(&mutex_pong);
+
+			char addr[17] = {};
+			memcpy(addr, str, 16);
+			str += 16;
+
+			uint64_t nodeid;
+			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
+				sprintf(logbuf, "[error] Unable to parse pending frames request data: %s", str - 16);
+				logprint(logbuf);
+				return;
+			}
+
+			pending_item_t *e = pending_to_nodeid(nodeid);
+			if (e != NULL) {
+				/* Check if there's pending frames for this class A device */
+				if (e->nodeclass == LS_ED_CLASS_A && e->num_pending > 0) {
+					sprintf(logbuf, "[pending] Gate requested next pending frame for 0x%08X%08X\n", 
+										(unsigned int) (nodeid >> 32), (unsigned int) (nodeid & 0xFFFFFFFF));
+					logprint(logbuf);					
+
+					pthread_mutex_lock(&mutex_pending);
+					e->can_send = true;
+					e->last_msg = 0; /* Force immediate sending */
+					pthread_mutex_unlock(&mutex_pending);		
+				}
+			}			
+		}
 		break;
 	}
 }
