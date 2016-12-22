@@ -508,7 +508,7 @@ static void serve_reply(char *str) {
 				}
 
 				/* Send pending frame on class A device app. data */
-				if (e->nodeclass == LS_ED_CLASS_A || e->num_pending == 0) {
+				if (e->nodeclass == LS_ED_CLASS_A) {
 					/*
 					 *	Allow to send app. data
 					 */
