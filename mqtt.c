@@ -61,8 +61,12 @@ static bool m_dequeue(fifo_t *l, char *v);
 static bool is_fifo_empty(fifo_t *l);
 
 #define MAX_NODES 128
+
 #define RETRY_TIMEOUT_S 20
+#define INVITE_TIMEOUT_S 30
+
 #define NUM_RETRIES 5
+#define NUM_RETRIES_INV 5
 
 /* Pending messages queue pool */
 static bool pending_free[MAX_NODES];
@@ -76,6 +80,8 @@ typedef struct {
 
 	bool can_send;
 	time_t last_msg;
+	time_t last_inv;
+
 	unsigned short num_retries;
 	unsigned short num_pending;
 } pending_item_t;
@@ -114,6 +120,7 @@ static void init_pending(void) {
 		pending[i].nodeid = 0;
 		pending[i].nodeclass = 0;
 		pending[i].last_msg = 0;
+		pending[i].last_inv = 0;
 		pending[i].num_retries = 0;
 		pending[i].can_send = false;
 		pending[i].num_pending = 0;
@@ -168,6 +175,7 @@ static bool add_device(uint64_t nodeid, unsigned short nodeclass, bool was_joine
 			pending[i].has_been_invited = !was_joined; /* Node added without actual join via invitation */
 
 			pending[i].last_msg = 0;
+			pending[i].last_inv = 0;
 			pending[i].num_retries = 0;
 			pending[i].can_send = false;
 			pending[i].num_pending = 0;
@@ -495,16 +503,20 @@ static void serve_reply(char *str) {
 
 			pending_item_t *e = pending_to_nodeid(nodeid);
 			if (e != NULL) {
-				/* Send pending frame on class A device app. data */
-				if (e->nodeclass != LS_ED_CLASS_A || e->num_pending == 0)
+				if (e->nodeclass == LS_ED_CLASS_C && e->has_been_invited) {
+					e->has_been_invited = false;
+				}
 
-				/*
-				 *	Allow to send app. data
-				 */
-				pthread_mutex_lock(&mutex_pending);
-				e->can_send = true;
-				e->last_msg = 0; /* Force immediate sending */
-				pthread_mutex_unlock(&mutex_pending);		
+				/* Send pending frame on class A device app. data */
+				if (e->nodeclass == LS_ED_CLASS_A || e->num_pending == 0) {
+					/*
+					 *	Allow to send app. data
+					 */
+					pthread_mutex_lock(&mutex_pending);
+					e->can_send = true;
+					e->last_msg = 0; /* Force immediate sending */
+					pthread_mutex_unlock(&mutex_pending);		
+				}
 			}
 		}
 		break;
@@ -655,6 +667,30 @@ static void* pending_worker(void *arg) {
 			if (e->nodeclass == LS_ED_CLASS_A && !e->can_send)
 				continue;
 
+			/* Must wait for device to join before sending messages */
+			if (e->nodeclass == LS_ED_CLASS_C && e->has_been_invited) {
+				if (e->num_retries >= NUM_RETRIES_INV) {
+					sprintf(logbuf, "[fail] Unable to invite node 0x%08X%08X to network after %u attempts, giving up\n", 
+						(unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF), NUM_RETRIES_INV);
+					logprint(logbuf);			
+
+					e->num_retries = 0;
+					m_dequeue(&e->pending_fifo, NULL);						
+				} else
+				if (current - e->last_inv > e->num_retries * INVITE_TIMEOUT_S) {
+					/* Retry invitation */
+					invite_mote(e->nodeid);
+
+					e->num_retries++;
+					e->last_inv = current;
+
+					sprintf(logbuf, "[inv] Next invitation retry after %d seconds\n", e->num_retries * INVITE_TIMEOUT_S);
+					logprint(logbuf);
+				}
+
+				continue;
+			}
+
 			if (current - e->last_msg > RETRY_TIMEOUT_S) {
 				if (e->num_retries >= NUM_RETRIES) {
 					sprintf(logbuf, "[fail] Unable to send message to 0x%08X%08X after %u attempts, giving up\n", 
@@ -663,16 +699,6 @@ static void* pending_worker(void *arg) {
 					e->num_retries = 0;
 					m_dequeue(&e->pending_fifo, NULL);
 
-					continue;
-				}
-
-				/* Must wait for device to join before sending messages */
-				if (e->nodeclass == LS_ED_CLASS_C && e->has_been_invited) {
-					/* Retry invitation */
-					invite_mote(e->nodeid);
-					
-					e->num_retries++;
-					e->last_msg = current;		
 					continue;
 				}
 
@@ -691,8 +717,10 @@ static void* pending_worker(void *arg) {
 				pthread_mutex_unlock(&mutex_uart);
 
 				/* Reset invitaion flag. If device doesn't respond on message sended, a new invitation attempt will occur */
-				if (e->nodeclass == LS_ED_CLASS_C)
+				if (e->nodeclass == LS_ED_CLASS_C) {
+					e->last_inv = current;
 					e->has_been_invited = true;
+				}
 
 				e->can_send = false;
 				e->last_msg = current;			
