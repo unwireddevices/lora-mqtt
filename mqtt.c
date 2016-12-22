@@ -454,13 +454,12 @@ static void serve_reply(char *str) {
 				return;
 			}
 	
-			uint16_t rssi_buf;
-			if (!hex_to_bytesn(str, 4, (uint8_t *) &rssi_buf, !is_big_endian())) {
+			int16_t rssi;
+			if (!hex_to_bytesn(str, 4, (uint8_t *) &rssi, !is_big_endian())) {
 				sprintf(logbuf, "[error] Unable to parse RSSI from gate reply: %s\n", str);
 				logprint(logbuf);
 				return;
 			}
-			int16_t rssi = -rssi_buf;
 
 			/* Skip RSSI hex */
 			str += 4;
