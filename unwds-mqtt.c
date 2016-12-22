@@ -295,7 +295,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
         }
         case 11: /* LPS331 */
 		{
-            if (moddatalen < 4) {
+            if (moddatalen < 2) {
                 return false;
             }
 
