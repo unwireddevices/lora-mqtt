@@ -22,7 +22,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "1.5.5"
+#define VERSION "1.5.6"
 
 #define MQTT_SUBSCRIBE_TO "devices/lora/#"
 #define MQTT_PUBLISH_TO "devices/lora/"
@@ -62,11 +62,12 @@ static bool is_fifo_empty(fifo_t *l);
 
 #define MAX_NODES 128
 
-#define RETRY_TIMEOUT_S 20
-#define INVITE_TIMEOUT_S 30
+#define RETRY_TIMEOUT_S 35
+#define INVITE_TIMEOUT_S 45
 
 #define NUM_RETRIES 5
 #define NUM_RETRIES_INV 5
+#define NUM_RETRIES_BEFORE_INVITE 2
 
 /* Pending messages queue pool */
 static bool pending_free[MAX_NODES];
@@ -150,7 +151,9 @@ static bool add_device(uint64_t nodeid, unsigned short nodeclass, bool was_joine
 	if (e != NULL) {
 		/* Clear invitation flag */
 		if (nodeclass == LS_ED_CLASS_C && e->has_been_invited && was_joined) {
-			puts("[+] Device successfully invited");
+			sprintf(logbuf, "[+] Device successfully invited");
+			logprint(logbuf);
+
 			e->has_been_invited = false;
 		}
 
@@ -682,7 +685,7 @@ static void* pending_worker(void *arg) {
 
 			/* Must wait for device to join before sending messages */
 			if (e->nodeclass == LS_ED_CLASS_C && e->has_been_invited) {
-				if (e->num_retries >= NUM_RETRIES_INV) {
+				if (e->num_retries > NUM_RETRIES_INV) {
 					sprintf(logbuf, "[fail] Unable to invite node 0x%08X%08X to network after %u attempts, giving up\n", 
 						(unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF), NUM_RETRIES_INV);
 					logprint(logbuf);			
@@ -697,15 +700,18 @@ static void* pending_worker(void *arg) {
 					e->num_retries++;
 					e->last_inv = current;
 
-					sprintf(logbuf, "[inv] Next invitation retry after %d seconds\n", e->num_retries * INVITE_TIMEOUT_S);
-					logprint(logbuf);
+					if (e->num_retries <= NUM_RETRIES_INV) {
+						sprintf(logbuf, "[inv] [%d/%d] Next invitation retry after %d seconds\n", 
+										e->num_retries, NUM_RETRIES_INV, e->num_retries * INVITE_TIMEOUT_S);
+						logprint(logbuf);
+					}
 				}
 
 				continue;
 			}
 
 			if (current - e->last_msg > RETRY_TIMEOUT_S) {
-				if (e->num_retries >= NUM_RETRIES) {
+				if (e->num_retries > NUM_RETRIES) {
 					sprintf(logbuf, "[fail] Unable to send message to 0x%08X%08X after %u attempts, giving up\n", 
 						(unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF), NUM_RETRIES);
 					logprint(logbuf);
@@ -719,7 +725,9 @@ static void* pending_worker(void *arg) {
 				if (!m_peek(&e->pending_fifo, buf)) /* Peek message from queue but don't remove. Will be removed on acknowledge */
 					continue;
 
-				sprintf(logbuf, "[pending] Sending message to 0x%08X%08X: %s\n", (unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF), buf);
+				sprintf(logbuf, "[pending] [%d/%d] Sending message to 0x%08X%08X: %s\n", 
+					e->num_retries + 1, (e->num_retries < NUM_RETRIES_BEFORE_INVITE) ? NUM_RETRIES_BEFORE_INVITE : NUM_RETRIES,
+					(unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF), buf);
 				logprint(logbuf);
 
 				e->num_retries++;
@@ -729,8 +737,9 @@ static void* pending_worker(void *arg) {
 				dprintf(uart, "%s\r", buf);
 				pthread_mutex_unlock(&mutex_uart);
 
-				/* Reset invitaion flag. If device doesn't respond on message sended, a new invitation attempt will occur */
-				if (e->nodeclass == LS_ED_CLASS_C) {
+				/* Send invitation after NUM_RETRIES_BEFORE_INVITE retransmissions */
+				if (e->nodeclass == LS_ED_CLASS_C && e->num_retries == NUM_RETRIES_BEFORE_INVITE) {
+					e->num_retries = 1;
 					e->last_inv = current;
 					e->has_been_invited = true;
 				}
@@ -919,8 +928,6 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 		if (running == NULL)
 			break;
 	}
-
-	printf("Topic count: %d\n", topic_count);
 
 	if (topic_count < 2) {
 		return;
