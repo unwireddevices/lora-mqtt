@@ -22,7 +22,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "1.5.6"
+#define VERSION "1.6.0"
 
 #define MQTT_SUBSCRIBE_TO "devices/lora/#"
 #define MQTT_PUBLISH_TO "devices/lora/"
@@ -372,6 +372,7 @@ static void serve_reply(char *str) {
 			}
 
 			/* Read ability mask */
+			/*
 			char ability[17] = {};
 			memcpy(ability, str, 16);
 			str += 16;
@@ -382,6 +383,7 @@ static void serve_reply(char *str) {
 				logprint(logbuf);
 				return;
 			}
+			*/
 
 			/* Read last seen time */
 			char lastseen[5] = {};
@@ -424,8 +426,8 @@ static void serve_reply(char *str) {
 			strcat(topic, addr);
 
 			char msg[128] = {};
-			sprintf(msg, "{ appid64: 0x%s, ability: 0x%s, last_seen: %d, nodeclass: %d }", 
-					appid, ability, (unsigned) lseen, (unsigned) cl);
+			sprintf(msg, "{ appid64: 0x%s, last_seen: %d, nodeclass: %d }", 
+					appid, (unsigned) lseen, (unsigned) cl);
 
 			/* Publish message */
 			char *mqtt_topic = (char *)malloc(strlen(MQTT_PUBLISH_TO) + strlen(topic) + 1);
