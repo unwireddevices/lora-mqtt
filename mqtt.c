@@ -868,7 +868,7 @@ static void devices_list(bool internal)
 
 static void message_to_mote(uint64_t addr, char *payload) 
 {
-	sprintf(logbuf, "[gate] Sending individual message with to the mote with address \"%08X%08X\": \"%s\"\n", 
+	sprintf(logbuf, "[gate] Sending individual message to the mote with address \"%08X%08X\": \"%s\"\n", 
 					(unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF), 
 					payload);	
 	logprint(logbuf);
@@ -886,7 +886,7 @@ static void message_to_mote(uint64_t addr, char *payload)
 		return;
 	}
 
-	/* Enqueue the frame */
+	/* Enqueue the frame as a gate command */
 	char buf[REPLY_LEN] = {};
 	sprintf(buf, "%c%08X%08X%s", CMD_IND, (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF), payload);
 
@@ -910,6 +910,16 @@ static void message_to_mote(uint64_t addr, char *payload)
 	}
 
 	pthread_mutex_unlock(&mutex_pending);
+}
+
+static void message_broadcast(char *payload) {
+	sprintf(logbuf, "[gate] Sending broadcast message: \"%s\"\n", payload);	
+	logprint(logbuf);
+
+	/* Send gate command */
+	pthread_mutex_lock(&mutex_uart);
+	dprintf(uart, "%c%s\r", CMD_BROADCAST, payload);
+	pthread_mutex_unlock(&mutex_uart);	
 }
 
 static void my_message_callback(struct mosquitto *m, void *userdata, const struct mosquitto_message *message)
@@ -941,7 +951,7 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 	}
 
 	if (memcmp(topics[1], "lora", 4) != 0) {
-		puts("[mqtt] Got message not from devices topic");	
+		puts("[mqtt] Got message not from devices/lora topic");	
 		return;	
 	}
 
@@ -951,13 +961,18 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 	}
 
 	if (topic_count > 3) {
-		// Convert address
+		/* Convert address */
 		char *addr = topics[2];
 		uint64_t nodeid = 0;
-		if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-			sprintf(logbuf, "[error] Invalid node address: %s\n", addr);
-			logprint(logbuf);
-			return;
+		bool is_broadcast = strcmp(addr, "*") == 0;
+
+		if (!is_broadcast) {
+			/* Not a broadcast address, parse it as hex EUI-64 address */
+			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
+				sprintf(logbuf, "[error] Invalid node address: %s\n", addr);
+				logprint(logbuf);
+				return;
+			}
 		}
 
 		char *type = topics[3];
@@ -974,7 +989,11 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 			return;
 		}
 
-		message_to_mote(nodeid, buf);
+		if (!is_broadcast) {
+			message_to_mote(nodeid, buf);
+		} else {
+			message_broadcast(buf);
+		}
 	}
 }
 
