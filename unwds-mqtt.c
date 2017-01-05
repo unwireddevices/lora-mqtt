@@ -369,6 +369,31 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 
 			break;
 		}
+		case 15: /* OPT3001 */
+		{
+            if (moddatalen < 2) {
+                return false;
+            }
+
+            strcpy(topic, "opt3001");
+
+            if (strcmp((const char*)moddata, "ok") == 0) {
+                strcpy(msg, "ok");
+                return true;
+            }
+
+			uint16_t lum = 0;
+			if (is_big_endian()) {
+				lum = (moddata[1] << 8) | moddata[0]; /* We're in big endian there, swap bytes */
+			}
+			else {
+				lum = (moddata[0] << 8) | moddata[1];
+			}
+
+			sprintf(msg, "{ luminocity: %d }", lum);
+			
+			return true;
+		}
 
         default:
             return false;
@@ -551,6 +576,24 @@ bool convert_from(char *type, char *param, char *out)
 	else if (strcmp(type, "echo") == 0) {
         if (strstr(param, "get") == param) {
             sprintf(out, "0d00");
+        }
+    }
+    else if (strcmp(type, "opt3001") == 0) {
+        if (strstr(param, "set_period ") == param) {
+            param += 11;    // Skip command
+
+            uint8_t period = atoi(param);
+            sprintf(out, "0f00%02x", period);
+        }
+        else if (strstr(param, "get") == param) {
+            sprintf(out, "0f01");
+        }
+        else if (strstr(param, "set_i2c ") == param) { 
+             param += 8;	// Skip command
+
+             uint8_t i2c = atoi(param);
+
+             sprintf(out, "0f02%02x", i2c);
         }
     }
     else {
