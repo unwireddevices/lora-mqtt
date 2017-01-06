@@ -226,7 +226,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 				temp = (moddata[1] << 8) | moddata[0]; /* We're in big endian there, swap bytes */
 			}
 			else {
-				temp = (moddata[0] << 8) | moddata[1];
+				temp = ([0] << 8) | moddata[1];
 			}
 
 			uint8_t humid = moddata[2];
@@ -239,11 +239,11 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             strcpy(topic, "pir");
             uint8_t pir = moddata[0];
 
-            if (moddatalen != 1 || pir < 1 || pir > 4) {
+            if (moddatalen != 1) {
                 return false;
             }
 
-            sprintf(msg, "{ pir: rising, num: %d }", pir);
+            sprintf(msg, "{ pir: %d }", pir);
             return true;
 
             break;
