@@ -226,7 +226,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 				temp = (moddata[1] << 8) | moddata[0]; /* We're in big endian there, swap bytes */
 			}
 			else {
-				temp = ([0] << 8) | moddata[1];
+				temp = (moddata[0] << 8) | moddata[1];
 			}
 
 			uint8_t humid = moddata[2];
