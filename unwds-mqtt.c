@@ -27,23 +27,23 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 			
             switch (reply_type) {
 				case 0: { /* UNWD_GPIO_REPLY_OK_0 */
-					strcat(msg, "{ type: 0, msg: \"0\" }");
+					strcat(msg, "{ \"type\": 0, \"msg\": \"0\" }");
 					return true;
 				}
 				case 1: { /* UNWD_GPIO_REPLY_OK_1 */
-					strcat(msg, "{ type: 1, msg: \"1\" }");
+					strcat(msg, "{ \"type\": 1, \"msg\": \"1\" }");
 					return true;
 				}
 				case 2: { /* UNWD_GPIO_REPLY_OK */
-					strcat(msg, "{ type: 2, msg: \"set ok\" }");
+					strcat(msg, "{ \"type\": 2, \"msg\": \"set ok\" }");
 					return true;
 				}
 				case 3: { /* UNWD_GPIO_REPLY_ERR_PIN */
-					strcat(msg, "{ type: 3, msg: \"invalid pin\" }");
+					strcat(msg, "{ \"type\": 3, \"msg\": \"invalid pin\" }");
 					return true;
 				}
 				case 4: { /* UNWD_GPIO_REPLY_ERR_FORMAT */
-					strcat(msg, "{ type: 4, msg: \"invalid format\" }");
+					strcat(msg, "{ \"type\": 4, \"msg\": \"invalid format\" }");
 					return true;
 				}
 			}
@@ -58,7 +58,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
                 return false;
             }
 
-            sprintf(msg, "{ btn: %d }", btn);
+            sprintf(msg, "{ \"btn\": %d }", btn);
             return true;
 
             break;
@@ -95,15 +95,15 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
                         lon = -lon;
                     }
 
-                    sprintf(msg, "{ has_data: true, lat: %.3f, lon: %.3f }", lat, lon);
+                    sprintf(msg, "{ \"has_data\": true, \"lat\": %.3f, \"lon\": %.3f }", lat, lon);
                     break;
 				}
                 case 1: { /* No data yet */
-                    strcpy(msg, "{ has_data: false, lat: null, lon: null }");
+                    strcpy(msg, "{ \"has_data\": false, \"lat\": null, \"lon\": null }");
                     break;
 				}
                 case 3: { /* Error occured */
-                    strcpy(msg, "{ has_data: false, msg: \"error\" }");
+                    strcpy(msg, "{ \"has_data\": false, \"msg\": \"error\" }");
                     break;
 				}
                 default:
@@ -147,10 +147,10 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
                 char buf[16] = {};
 
                 if (sensor == 0xFFFF) {
-                    sprintf(buf, "s%d: null", (i / 2) + 1);
+                    sprintf(buf, "\"s%d\": null", (i / 2) + 1);
                 }
                 else {
-                    sprintf(buf, "s%d: %.3f", (i / 2) + 1, (float) (sensor / 16.0) - 100.0);
+                    sprintf(buf, "\"s%d\": %.3f", (i / 2) + 1, (float) (sensor / 16.0) - 100.0);
                 }
 
                 strcat(msg, buf);
@@ -171,31 +171,31 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 
             switch (reply_type) {
                 case 0: /* UMDK_UART_REPLY_SENT */
-                    strcat(msg, "{ type: 0, msg: \"sent ok\" }");
+                    strcat(msg, "{ \"type\": 0, \"msg\": \"sent ok\" }");
                     return true;
 
                 case 1: { /* UMDK_UART_REPLY_RECEIVED */
                     char hexbuf[255] = {};
                     bytes_to_hex(moddata + 1, moddatalen - 1, hexbuf, false);
 
-                    sprintf(msg, "{ type: 1, msg: \"%s\" }", hexbuf);
+                    sprintf(msg, "{ \"type\": 1, \"msg\": \"%s\" }", hexbuf);
                     return true;
                 }
 
                 case 2:
-                    strcat(msg, "{ type: 2, msg: \"baud rate set\" }");
+                    strcat(msg, "{ \"type\": 2, \"msg\": \"baud rate set\" }");
                     return true;
 
                 case 253: /* UMDK_UART_REPLY_ERR_OVF */
-                    strcat(msg, "{ type: 253, msg: \"rx buffer overrun\" }");
+                    strcat(msg, "{ \"type\": 253, \"msg\": \"rx buffer overrun\" }");
                     return true;
 
                 case 254: /* UMDK_UART_REPLY_ERR_FMT */
-                    strcat(msg, "{ type: 254, msg: \"invalid format\" }");
+                    strcat(msg, "{ \"type\": 254, \"msg\": \"invalid format\" }");
                     return true;
 
                 case 255: /* UMDK_UART_REPLY_ERR */
-                    strcat(msg, "{ type: 255, msg: \"UART interface error\" }");
+                    strcat(msg, "{ \"type\": 255, \"msg\": \"UART interface error\" }");
                     return true;
             }
 
@@ -230,7 +230,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 			}
 
 			uint8_t humid = moddata[2];
-			sprintf(msg, "{ temp: %.02f, humid: %d }", (float) (temp / 16.0 - 100), humid);
+			sprintf(msg, "{ \"temp\": %.02f, \"humid\": %d }", (float) (temp / 16.0 - 100), humid);
 			
 			return true;
 		}
@@ -243,7 +243,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
                 return false;
             }
 
-            sprintf(msg, "{ pir: %d }", pir);
+            sprintf(msg, "{ \"pir\": %d }", pir);
             return true;
 
             break;
@@ -278,10 +278,10 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
                 char buf[16] = {};
 
                 if (sensor == 0xFFFF) {
-                    sprintf(buf, "adc%d: null", (i / 2) + 1);
+                    sprintf(buf, "\"adc%d\": null", (i / 2) + 1);
                 }
                 else {
-                    sprintf(buf, "adc%d: %d", (i / 2) + 1, sensor);
+                    sprintf(buf, "\"adc%d\": %d", (i / 2) + 1, sensor);
                 }
 
                 strcat(msg, buf);
@@ -334,7 +334,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             }
 
             char buf[40] = {};
-            snprintf(buf, 40, "temperature: %.1f, pressure: %d", ((float)temperature / 16.0) - 100.0, pressure);
+            snprintf(buf, 40, "\"temperature\": %.1f, \"pressure\": %d", ((float)temperature / 16.0) - 100.0, pressure);
 
             strcat(msg, buf);
             strcat(msg, " }");
@@ -363,7 +363,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             }
 
 			char buf[10] = {};
-			snprintf(buf, 10, "rssi: %d", rssi);
+			snprintf(buf, 10, "\"rssi\": %d", rssi);
 			strcat(msg, buf);
 			strcat(msg, " }");
 
@@ -390,7 +390,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 				lum = (moddata[0] << 8) | moddata[1];
 			}
 
-			sprintf(msg, "{ luminocity: %d }", lum);
+			sprintf(msg, "{ \"luminocity\": %d }", lum);
 			
 			return true;
 		}
