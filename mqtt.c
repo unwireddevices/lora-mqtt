@@ -470,14 +470,14 @@ static void serve_reply(char *str) {
 			str += 4;
             
             uint8_t status;
-            if (!hex_to_bytesn(str, 3, &status, !is_big_endian())) {
+            if (!hex_to_bytesn(str, 2, &status, !is_big_endian())) {
 				sprintf(logbuf, "[error] Unable to parse status from gate reply: %s\n", str);
 				logprint(logbuf);
 				return;
 			}
             
             /* Skip status hex */
-            str += 3;
+            str += 2;
 
 			uint8_t bytes[REPLY_LEN] = {};
 			if (!hex_to_bytes(str,  (uint8_t *) &bytes, false)) {
