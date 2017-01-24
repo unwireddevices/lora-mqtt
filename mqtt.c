@@ -468,6 +468,16 @@ static void serve_reply(char *str) {
 
 			/* Skip RSSI hex */
 			str += 4;
+            
+            uint8_t status;
+            if (!hex_to_bytesn(str, 3, &status, !is_big_endian())) {
+				sprintf(logbuf, "[error] Unable to parse status from gate reply: %s\n", str);
+				logprint(logbuf);
+				return;
+			}
+            
+            /* Skip status hex */
+            str += 3;
 
 			uint8_t bytes[REPLY_LEN] = {};
 			if (!hex_to_bytes(str,  (uint8_t *) &bytes, false)) {
@@ -498,7 +508,7 @@ static void serve_reply(char *str) {
 			strcat(mqtt_topic, "/");
 			strcat(mqtt_topic, topic);
 
-			sprintf(logbuf, "[mqtt] Publishing to the topic %s the message \"%s\" | RSSI: %d\n", mqtt_topic, msg, rssi);
+			sprintf(logbuf, "[mqtt] Publishing to the topic %s the message \"%s\" | RSSI: %d | Battery : %d mV\n", mqtt_topic, msg, rssi, 2000 + (50*(status & 0x1F)));
 			logprint(logbuf);
 
 			mosquitto_publish(mosq, &mid, mqtt_topic, strlen(msg), msg, 1, false);
