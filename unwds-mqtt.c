@@ -341,6 +341,44 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 
             break;
         }
+        
+        case 12: { /* 4counter */
+            strcpy(topic, "4counter");
+
+            if (strcmp((const char*)moddata, "ok") == 0) {
+                strcpy(msg, "ok");
+                return true;
+            }
+
+            strcpy(msg, "{ ");
+
+            /* Extract counter values */
+            uint8_t i = 0;
+            uint32_t values[4] = { 0 };
+
+            for (i = 0; i < 4; i++) {
+                if (is_big_endian()) {
+                    values[i] = moddata[0 + 4*i]
+                    values[i] += (moddata[1 + 4*i] << 8);
+                    values[i] += (moddata[2 + 4*i] << 16);
+                    values[i] += (moddata[3 + 4*i] << 24);
+                }
+                else {
+                    values[i] = moddata[3 + 4*i]
+                    values[i] += (moddata[2 + 4*i] << 8);
+                    values[i] += (moddata[1 + 4*i] << 16);
+                    values[i] += (moddata[0 + 4*i] << 24);
+                }
+            }
+
+            char buf[40] = {};
+            snprintf(buf, 40, "\"v1\": %lu, \"v2\": %lu, \"v3\": %lu, \"v4\": %lu", values[0], values[1], values[2], values[3]);
+
+            strcat(msg, buf);
+            strcat(msg, " }");
+
+            break;
+        }
 
 		case 13: { /* RSSI echo */
             if (moddatalen < 2) {
