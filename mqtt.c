@@ -493,12 +493,15 @@ static void serve_reply(char *str) {
 
 			char topic[64] = {};
 			char msg[128] = {};
+            mqtt_msg_t mqtt_msg[MQTT_MSG_MAX_NUM] = { 0 }; 
 
-			if (!convert_to(modid, moddata, moddatalen, (char *) &topic, (char *) &msg)) {
+			if (!convert_to(modid, moddata, moddatalen, (char *) &topic, (mqtt_msg_t *) &mqtt_msg)) {
 				sprintf(logbuf, "[error] Unable to convert gate reply \"%s\" for module %d\n", str, modid);
 				logprint(logbuf);
 				return;
 			}
+            
+            build_mqtt_message(msg, (mqtt_msg_t *) &mqtt_msg);
 
 			// Append an MQTT topic path to the topic from the reply
 			char *mqtt_topic = (char *)malloc(strlen(MQTT_PUBLISH_TO) + strlen(addr) + 1 + strlen(topic));
