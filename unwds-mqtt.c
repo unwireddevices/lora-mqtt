@@ -356,18 +356,35 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             uint8_t i = 0;
             uint32_t values[4] = { 0 };
 
+            /* 4x4 version */
+            /*
             for (i = 0; i < 4; i++) {
                 if (is_big_endian()) {
-                    values[i] = moddata[0 + 4*i]
+                    values[i] = moddata[0 + 4*i];
                     values[i] += (moddata[1 + 4*i] << 8);
                     values[i] += (moddata[2 + 4*i] << 16);
                     values[i] += (moddata[3 + 4*i] << 24);
                 }
                 else {
-                    values[i] = moddata[3 + 4*i]
+                    values[i] = moddata[3 + 4*i];
                     values[i] += (moddata[2 + 4*i] << 8);
                     values[i] += (moddata[1 + 4*i] << 16);
                     values[i] += (moddata[0 + 4*i] << 24);
+                }
+            }
+            */
+            
+            /* 3 bytes per value version */
+            for (i = 0; i < 4; i++) {
+                if (is_big_endian()) {
+                    values[i] = moddata[3*i];
+                    values[i] += (moddata[1 + 3*i] << 8);
+                    values[i] += (moddata[2 + 3*i] << 16);
+                }
+                else {
+                    values[i] = moddata[3 + 3*i];
+                    values[i] += (moddata[2 + 3*i] << 8);
+                    values[i] += (moddata[1 + 3*i] << 16);
                 }
             }
 
