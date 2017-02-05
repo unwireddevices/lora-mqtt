@@ -9,10 +9,7 @@
 #include "utils.h"
 
 bool mqtt_retain = false;
-bool mqtt_unique_id = true;
 int mqtt_qos = 0;
-
-static int mqtt_message_id = 0;
  
 void add_value_pair(mqtt_msg_t *mqtt_msg, const char *name, const char *value)
 {
@@ -65,14 +62,7 @@ void publish_mqtt_message(mosquitto *mosq, const char *addr, const char *topic, 
 	sprintf(logbuf, "[mqtt] Publishing to the topic %s the message \"%s\"\n", mqtt_topic, msg);
 	logprint(logbuf);
 
-	int res = mosquitto_publish(mosq, &mqtt_message_id, mqtt_topic, strlen(msg), msg, mqtt_qos, mqtt_retain);
-    
-    if (mqtt_unique_id) {
-        mqtt_message_id++;
-        if (mqtt_message_id < 0) {
-            mqtt_message_id = 0;
-        }
-    }
+	int res = mosquitto_publish(mosq, NULL, mqtt_topic, strlen(msg), msg, mqtt_qos, mqtt_retain);
     
     switch (res) {
         case MOSQ_ERR_SUCCESS:

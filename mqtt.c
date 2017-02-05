@@ -1016,8 +1016,9 @@ static void message_broadcast(char *payload) {
 
 static void my_message_callback(struct mosquitto *m, void *userdata, const struct mosquitto_message *message)
 {
-	if (message->mid != 0) /* To not react on messages published by gate itself */
+	if (message->mid != 0) { /* To not react on messages published by gate itself */
 		return;
+    }
 
 	char *running = strdup(message->topic), *token;
 	const char *delims = "/";
@@ -1136,7 +1137,6 @@ int main(int argc, char *argv[])
 	int keepalive = 60;
     
     mqtt_qos = 0;
-    mqtt_unique_id = true;
     mqtt_retain = false;
 //	bool clean_session = true;
 
@@ -1268,17 +1268,6 @@ int main(int argc, char *argv[])
                                 puts("MQTT retain messages disabled");
                             }
                         }
-                        if (!strcmp(token, "mqtt_uid")) {
-                            char *uid;
-                            uid = strtok(NULL, "\t =\n\r");
-                            if (!strcmp(uid, "true")) {
-                                mqtt_unique_id = true;
-                                puts("MQTT message unique ID enabled");
-                            } else {
-                                mqtt_unique_id = false;
-                                puts("MQTT message unique ID disabled");
-                            }
-                        }
                     }
                 }
                 free(line);
@@ -1357,10 +1346,7 @@ int main(int argc, char *argv[])
 	sprintf(logbuf, "[mqtt] Entering event loop");
 	logprint(logbuf);
 
-	//mosquitto_loop_forever(mosq, -1, 1);
-    while(1) {
-        usleep(10000);
-    }
+	mosquitto_loop_forever(mosq, -1, 1);
 
 	mosquitto_destroy(mosq);
 	mosquitto_lib_cleanup();
