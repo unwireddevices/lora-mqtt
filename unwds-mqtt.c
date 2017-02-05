@@ -389,7 +389,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             }
 
             char buf[40] = {};
-            snprintf(buf, 40, "\"v1\": %lu, \"v2\": %lu, \"v3\": %lu, \"v4\": %lu", values[0], values[1], values[2], values[3]);
+            snprintf(buf, 40, "\"v1\": %u, \"v2\": %u, \"v3\": %u, \"v4\": %u", values[0], values[1], values[2], values[3]);
 
             strcat(msg, buf);
             strcat(msg, " }");
