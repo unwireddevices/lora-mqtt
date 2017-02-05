@@ -8,13 +8,13 @@
 
 #include "utils.h"
 
-/*
-    =========
-        TODO: split and move those routines into RIOT/unwired-modules/ and build against .c files there to have one undivided code space for modules and drivers for both MQTT and ARM devices
-    =========
- */
+bool mqtt_retain = false;
+bool mqtt_unique_id = true;
+int mqtt_qos = 0;
 
-void add_value_pair(mqtt_msg_t *mqtt_msg, char const *name, char const *value)
+static int mqtt_message_id = 0;
+ 
+void add_value_pair(mqtt_msg_t *mqtt_msg, const char *name, const char *value)
 {
     uint8_t i = 0;
     
@@ -22,18 +22,93 @@ void add_value_pair(mqtt_msg_t *mqtt_msg, char const *name, char const *value)
         if (mqtt_msg[i].name[0] == 0) {
             strcat(mqtt_msg[i].name, name);
             strcat(mqtt_msg[i].value, value);
+            return;
         }
     }
 }
 
-void build_mqtt_message(char *msg, mqtt_msg_t *mqtt_msg) {
-    strcat(msg, "{ ");
+static void mqtt_escape_quotes(char *msg) {
+    char *buf = (char *)malloc(MQTT_MAX_MSG_SIZE);
+    memset(buf, 0, MQTT_MAX_MSG_SIZE);
+    
+    char *ptr;
+    ptr = strtok(msg, "\"");
+    
+    do {
+        strcat(buf, ptr);
+        strcat(buf, "\\\"");
+        ptr = strtok(NULL, "\"");
+    } while (ptr);
+    
+    strcpy(msg, buf);
+    free(buf);
+}
+
+void publish_mqtt_message(mosquitto *mosq, const char *addr, const char *topic, char *msg, const mqtt_format_t format) {
+    if (!mosq) {
+        return;
+    }
+       
+	// Append an MQTT topic path to the topic from the reply
+	char *mqtt_topic = (char *)malloc(strlen(MQTT_PUBLISH_TO) + strlen(addr) + 1 + strlen(topic));
+
+	strcpy(mqtt_topic, MQTT_PUBLISH_TO);
+	strcat(mqtt_topic, addr);
+	strcat(mqtt_topic, "/");
+	strcat(mqtt_topic, topic);
+    
+    if (format == UNWDS_MQTT_ESCAPED) {
+        mqtt_escape_quotes(msg);
+    }
+    
+    char *logbuf = (char *) malloc(MQTT_MAX_MSG_SIZE + 50);
+	sprintf(logbuf, "[mqtt] Publishing to the topic %s the message \"%s\"\n", mqtt_topic, msg);
+	logprint(logbuf);
+
+	int res = mosquitto_publish(mosq, &mqtt_message_id, mqtt_topic, strlen(msg), msg, mqtt_qos, mqtt_retain);
+    
+    if (mqtt_unique_id) {
+        mqtt_message_id++;
+        if (mqtt_message_id < 0) {
+            mqtt_message_id = 0;
+        }
+    }
+    
+    switch (res) {
+        case MOSQ_ERR_SUCCESS:
+            sprintf(logbuf, "[mqtt] Message published successfully\n");
+            break;
+        case MOSQ_ERR_INVAL:
+            sprintf(logbuf, "[mqtt] Error: invalid input\n");
+            break;
+        case MOSQ_ERR_NOMEM:
+            sprintf(logbuf, "[mqtt] Error: out of memory\n");
+            break;
+        case MOSQ_ERR_NO_CONN:
+            sprintf(logbuf, "[mqtt] Error: not connected\n");
+            break;
+        case MOSQ_ERR_PROTOCOL:
+            sprintf(logbuf, "[mqtt] Error: protocol error\n");
+            break;
+        case MOSQ_ERR_PAYLOAD_SIZE:
+            sprintf(logbuf, "[mqtt] Error: payload too large\n");
+            break;
+    }
+    logprint(logbuf);
+    free(logbuf);
+	free(mqtt_topic);
+}
+
+void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status_t status) {   
     bool needs_quotes = 0;
+    
+    strcpy(msg, "{ \"data\": { ");
     
     uint8_t i = 0;
     for (i = 0; i < MQTT_MSG_MAX_NUM; i++) {
         if (mqtt_msg[i].name[0] == 0) {
-            return;
+            strcat(msg, " }");
+            break;
         }
         
         if (i != 0) {
@@ -44,10 +119,11 @@ void build_mqtt_message(char *msg, mqtt_msg_t *mqtt_msg) {
         strcat(msg, mqtt_msg[i].name);
         strcat(msg, "\": ");
         
-        int d;
         float f;
         
-        if (sscanf(mqtt_msg[i].value, "%d", &d) || sscanf(mqtt_msg[i].value, "%f", &f)) {
+        if ( sscanf(mqtt_msg[i].value, "%f", &f) || \
+             !strcmp(mqtt_msg[i].value, "true") || !strcmp(mqtt_msg[i].value, "false") || \
+             !strcmp(mqtt_msg[i].value, "null")) {
             needs_quotes = 0;
         } else {
             needs_quotes = 1;
@@ -61,9 +137,30 @@ void build_mqtt_message(char *msg, mqtt_msg_t *mqtt_msg) {
             strcat(msg, "\"");
         }
     }
-    strcat(msg, " }");
+    
+    strcat(msg, ", \"status\": { \"rssi\" : ");
+    
+    char buf[16];
+    snprintf(buf, 16, "%d", status.rssi);
+    strcat(msg, buf);
+    
+    strcat(msg, ", \"temperature\" : ");
+    snprintf(buf, 16, "%d", status.temperature);
+    strcat(msg, buf);
+    
+    strcat(msg, ", \"battery\" : ");
+    snprintf(buf, 16, "%d", status.battery);
+    strcat(msg, buf);
+    strcat(msg, " }}");
 }
- 
+
+/*
+    =========
+        TODO: split and move those routines into RIOT/unwired-modules/ and build against .c files there to have one undivided code space for modules and drivers for both MQTT and ARM devices
+    =========
+ */
+
+
 /**
  * Converts module data into MQTT topic and message
  */
@@ -75,7 +172,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
         case 1: /* GPIO */
 		{
 			uint8_t reply_type = moddata[0];
-            strcat(topic, "gpio");
+            strcpy(topic, "gpio");
 			
             switch (reply_type) {
 				case 0: { /* UNWD_GPIO_REPLY_OK_0 */
@@ -223,7 +320,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
         case 7: { /* UART */
             uint8_t reply_type = moddata[0];
 
-            strcat(topic, "uart");
+            strcpy(topic, "uart");
 
             switch (reply_type) {
                 case 0: /* UMDK_UART_REPLY_SENT */
