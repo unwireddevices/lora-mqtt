@@ -484,7 +484,7 @@ static void serve_reply(char *str) {
             mqtt_status_t mqtt_status;           
             mqtt_status.rssi = rssi;
             mqtt_status.battery = 2000 + (50*(status & 0x1F));
-            mqtt_status.temperature = 0;
+            mqtt_status.temperature = 20*(status >> 5) - 30;
 
 			if (!convert_to(modid, moddata, moddatalen, topic, mqtt_msg)) {
 				sprintf(logbuf, "[error] Unable to convert gate reply \"%s\" for module %d\n", str, modid);
