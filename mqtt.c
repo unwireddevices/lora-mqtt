@@ -22,7 +22,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "1.6.2"
+#define VERSION "1.7.0"
 
 #define MQTT_SUBSCRIBE_TO "devices/lora/#"
 #define MQTT_PUBLISH_TO "devices/lora/"
@@ -685,18 +685,24 @@ static void* pending_worker(void *arg) {
 
 		int i;	
 		for (i = 0; i < MAX_NODES; i++) {
-			if (pending_free[i])
+			if (pending_free[i]) {
+                usleep(1e3 * QUEUE_POLLING_INTERVAL);
 				continue;
+            }
 
 			pending_item_t *e = &pending[i];
 			time_t current = time(NULL);
 
-			if (is_fifo_empty(&e->pending_fifo))
+			if (is_fifo_empty(&e->pending_fifo)) {
+                usleep(1e3 * QUEUE_POLLING_INTERVAL);
 				continue;
+            }
 
-			/* Messages for "nodeclass A" devices will be sended only on demand */
-			if (e->nodeclass == LS_ED_CLASS_A && !e->can_send)
+			/* Messages for Class A devices will be sent only on demand */
+			if (e->nodeclass == LS_ED_CLASS_A && !e->can_send) {
+                usleep(1e3 * QUEUE_POLLING_INTERVAL);
 				continue;
+            }
 
 			/* Must wait for device to join before sending messages */
 			if (e->nodeclass == LS_ED_CLASS_C && e->has_been_invited) {
@@ -776,11 +782,13 @@ static void* pending_worker(void *arg) {
 static void *publisher(void *arg)
 {
 	while(1) {
+        usleep(1e3 * QUEUE_POLLING_INTERVAL);
+
 		pthread_mutex_lock(&mutex_queue);
 
 		/* Checks wether queue is empty */
 		if (is_fifo_empty(&inputq)) {
-			pthread_mutex_unlock(&mutex_queue);		
+			pthread_mutex_unlock(&mutex_queue);
 			continue;
 		}
 
@@ -794,7 +802,7 @@ static void *publisher(void *arg)
 		pthread_mutex_unlock(&mutex_queue);
 		serve_reply(buf);
 
-		usleep(1e3 * QUEUE_POLLING_INTERVAL);
+		/* usleep(1e3 * QUEUE_POLLING_INTERVAL); */
 	}	
 	
 	return NULL;
@@ -1226,7 +1234,10 @@ int main(int argc, char *argv[])
 	sprintf(logbuf, "[mqtt] Entering event loop");
 	logprint(logbuf);
 
-	mosquitto_loop_forever(mosq, -1, 1);
+	//mosquitto_loop_forever(mosq, -1, 1);
+    while(1) {
+        usleep(10000);
+    }
 
 	mosquitto_destroy(mosq);
 	mosquitto_lib_cleanup();
