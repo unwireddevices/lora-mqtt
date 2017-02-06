@@ -97,6 +97,8 @@ static void devices_list(bool internal);
 static int pings_skipped = 0;
 static const int MIN_PINGS_SKIPPED = 10;
 
+static bool static_devices_list_sent = false;
+
 static char get_node_class(unsigned short nodeclass) {
 	switch (nodeclass) {
 		case 0:
@@ -863,6 +865,69 @@ static void *publisher(void *arg)
 	return NULL;
 }
 
+#define STATIC_DEVS_LIST_FILE "/etc/lora-mqtt/static-devs.conf"
+
+/* 
+ * Devices list format:
+ *
+ * # comment
+ * <eui64> <appid64> <network address> <device nonce> <channel>
+ *
+ * All numbers are in hex with zero padding if required. 
+ * Device nonce is a random secret that must be set on the end-device. 
+ * Channel is usually zero (one channel gate).
+ *
+ * Example:
+ * abababababababab 0000000000000001 00000000 abababab 00
+ *
+ * NB: each device line must be 54 characters long
+ *
+ */
+static void send_static_devices_list(void) {
+	/* Clear list */
+	pthread_mutex_lock(&mutex_uart);
+	dprintf(uart, "%c\r", CMD_KICK_ALL_STATIC);
+	pthread_mutex_unlock(&mutex_uart);
+
+	/* Send list of statically personalized devices */
+	FILE *list = fopen(STATIC_DEVS_LIST_FILE, "r");
+	int num = 0;
+	if (list)
+	{
+		char line[255];
+
+		while(fgets(line, 254, list) != NULL)
+		{
+		    if (line[0] != '#' && strlen(line) >= 54) /* 54 characters long line + '\n' character */
+			{
+		    	uint8_t eui64[32];
+				uint8_t appid64[32];
+				uint8_t addr[32];
+				uint8_t devnonce[32];
+				uint8_t nochannel[32];
+
+				sscanf(line, "%s %s %s %s %s", eui64, appid64, addr, devnonce, nochannel);
+
+				/* Send item to the gate */
+				pthread_mutex_lock(&mutex_uart);
+				dprintf(uart, "%c%s%s%s%s%s\r", CMD_ADD_STATIC_DEV, eui64, appid64, addr, devnonce, nochannel);
+				pthread_mutex_unlock(&mutex_uart);
+
+				num++;
+		    }
+		}
+
+		fclose(list);
+	} else {
+		sprintf(logbuf, "[gate] No statically personalized devices list found (%s)", STATIC_DEVS_LIST_FILE);	
+		logprint(logbuf);
+		return;
+	}
+
+	sprintf(logbuf, "[gate] List of statically personalized devices (%i pcs) sent", num);	
+	logprint(logbuf);
+}
+
 /* Periodic read data from UART */
 static void *uart_reader(void *arg)
 {
@@ -927,6 +992,11 @@ static void *uart_reader(void *arg)
 			devices_list(true);
 
 			usleep(1e3 * 150);
+		}
+
+		if (!static_devices_list_sent) {
+			send_static_devices_list();
+			static_devices_list_sent = true;
 		}
 	}
 
