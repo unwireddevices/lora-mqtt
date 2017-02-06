@@ -496,41 +496,26 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
             uint8_t i = 0;
             uint32_t values[4] = { 0 };
             char ch[5] = {};
-
-            /* 4x4 version */
-            /*
-            for (i = 0; i < 4; i++) {
-                if (is_big_endian()) {
-                    values[i] = moddata[0 + 4*i];
-                    values[i] += (moddata[1 + 4*i] << 8);
-                    values[i] += (moddata[2 + 4*i] << 16);
-                    values[i] += (moddata[3 + 4*i] << 24);
-                }
-                else {
-                    values[i] = moddata[3 + 4*i];
-                    values[i] += (moddata[2 + 4*i] << 8);
-                    values[i] += (moddata[1 + 4*i] << 16);
-                    values[i] += (moddata[0 + 4*i] << 24);
-                }
-                snprintf(ch, 5, "v%d", i);
-                snprintf(buf, 20, "%u", values[i]);
-                add_value_pair(mqtt_msg, ch, buf);
-            }
-            */
             
-            /* 3 bytes per value version */
-            for (i = 0; i < 4; i++) {
-                if (is_big_endian()) {
-                    values[i] = moddata[3*i];
-                    values[i] += (moddata[1 + 3*i] << 8);
-                    values[i] += (moddata[2 + 3*i] << 16);
+            /* data encoded in 3 UINT32 numbers on Little Endian system */
+            /* we need to swap bytes inside UINT32s if we are on BE system (e.g. MIPS CPU) */
+            /* then we can just use functions reverse to those used to encode */
+            uint32_t *num = (uint32_t *)&moddata[0];
+            if (is_big_endian()) {
+                for (i = 0; i < 3; i++ ) {
+                    *num = ((*num >> 24) & 0xff) | ((*num << 8) & 0xff0000) | ((*num >> 8) & 0xff00) | ((*num << 24) & 0xff000000);
+                    num++;
                 }
-                else {
-                    values[i] = moddata[3 + 3*i];
-                    values[i] += (moddata[2 + 3*i] << 8);
-                    values[i] += (moddata[1 + 3*i] << 16);
-                }
-                
+            }
+            
+            /* let's unpack 12 bytes back into 4 values */
+            num = (uint32_t *)&moddata[0];
+            values[0] = num[0] >> 8;
+            values[1] = ((num[0] & 0xFF) << 16) | (num[1] >> 16);
+            values[2] = ((num[1] & 0xFFFF) << 8) | (num[2] >> 24);
+            values[3] = num[2] & 0xFFFFFF;
+            
+            for (i = 0; i < 4; i++) {           
                 snprintf(ch, 5, "v%d", i);
                 snprintf(buf, 20, "%u", values[i]);
                 add_value_pair(mqtt_msg, ch, buf);
