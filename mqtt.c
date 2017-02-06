@@ -1086,7 +1086,9 @@ static void message_broadcast(char *payload) {
 
 static void my_message_callback(struct mosquitto *m, void *userdata, const struct mosquitto_message *message)
 {
-	if (message->mid != 0) { /* To not react on messages published by gate itself */
+    /* Ignore messages published by gate itself */
+    /* Doesn't work with QoS 0 */
+	if (message->mid != 0) {
 		return;
     }
 
@@ -1142,13 +1144,13 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 		
 		char buf[REPLY_LEN] = {};
 		if (!convert_from(type, (char *)message->payload, buf)) {
-			sprintf(logbuf, "[error] Unable to parse mqtt message: devices/lora/%s : %s\n", addr, type);
+			sprintf(logbuf, "[error] Convert failed. Unable to parse mqtt message: devices/lora/%s : %s, %s\n", addr, type, (char*) message->payload);
 			logprint(logbuf);
 			return;
 		}
 
 		if (!strlen(buf)) {
-			sprintf(logbuf, "[error] Unable to parse mqtt message: devices/lora/%s : %s\n", addr, type);
+			sprintf(logbuf, "[error] Buffer is empty. Unable to parse mqtt message: devices/lora/%s : %s, %s\n", addr, type, (char*) message->payload);
 			return;
 		}
 
@@ -1206,7 +1208,7 @@ int main(int argc, char *argv[])
 	int port = 1883;
 	int keepalive = 60;
     
-    mqtt_qos = 0;
+    mqtt_qos = 1;
     mqtt_retain = false;
 //	bool clean_session = true;
 
