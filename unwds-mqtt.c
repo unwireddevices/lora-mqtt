@@ -8,42 +8,186 @@
 
 #include "utils.h"
 
+bool mqtt_retain = false;
+int mqtt_qos = 0;
+ 
+void add_value_pair(mqtt_msg_t *mqtt_msg, const char *name, const char *value)
+{
+    uint8_t i = 0;
+    
+    for (i = 0; i < MQTT_MSG_MAX_NUM; i++) {
+        if (mqtt_msg[i].name[0] == 0) {
+            strcat(mqtt_msg[i].name, name);
+            strcat(mqtt_msg[i].value, value);
+            return;
+        }
+    }
+}
+
+static void mqtt_escape_quotes(char *msg) {
+    char *buf = (char *)malloc(MQTT_MAX_MSG_SIZE);
+    memset(buf, 0, MQTT_MAX_MSG_SIZE);
+    
+    char *ptr;
+    ptr = strtok(msg, "\"");
+    
+    do {
+        strcat(buf, ptr);
+        strcat(buf, "\\\"");
+        ptr = strtok(NULL, "\"");
+    } while (ptr);
+    
+    strcpy(msg, buf);
+    free(buf);
+}
+
+void publish_mqtt_message(mosquitto *mosq, const char *addr, const char *topic, char *msg, const mqtt_format_t format) {
+    if (!mosq) {
+        return;
+    }
+       
+	// Append an MQTT topic path to the topic from the reply
+	char *mqtt_topic = (char *)malloc(strlen(MQTT_PUBLISH_TO) + strlen(addr) + 1 + strlen(topic));
+
+	strcpy(mqtt_topic, MQTT_PUBLISH_TO);
+	strcat(mqtt_topic, addr);
+	strcat(mqtt_topic, "/");
+	strcat(mqtt_topic, topic);
+    
+    if (format == UNWDS_MQTT_ESCAPED) {
+        mqtt_escape_quotes(msg);
+    }
+    
+    char *logbuf = (char *) malloc(MQTT_MAX_MSG_SIZE + 50);
+	sprintf(logbuf, "[mqtt] Publishing to the topic %s the message \"%s\"\n", mqtt_topic, msg);
+	logprint(logbuf);
+
+	int res = mosquitto_publish(mosq, NULL, mqtt_topic, strlen(msg), msg, mqtt_qos, mqtt_retain);
+    
+    switch (res) {
+        case MOSQ_ERR_SUCCESS:
+            sprintf(logbuf, "[mqtt] Message published successfully\n");
+            break;
+        case MOSQ_ERR_INVAL:
+            sprintf(logbuf, "[mqtt] Error: invalid input\n");
+            break;
+        case MOSQ_ERR_NOMEM:
+            sprintf(logbuf, "[mqtt] Error: out of memory\n");
+            break;
+        case MOSQ_ERR_NO_CONN:
+            sprintf(logbuf, "[mqtt] Error: not connected\n");
+            break;
+        case MOSQ_ERR_PROTOCOL:
+            sprintf(logbuf, "[mqtt] Error: protocol error\n");
+            break;
+        case MOSQ_ERR_PAYLOAD_SIZE:
+            sprintf(logbuf, "[mqtt] Error: payload too large\n");
+            break;
+    }
+    logprint(logbuf);
+    free(logbuf);
+	free(mqtt_topic);
+}
+
+void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status_t status) {   
+    bool needs_quotes = 0;
+    
+    strcpy(msg, "{ \"data\": { ");
+    
+    uint8_t i = 0;
+    for (i = 0; i < MQTT_MSG_MAX_NUM; i++) {
+        if (mqtt_msg[i].name[0] == 0) {
+            strcat(msg, " }");
+            break;
+        }
+        
+        if (i != 0) {
+            strcat(msg, ", ");
+        }
+        
+        strcat(msg, "\"");
+        strcat(msg, mqtt_msg[i].name);
+        strcat(msg, "\": ");
+        
+        float f;
+        
+        if ( sscanf(mqtt_msg[i].value, "%f", &f) || \
+             !strcmp(mqtt_msg[i].value, "true") || !strcmp(mqtt_msg[i].value, "false") || \
+             !strcmp(mqtt_msg[i].value, "null")) {
+            needs_quotes = 0;
+        } else {
+            needs_quotes = 1;
+        }
+        
+        if (needs_quotes) {
+            strcat(msg, "\"");
+        }
+        strcat(msg, mqtt_msg[i].value);
+        if (needs_quotes) {
+            strcat(msg, "\"");
+        }
+    }
+    
+    strcat(msg, ", \"status\": { \"rssi\" : ");
+    
+    char buf[16];
+    snprintf(buf, 16, "%d", status.rssi);
+    strcat(msg, buf);
+    
+    strcat(msg, ", \"temperature\" : ");
+    snprintf(buf, 16, "%d", status.temperature);
+    strcat(msg, buf);
+    
+    strcat(msg, ", \"battery\" : ");
+    snprintf(buf, 16, "%d", status.battery);
+    strcat(msg, buf);
+    strcat(msg, " }}");
+}
+
 /*
     =========
         TODO: split and move those routines into RIOT/unwired-modules/ and build against .c files there to have one undivided code space for modules and drivers for both MQTT and ARM devices
     =========
  */
 
+
 /**
  * Converts module data into MQTT topic and message
  */
-bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, char *msg)
+bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg)
 {
+    char buf[20];
+    
     switch (modid) {
         case 1: /* GPIO */
 		{
 			uint8_t reply_type = moddata[0];
-            strcat(topic, "gpio");
+            strcpy(topic, "gpio");
 			
             switch (reply_type) {
 				case 0: { /* UNWD_GPIO_REPLY_OK_0 */
-					strcat(msg, "{ \"type\": 0, \"msg\": \"0\" }");
+                    add_value_pair(mqtt_msg, "type", "0");
+                    add_value_pair(mqtt_msg, "msg", "0");
 					return true;
 				}
 				case 1: { /* UNWD_GPIO_REPLY_OK_1 */
-					strcat(msg, "{ \"type\": 1, \"msg\": \"1\" }");
+                    add_value_pair(mqtt_msg, "type", "1");
+                    add_value_pair(mqtt_msg, "msg", "1");
 					return true;
 				}
 				case 2: { /* UNWD_GPIO_REPLY_OK */
-					strcat(msg, "{ \"type\": 2, \"msg\": \"set ok\" }");
+                    add_value_pair(mqtt_msg, "type", "0");
+                    add_value_pair(mqtt_msg, "msg", "set ok");
 					return true;
 				}
 				case 3: { /* UNWD_GPIO_REPLY_ERR_PIN */
-					strcat(msg, "{ \"type\": 3, \"msg\": \"invalid pin\" }");
+                    add_value_pair(mqtt_msg, "type", "3");
+                    add_value_pair(mqtt_msg, "msg", "invalid pin");
 					return true;
 				}
 				case 4: { /* UNWD_GPIO_REPLY_ERR_FORMAT */
-					strcat(msg, "{ \"type\": 4, \"msg\": \"invalid format\" }");
+                    add_value_pair(mqtt_msg, "type", "4");
+                    add_value_pair(mqtt_msg, "msg", "invalid format");
 					return true;
 				}
 			}
@@ -58,7 +202,8 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
                 return false;
             }
 
-            sprintf(msg, "{ \"btn\": %d }", btn);
+            sprintf(buf, "%d", btn);
+            add_value_pair(mqtt_msg, "btn", buf);
             return true;
 
             break;
@@ -95,15 +240,22 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
                         lon = -lon;
                     }
 
-                    sprintf(msg, "{ \"has_data\": true, \"lat\": %.3f, \"lon\": %.3f }", lat, lon);
+                    add_value_pair(mqtt_msg, "valid", "true");
+                    sprintf(buf, "%03.3f", lat);
+                    add_value_pair(mqtt_msg, "lat", buf);
+                    sprintf(buf, "%04.3f", lon);
+                    add_value_pair(mqtt_msg, "lon", buf);
                     break;
 				}
                 case 1: { /* No data yet */
-                    strcpy(msg, "{ \"has_data\": false, \"lat\": null, \"lon\": null }");
+                    add_value_pair(mqtt_msg, "valid", "false");
+                    add_value_pair(mqtt_msg, "lat", "null");
+                    add_value_pair(mqtt_msg, "lon", "null");
                     break;
 				}
                 case 3: { /* Error occured */
-                    strcpy(msg, "{ \"has_data\": false, \"msg\": \"error\" }");
+                    add_value_pair(mqtt_msg, "valid", "false");
+                    add_value_pair(mqtt_msg, "msg", "error");
                     break;
 				}
                 default:
@@ -128,11 +280,9 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             strcpy(topic, "lmt01");
 
             if (strcmp((const char *)moddata, "ok") == 0) {
-                strcpy(msg, "ok");
+                add_value_pair(mqtt_msg, "msg", "ok");
                 return true;
             }
-
-            strcpy(msg, "{ ");
 
             int i;
             for (i = 0; i < 8; i += 2) {
@@ -144,58 +294,56 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
                     sensor = (moddata[i] << 8) | moddata[i + 1];
                 }
 
-                char buf[16] = {};
+                char ch[3] = {};
+                sprintf(ch, "s%d", (i / 2) + 1);
 
                 if (sensor == 0xFFFF) {
-                    sprintf(buf, "\"s%d\": null", (i / 2) + 1);
+                    add_value_pair(mqtt_msg, ch, "null");
                 }
                 else {
-                    sprintf(buf, "\"s%d\": %.3f", (i / 2) + 1, (float) (sensor / 16.0) - 100.0);
-                }
-
-                strcat(msg, buf);
-
-                if (i != 6) {
-                    strcat(msg, ", ");
+                    sprintf(buf, "%.3f", (float) (sensor / 16.0) - 100.0);
+                    add_value_pair(mqtt_msg, ch, buf);
                 }
             }
-
-            strcat(msg, " }");
-
             break;
 		}
         case 7: { /* UART */
             uint8_t reply_type = moddata[0];
 
-            strcat(topic, "uart");
+            strcpy(topic, "uart");
 
             switch (reply_type) {
                 case 0: /* UMDK_UART_REPLY_SENT */
-                    strcat(msg, "{ \"type\": 0, \"msg\": \"sent ok\" }");
+                    add_value_pair(mqtt_msg, "type", "0");
+                    add_value_pair(mqtt_msg, "msg", "sent ok");
                     return true;
 
                 case 1: { /* UMDK_UART_REPLY_RECEIVED */
                     char hexbuf[255] = {};
                     bytes_to_hex(moddata + 1, moddatalen - 1, hexbuf, false);
-
-                    sprintf(msg, "{ \"type\": 1, \"msg\": \"%s\" }", hexbuf);
+                    add_value_pair(mqtt_msg, "type", "1");
+                    add_value_pair(mqtt_msg, "msg", hexbuf);
                     return true;
                 }
 
                 case 2:
-                    strcat(msg, "{ \"type\": 2, \"msg\": \"baud rate set\" }");
+                    add_value_pair(mqtt_msg, "type", "2");
+                    add_value_pair(mqtt_msg, "msg", "baud rate set");
                     return true;
 
                 case 253: /* UMDK_UART_REPLY_ERR_OVF */
-                    strcat(msg, "{ \"type\": 253, \"msg\": \"rx buffer overrun\" }");
+                    add_value_pair(mqtt_msg, "type", "253");
+                    add_value_pair(mqtt_msg, "msg", "rx buffer overrun");
                     return true;
 
                 case 254: /* UMDK_UART_REPLY_ERR_FMT */
-                    strcat(msg, "{ \"type\": 254, \"msg\": \"invalid format\" }");
+                    add_value_pair(mqtt_msg, "type", "254");
+                    add_value_pair(mqtt_msg, "msg", "invalid format");
                     return true;
 
                 case 255: /* UMDK_UART_REPLY_ERR */
-                    strcat(msg, "{ \"type\": 255, \"msg\": \"UART interface error\" }");
+                    add_value_pair(mqtt_msg, "type", "255");
+                    add_value_pair(mqtt_msg, "msg", "UART interface error");
                     return true;
             }
 
@@ -217,7 +365,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             strcpy(topic, "sht21");
 
             if (strcmp((const char*)moddata, "ok") == 0) {
-                strcpy(msg, "ok");
+                add_value_pair(mqtt_msg, "msg", "ok");
                 return true;
             }
 
@@ -230,8 +378,12 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 			}
 
 			uint8_t humid = moddata[2];
-			sprintf(msg, "{ \"temp\": %.02f, \"humid\": %d }", (float) (temp / 16.0 - 100), humid);
-			
+            sprintf(buf, "%.02f", (float) (temp / 16.0 - 100));
+            add_value_pair(mqtt_msg, "temp", buf);
+            
+            sprintf(buf, "%d", humid);
+            add_value_pair(mqtt_msg, "humid", buf);
+            
 			return true;
 		}
         case 9: /* PIR */
@@ -243,7 +395,8 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
                 return false;
             }
 
-            sprintf(msg, "{ \"pir\": %d }", pir);
+            sprintf(buf, "%d", pir);
+            add_value_pair(mqtt_msg, "pir", buf);
             return true;
 
             break;
@@ -255,15 +408,13 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 				uint8_t fail = moddata[0];
 
 				if (fail) {
-	                strcpy(msg, "fail");
+                    add_value_pair(mqtt_msg, "msg", "fail");
 				} else {
-		            strcpy(msg, "ok");
+                    add_value_pair(mqtt_msg, "msg", "ok");
 				}
 
 				return true;
 			}
-
-            strcpy(msg, "{ ");
 
             int i;
             for (i = 0; i < 16; i += 2) {
@@ -275,23 +426,17 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
                     sensor = (moddata[i] << 8) | moddata[i + 1];
                 }
 
-                char buf[16] = {};
+                char ch[6] = {};
+                sprintf(ch, "adc%d", (i / 2) + 1);
 
                 if (sensor == 0xFFFF) {
-                    sprintf(buf, "\"adc%d\": null", (i / 2) + 1);
+                    add_value_pair(mqtt_msg, ch, "null");
                 }
                 else {
-                    sprintf(buf, "\"adc%d\": %d", (i / 2) + 1, sensor);
-                }
-
-                strcat(msg, buf);
-
-                if (i != 14) {
-                    strcat(msg, ", ");
+                    sprintf(buf, "%d", sensor);
+                    add_value_pair(mqtt_msg, ch, buf);
                 }
             }
-
-            strcat(msg, " }");
             break;
         }
         case 11: /* LPS331 */
@@ -303,11 +448,9 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             strcpy(topic, "lps331");
 
             if (strcmp((const char*)moddata, "ok") == 0) {
-                strcpy(msg, "ok");
+                add_value_pair(mqtt_msg, "msg", "ok");
                 return true;
             }
-
-            strcpy(msg, "{ ");
 
             /* Extract temperature */
             int16_t temperature = 0;
@@ -333,12 +476,11 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
                 pressure += (moddata[2] << 8);
             }
 
-            char buf[40] = {};
-            snprintf(buf, 40, "\"temperature\": %.1f, \"pressure\": %d", ((float)temperature / 16.0) - 100.0, pressure);
-
-            strcat(msg, buf);
-            strcat(msg, " }");
-
+            sprintf(buf, "%.1f", ((float)temperature / 16.0) - 100.0);
+            add_value_pair(mqtt_msg, "temperature", buf);
+            sprintf(buf, "%d", pressure);
+            add_value_pair(mqtt_msg, "pressure", buf);
+            
             break;
         }
         
@@ -346,15 +488,14 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             strcpy(topic, "4counter");
 
             if (strcmp((const char*)moddata, "ok") == 0) {
-                strcpy(msg, "ok");
+                add_value_pair(mqtt_msg, "msg", "ok");
                 return true;
             }
-
-            strcpy(msg, "{ ");
 
             /* Extract counter values */
             uint8_t i = 0;
             uint32_t values[4] = { 0 };
+            char ch[5] = {};
 
             /* 4x4 version */
             /*
@@ -371,6 +512,9 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
                     values[i] += (moddata[1 + 4*i] << 16);
                     values[i] += (moddata[0 + 4*i] << 24);
                 }
+                snprintf(ch, 5, "v%d", i);
+                snprintf(buf, 20, "%u", values[i]);
+                add_value_pair(mqtt_msg, ch, buf);
             }
             */
             
@@ -386,14 +530,11 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
                     values[i] += (moddata[2 + 3*i] << 8);
                     values[i] += (moddata[1 + 3*i] << 16);
                 }
+                
+                snprintf(ch, 5, "v%d", i);
+                snprintf(buf, 20, "%u", values[i]);
+                add_value_pair(mqtt_msg, ch, buf);
             }
-
-            char buf[40] = {};
-            snprintf(buf, 40, "\"v1\": %u, \"v2\": %u, \"v3\": %u, \"v4\": %u", values[0], values[1], values[2], values[3]);
-
-            strcat(msg, buf);
-            strcat(msg, " }");
-
             break;
         }
 
@@ -403,7 +544,6 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             }
 
             strcpy(topic, "echo");
-            strcpy(msg, "{ ");
 
             /* Extract RSSI value */
             int16_t rssi = 0;
@@ -417,10 +557,8 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 				rssi += (moddata[0] << 8);
             }
 
-			char buf[10] = {};
-			snprintf(buf, 10, "\"rssi\": %d", rssi);
-			strcat(msg, buf);
-			strcat(msg, " }");
+			snprintf(buf, 20, "%d", rssi);
+            add_value_pair(mqtt_msg, "rssi", buf);
 
 			break;
 		}
@@ -433,7 +571,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
             strcpy(topic, "opt3001");
 
             if (strcmp((const char*)moddata, "ok") == 0) {
-                strcpy(msg, "ok");
+                add_value_pair(mqtt_msg, "msg", "ok");
                 return true;
             }
 
@@ -445,7 +583,8 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, ch
 				lum = (moddata[0] << 8) | moddata[1];
 			}
 
-			sprintf(msg, "{ \"luminocity\": %d }", lum);
+            snprintf(buf, 20, "%d", lum);
+            add_value_pair(mqtt_msg, "luminocity", buf);
 			
 			return true;
 		}

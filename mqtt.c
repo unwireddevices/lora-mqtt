@@ -22,10 +22,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "1.6.2"
-
-#define MQTT_SUBSCRIBE_TO "devices/lora/#"
-#define MQTT_PUBLISH_TO "devices/lora/"
+#define VERSION "1.7.0"
 
 #define UART_POLLING_INTERVAL 100	// milliseconds
 #define QUEUE_POLLING_INTERVAL 10 	// milliseconds
@@ -41,6 +38,8 @@ static pthread_mutex_t mutex_uart;
 static pthread_mutex_t mutex_queue;
 static pthread_mutex_t mutex_pending;
 static pthread_mutex_t mutex_pong;
+
+static uint8_t mqtt_format;
 
 char logbuf[1024];
 
@@ -336,8 +335,6 @@ static void set_blocking (int fd, int should_block)
                 fprintf(stderr, "error %d setting term attributes", errno);
 }
 
-static int mid = 42;
-
 static void serve_reply(char *str) {
 	if (strlen(str) > REPLY_LEN * 2) {
 		puts("[error] Received too long reply from the gate");
@@ -423,25 +420,12 @@ static void serve_reply(char *str) {
 			if (list_for_gate) 
 				return;
 
-			char topic[22] = {};
-			strcpy(topic, "list/");
-			strcat(topic, addr);
-
-			char msg[128] = {};
-			sprintf(msg, "{ appid64: 0x%s, last_seen: %d, nodeclass: %d }", 
+			char *msg = (char *) malloc(MQTT_MAX_MSG_SIZE);
+			sprintf(msg, "{ \"appid64\": \"0x%s\", \"last_seen\": %d, \"nodeclass\": %d }", 
 					appid, (unsigned) lseen, (unsigned) cl);
 
-			/* Publish message */
-			char *mqtt_topic = (char *)malloc(strlen(MQTT_PUBLISH_TO) + strlen(topic) + 1);
-			strcpy(mqtt_topic, MQTT_PUBLISH_TO);
-			strcat(mqtt_topic, topic);
-			
-			sprintf(logbuf, "[mqtt] Publishing to the topic %s the message \"%s\"\n", mqtt_topic, msg);
-			logprint(logbuf);
-
-			mosquitto_publish(mosq, 0, mqtt_topic, strlen(msg), msg, 1, false);
-
-			free(mqtt_topic);
+            publish_mqtt_message(mosq, addr, "list/", msg, (mqtt_format_t) mqtt_format);
+            free(msg);
 		}
 		break;
 
@@ -493,29 +477,28 @@ static void serve_reply(char *str) {
 			uint8_t modid = bytes[0];
 			uint8_t *moddata = bytes + 1;
 
-			char topic[64] = {};
-			char msg[128] = {};
+			char *topic = (char *)malloc(64);
+			char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
+            
+            mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+            memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+            
+            mqtt_status_t mqtt_status;           
+            mqtt_status.rssi = rssi;
+            mqtt_status.battery = 2000 + (50*(status & 0x1F));
+            mqtt_status.temperature = 20*(status >> 5) - 30;
 
-			if (!convert_to(modid, moddata, moddatalen, (char *) &topic, (char *) &msg)) {
+			if (!convert_to(modid, moddata, moddatalen, topic, mqtt_msg)) {
 				sprintf(logbuf, "[error] Unable to convert gate reply \"%s\" for module %d\n", str, modid);
 				logprint(logbuf);
 				return;
 			}
-
-			// Append an MQTT topic path to the topic from the reply
-			char *mqtt_topic = (char *)malloc(strlen(MQTT_PUBLISH_TO) + strlen(addr) + 1 + strlen(topic));
-
-			strcpy(mqtt_topic, MQTT_PUBLISH_TO);
-			strcat(mqtt_topic, addr);
-			strcat(mqtt_topic, "/");
-			strcat(mqtt_topic, topic);
-
-			sprintf(logbuf, "[mqtt] Publishing to the topic %s the message \"%s\" | RSSI: %d | Battery : %d mV\n", mqtt_topic, msg, rssi, 2000 + (50*(status & 0x1F)));
-			logprint(logbuf);
-
-			mosquitto_publish(mosq, &mid, mqtt_topic, strlen(msg), msg, 1, false);
-
-			free(mqtt_topic);	
+            
+            build_mqtt_message(msg, mqtt_msg, mqtt_status);           
+            publish_mqtt_message(mosq, addr, topic, msg, (mqtt_format_t) mqtt_format);
+            free(topic);
+            free(msg);
+            free(mqtt_msg);
 		}
 		break;
 
@@ -541,6 +524,21 @@ static void serve_reply(char *str) {
 				(unsigned int) (nodeid >> 32), 
 				(unsigned int) (nodeid & 0xFFFFFFFF), get_node_class(nodeclass));
 			logprint(logbuf);
+            
+            mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+            memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+            
+            add_value_pair(mqtt_msg, "joined", "1");            
+            char cl = get_node_class(nodeclass);
+            add_value_pair(mqtt_msg, "class", &cl);
+            
+            mqtt_status_t status = { 0 };
+            
+            char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
+            build_mqtt_message(msg, mqtt_msg, status);           
+            publish_mqtt_message(mosq, addr, "device", msg, (mqtt_format_t) mqtt_format);
+            free(msg);
+            free(mqtt_msg);
 
 			add_device(nodeid, nodeclass, true);
 
@@ -579,6 +577,17 @@ static void serve_reply(char *str) {
 					(unsigned int) (nodeid >> 32), 
 					(unsigned int) (nodeid & 0xFFFFFFFF));
 				logprint(logbuf);
+                
+                mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+                memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+                add_value_pair(mqtt_msg, "joined", "0");            
+                mqtt_status_t status = { 0 };
+                
+                char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
+                build_mqtt_message(msg, mqtt_msg, status);           
+                publish_mqtt_message(mosq, addr, "device", msg, (mqtt_format_t) mqtt_format);
+                free(msg);
+                free(mqtt_msg);
 			}
 		}
 		break;
@@ -670,6 +679,22 @@ static void invite_mote(uint64_t addr)
 {
 	sprintf(logbuf, "[inv] Sending invitation to node with address 0x%08X%08X\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
 	logprint(logbuf);
+    
+    mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+    memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+    add_value_pair(mqtt_msg, "invited", "1");
+    add_value_pair(mqtt_msg, "message", "sending invitation to the node");
+    mqtt_status_t status = { 0 };
+    
+    char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
+    build_mqtt_message(msg, mqtt_msg, status);
+
+    char hexbuf[40];
+    bytes_to_hex((uint8_t *)&addr, 64, hexbuf, false);
+    publish_mqtt_message(mosq, hexbuf, "device", msg, (mqtt_format_t) mqtt_format);
+
+    free(msg);
+    free(mqtt_msg);
 
 	pthread_mutex_lock(&mutex_uart);
 	dprintf(uart, "%c%08X%08X\r", CMD_INVITE, (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
@@ -684,25 +709,47 @@ static void* pending_worker(void *arg) {
 
 		int i;	
 		for (i = 0; i < MAX_NODES; i++) {
-			if (pending_free[i])
+			if (pending_free[i]) {
+                usleep(1e3 * QUEUE_POLLING_INTERVAL);
 				continue;
+            }
 
 			pending_item_t *e = &pending[i];
 			time_t current = time(NULL);
 
-			if (is_fifo_empty(&e->pending_fifo))
+			if (is_fifo_empty(&e->pending_fifo)) {
+                usleep(1e3 * QUEUE_POLLING_INTERVAL);
 				continue;
+            }
 
-			/* Messages for "nodeclass A" devices will be sended only on demand */
-			if (e->nodeclass == LS_ED_CLASS_A && !e->can_send)
+			/* Messages for Class A devices will be sent only on demand */
+			if (e->nodeclass == LS_ED_CLASS_A && !e->can_send) {
+                usleep(1e3 * QUEUE_POLLING_INTERVAL);
 				continue;
+            }
 
 			/* Must wait for device to join before sending messages */
 			if (e->nodeclass == LS_ED_CLASS_C && e->has_been_invited) {
 				if (e->num_retries > NUM_RETRIES_INV) {
 					sprintf(logbuf, "[fail] Unable to invite node 0x%08X%08X to network after %u attempts, giving up\n", 
 						(unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF), NUM_RETRIES_INV);
-					logprint(logbuf);			
+					logprint(logbuf);
+
+                    mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+                    memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+                    add_value_pair(mqtt_msg, "invited", "0");
+                    add_value_pair(mqtt_msg, "message", "failed to invite node");
+                    mqtt_status_t status = { 0 };
+                    
+                    char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
+                    build_mqtt_message(msg, mqtt_msg, status);
+
+                    char hexbuf[40];
+                    snprintf(hexbuf, 40, "%08X%08X", (unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF));
+                    publish_mqtt_message(mosq, hexbuf, "device", msg, (mqtt_format_t) mqtt_format);
+
+                    free(msg);
+                    free(mqtt_msg);
 
 					e->num_retries = 0;
 					m_dequeue(&e->pending_fifo, NULL);						
@@ -729,6 +776,23 @@ static void* pending_worker(void *arg) {
 					sprintf(logbuf, "[fail] Unable to send message to 0x%08X%08X after %u attempts, giving up\n", 
 						(unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF), NUM_RETRIES);
 					logprint(logbuf);
+                    
+                    mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+                    memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+                    add_value_pair(mqtt_msg, "sent", "0");
+                    add_value_pair(mqtt_msg, "message", "failed to send message to the node");
+                    mqtt_status_t status = { 0 };
+                    
+                    char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
+                    build_mqtt_message(msg, mqtt_msg, status);
+
+                    char hexbuf[40];
+                    snprintf(hexbuf, 40, "%08X%08X", (unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF));
+                    publish_mqtt_message(mosq, hexbuf, "device", msg, (mqtt_format_t) mqtt_format);
+
+                    free(msg);
+                    free(mqtt_msg);
+                    
 					e->num_retries = 0;
 					m_dequeue(&e->pending_fifo, NULL);
 
@@ -775,11 +839,13 @@ static void* pending_worker(void *arg) {
 static void *publisher(void *arg)
 {
 	while(1) {
+        usleep(1e3 * QUEUE_POLLING_INTERVAL);
+
 		pthread_mutex_lock(&mutex_queue);
 
 		/* Checks wether queue is empty */
 		if (is_fifo_empty(&inputq)) {
-			pthread_mutex_unlock(&mutex_queue);		
+			pthread_mutex_unlock(&mutex_queue);
 			continue;
 		}
 
@@ -793,7 +859,7 @@ static void *publisher(void *arg)
 		pthread_mutex_unlock(&mutex_queue);
 		serve_reply(buf);
 
-		usleep(1e3 * QUEUE_POLLING_INTERVAL);
+		/* usleep(1e3 * QUEUE_POLLING_INTERVAL); */
 	}	
 	
 	return NULL;
@@ -957,6 +1023,22 @@ static void message_to_mote(uint64_t addr, char *payload)
 	if (e == NULL) {
 		sprintf(logbuf, "[error] Mote with id = %08X%08X is not in network, an invite will be sent\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
 		logprint(logbuf);
+        mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+        memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+        add_value_pair(mqtt_msg, "sent", "2");
+        add_value_pair(mqtt_msg, "message", "node not in the network");
+        mqtt_status_t status = { 0 };
+                    
+        char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
+        build_mqtt_message(msg, mqtt_msg, status);
+
+        char hexbuf[40];
+        bytes_to_hex((uint8_t *)&addr, 64, hexbuf, false);
+        publish_mqtt_message(mosq, hexbuf, "device", msg, (mqtt_format_t) mqtt_format);
+
+        free(msg);
+        free(mqtt_msg);
+        
 		add_device(addr, LS_ED_CLASS_C, false);
 		e = pending_to_nodeid(addr);
 	}
@@ -1004,8 +1086,9 @@ static void message_broadcast(char *payload) {
 
 static void my_message_callback(struct mosquitto *m, void *userdata, const struct mosquitto_message *message)
 {
-	if (message->mid != 0) /* To not react on messages published by gate itself */
+	if (message->mid != 0) { /* To not react on messages published by gate itself */
 		return;
+    }
 
 	char *running = strdup(message->topic), *token;
 	const char *delims = "/";
@@ -1113,6 +1196,7 @@ void usage(void) {
 	printf("  -d\tFork to background.\n");
 //	printf("  -r\tRetain last MQTT message.\n");
 	printf("  -p <port>\tserial port device URI, e.g. /dev/ttyATH0.\n");
+    printf("  -t\tUse MQTT format compatible with Tibbo system.\n");
 }
 
 int main(int argc, char *argv[])
@@ -1121,6 +1205,9 @@ int main(int argc, char *argv[])
 	const char *host = "localhost";
 	int port = 1883;
 	int keepalive = 60;
+    
+    mqtt_qos = 0;
+    mqtt_retain = false;
 //	bool clean_session = true;
 
 	openlog("lora-mqtt", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_DAEMON);
@@ -1128,13 +1215,15 @@ int main(int argc, char *argv[])
 	sprintf(logbuf, "=== MQTT-LoRa gate (version: %s) ===\n", VERSION);
 	logprint(logbuf);
 	
+    mqtt_format = UNWDS_MQTT_REGULAR;
+    
 	bool daemonize = 0;
 //	bool retain = 0;
 	char serialport[100];
 	bool ignoreconfig = 0;
 	
 	int c;
-	while ((c = getopt (argc, argv, "ihdrp:")) != -1)
+	while ((c = getopt (argc, argv, "ihdrpt:")) != -1)
     switch (c) {
 		case 'd':
 			daemonize = 1;
@@ -1146,6 +1235,8 @@ int main(int argc, char *argv[])
 			usage();
 			return 0;
 			break;
+        case 't':
+            mqtt_format = UNWDS_MQTT_ESCAPED;
 //		case 'r':
 //			retain = 1;
 //			break;
@@ -1195,7 +1286,6 @@ int main(int argc, char *argv[])
 	*/
 	
 	FILE* config = NULL;
-    char line[255] ;
     char* token;
 	
 	if (!ignoreconfig)
@@ -1203,6 +1293,7 @@ int main(int argc, char *argv[])
             config = fopen( "/etc/lora-mqtt/mqtt.conf", "r" );
             if (config)
             {
+                char *line = (char *)malloc(255);
                 while(fgets(line, 254, config) != NULL)
                 {
                     token = strtok(line, "\t =\n\r");
@@ -1216,8 +1307,40 @@ int main(int argc, char *argv[])
                                 memmove(serialport, serialport+1, strlen(serialport));
                             }
                         }
+                        if (!strcmp(token, "format"))
+                        {
+                            char *format;
+                            format = strtok(NULL, "\t =\n\r");
+                            if (!strcmp(format, "mqtt-escaped")) {
+                                mqtt_format = UNWDS_MQTT_ESCAPED;
+                                puts("MQTT format: quotes escaped");
+                            } else {
+                                if (!strcmp(format, "mqtt")) {
+                                    mqtt_format = UNWDS_MQTT_REGULAR;
+                                    puts("MQTT format: regular");
+                                }
+                            }
+                        }
+                        if (!strcmp(token, "mqtt_qos")) {
+                            char *qos;
+                            qos = strtok(NULL, "\t =\n\r");
+                            sscanf(qos, "%d", &mqtt_qos);
+                            printf("MQTT QoS: %d\n", mqtt_qos);
+                        }
+                        if (!strcmp(token, "mqtt_retain")) {
+                            char *retain;
+                            retain = strtok(NULL, "\t =\n\r");
+                            if (!strcmp(retain, "true")) {
+                                mqtt_retain = true;
+                                puts("MQTT retain messages enabled");
+                            } else {
+                                mqtt_retain = false;
+                                puts("MQTT retain messages disabled");
+                            }
+                        }
                     }
                 }
+                free(line);
                 fclose(config);
             }
 			else
