@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "utils.h"
 
@@ -61,29 +62,29 @@ void publish_mqtt_message(mosquitto *mosq, const char *addr, const char *topic, 
     }
     
     char *logbuf = (char *) malloc(MQTT_MAX_MSG_SIZE + 50);
-	sprintf(logbuf, "[mqtt] Publishing to the topic %s the message \"%s\"\n", mqtt_topic, msg);
+	snprintf(logbuf, MQTT_MAX_MSG_SIZE + 50, "[mqtt] Publishing to the topic %s the message \"%s\"\n", mqtt_topic, msg);
 	logprint(logbuf);
 
 	int res = mosquitto_publish(mosq, &mqtt_mid, mqtt_topic, strlen(msg), msg, mqtt_qos, mqtt_retain);
     
     switch (res) {
         case MOSQ_ERR_SUCCESS:
-            sprintf(logbuf, "[mqtt] Message published successfully\n");
+            snprintf(logbuf, MQTT_MAX_MSG_SIZE + 50, "[mqtt] Message published successfully\n");
             break;
         case MOSQ_ERR_INVAL:
-            sprintf(logbuf, "[mqtt] Error: invalid input\n");
+            snprintf(logbuf, MQTT_MAX_MSG_SIZE + 50, "[mqtt] Error: invalid input\n");
             break;
         case MOSQ_ERR_NOMEM:
-            sprintf(logbuf, "[mqtt] Error: out of memory\n");
+            snprintf(logbuf, MQTT_MAX_MSG_SIZE + 50, "[mqtt] Error: out of memory\n");
             break;
         case MOSQ_ERR_NO_CONN:
-            sprintf(logbuf, "[mqtt] Error: not connected\n");
+            snprintf(logbuf, MQTT_MAX_MSG_SIZE + 50, "[mqtt] Error: not connected\n");
             break;
         case MOSQ_ERR_PROTOCOL:
-            sprintf(logbuf, "[mqtt] Error: protocol error\n");
+            snprintf(logbuf, MQTT_MAX_MSG_SIZE + 50, "[mqtt] Error: protocol error\n");
             break;
         case MOSQ_ERR_PAYLOAD_SIZE:
-            sprintf(logbuf, "[mqtt] Error: payload too large\n");
+            snprintf(logbuf, MQTT_MAX_MSG_SIZE + 50, "[mqtt] Error: payload too large\n");
             break;
     }
     logprint(logbuf);
@@ -132,17 +133,27 @@ void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status
     
     strcat(msg, ", \"status\": { \"rssi\" : ");
     
-    char buf[16];
-    snprintf(buf, 16, "%d", status.rssi);
+    char buf[50];
+    snprintf(buf, sizeof(buf), "%d", status.rssi);
     strcat(msg, buf);
     
     strcat(msg, ", \"temperature\" : ");
-    snprintf(buf, 16, "%d", status.temperature);
+    snprintf(buf, sizeof(buf), "%d", status.temperature);
     strcat(msg, buf);
     
     strcat(msg, ", \"battery\" : ");
-    snprintf(buf, 16, "%d", status.battery);
+    snprintf(buf, sizeof(buf), "%d", status.battery);
     strcat(msg, buf);
+    
+    time_t rawtime;
+    struct tm *timeinfo;
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    
+    strcat(msg, ", \"date\" : ");
+    strftime(buf, sizeof(buf), "\"%T %F\"", timeinfo);
+    strcat(msg, buf);
+
     strcat(msg, " }}");
 }
 
@@ -158,7 +169,7 @@ void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status
  */
 bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg)
 {
-    char buf[20];
+    char buf[100];
     
     switch (modid) {
         case 1: /* GPIO */
@@ -204,7 +215,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
                 return false;
             }
 
-            sprintf(buf, "%d", btn);
+            snprintf(buf, sizeof(buf), "%d", btn);
             add_value_pair(mqtt_msg, "btn", buf);
             return true;
 
@@ -243,9 +254,9 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
                     }
 
                     add_value_pair(mqtt_msg, "valid", "true");
-                    sprintf(buf, "%03.3f", lat);
+                    snprintf(buf, sizeof(buf), "%03.3f", lat);
                     add_value_pair(mqtt_msg, "lat", buf);
-                    sprintf(buf, "%04.3f", lon);
+                    snprintf(buf, sizeof(buf), "%04.3f", lon);
                     add_value_pair(mqtt_msg, "lon", buf);
                     break;
 				}
@@ -297,13 +308,13 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
                 }
 
                 char ch[3] = {};
-                sprintf(ch, "s%d", (i / 2) + 1);
+                snprintf(ch, sizeof(ch), "s%d", (i / 2) + 1);
 
                 if (sensor == 0xFFFF) {
                     add_value_pair(mqtt_msg, ch, "null");
                 }
                 else {
-                    sprintf(buf, "%.3f", (float) (sensor / 16.0) - 100.0);
+                    snprintf(buf, sizeof(buf), "%.3f", (float) (sensor / 16.0) - 100.0);
                     add_value_pair(mqtt_msg, ch, buf);
                 }
             }
@@ -380,10 +391,10 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
 			}
 
 			uint8_t humid = moddata[2];
-            sprintf(buf, "%.02f", (float) (temp / 16.0 - 100));
+            snprintf(buf, sizeof(buf), "%.02f", (float) (temp / 16.0 - 100));
             add_value_pair(mqtt_msg, "temp", buf);
             
-            sprintf(buf, "%d", humid);
+            snprintf(buf, sizeof(buf), "%d", humid);
             add_value_pair(mqtt_msg, "humid", buf);
             
 			return true;
@@ -397,7 +408,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
                 return false;
             }
 
-            sprintf(buf, "%d", pir);
+            snprintf(buf, sizeof(buf), "%d", pir);
             add_value_pair(mqtt_msg, "pir", buf);
             return true;
 
@@ -429,13 +440,13 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
                 }
 
                 char ch[6] = {};
-                sprintf(ch, "adc%d", (i / 2) + 1);
+                snprintf(ch, sizeof(ch), "adc%d", (i / 2) + 1);
 
                 if (sensor == 0xFFFF) {
                     add_value_pair(mqtt_msg, ch, "null");
                 }
                 else {
-                    sprintf(buf, "%d", sensor);
+                    snprintf(buf, sizeof(buf), "%d", sensor);
                     add_value_pair(mqtt_msg, ch, buf);
                 }
             }
@@ -478,9 +489,9 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
                 pressure += (moddata[2] << 8);
             }
 
-            sprintf(buf, "%.1f", ((float)temperature / 16.0) - 100.0);
+            snprintf(buf, sizeof(buf), "%.1f", ((float)temperature / 16.0) - 100.0);
             add_value_pair(mqtt_msg, "temperature", buf);
-            sprintf(buf, "%d", pressure);
+            snprintf(buf, sizeof(buf), "%d", pressure);
             add_value_pair(mqtt_msg, "pressure", buf);
             
             break;
@@ -518,8 +529,8 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
             values[3] = num[2] & 0xFFFFFF;
             
             for (i = 0; i < 4; i++) {           
-                snprintf(ch, 5, "v%d", i);
-                snprintf(buf, 20, "%u", values[i]);
+                snprintf(ch, sizeof(ch), "v%d", i);
+                snprintf(buf, sizeof(buf), "%u", values[i]);
                 add_value_pair(mqtt_msg, ch, buf);
             }
             break;
@@ -544,7 +555,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
 				rssi += (moddata[0] << 8);
             }
 
-			snprintf(buf, 20, "%d", rssi);
+			snprintf(buf, sizeof(buf), "%d", rssi);
             add_value_pair(mqtt_msg, "rssi", buf);
 
 			break;
@@ -570,7 +581,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
 				lum = (moddata[0] << 8) | moddata[1];
 			}
 
-            snprintf(buf, 20, "%d", lum);
+            snprintf(buf, sizeof(buf), "%d", lum);
             add_value_pair(mqtt_msg, "luminocity", buf);
 			
 			return true;
@@ -586,7 +597,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
 /**
  * Converts from MQTT topic and message into module data to send to the nodes
  */
-bool convert_from(char *type, char *param, char *out)
+bool convert_from(char *type, char *param, char *out, int bufsize)
 {
     if (strcmp(type, "gpio") == 0) {
         if (strstr(param, "set ") == param) {
@@ -608,7 +619,7 @@ bool convert_from(char *type, char *param, char *out)
 
             printf("[mqtt-gpio] Set command | Pin: %d, value: %d, cmd: 0x%02x\n", pin, value, gpio_cmd);
 
-            sprintf(out, "01%02x", gpio_cmd);
+            snprintf(out, bufsize, "01%02x", gpio_cmd);
         }
         else if (strstr(param, "get ") == param) {
 			param += 4; // skip command
@@ -621,7 +632,7 @@ bool convert_from(char *type, char *param, char *out)
 
             printf("[mqtt-gpio] Get command | Pin: %d, cmd: 0x%02x\n", pin, gpio_cmd);
 
-            sprintf(out, "01%02x", gpio_cmd);
+            snprintf(out, bufsize, "01%02x", gpio_cmd);
         }
         else if (strstr(param, "toggle ") == param) {
 			param += 7; // skip command
@@ -634,12 +645,12 @@ bool convert_from(char *type, char *param, char *out)
 
             printf("[mqtt-gpio] Toggle command | Pin: %d, cmd: 0x%02x\n", pin, gpio_cmd);
 
-            sprintf(out, "01%02x", gpio_cmd);
+            snprintf(out, bufsize, "01%02x", gpio_cmd);
         }
     }
     else if (strcmp(type, "gps") == 0) {
         if (strstr(param, "get") == param) {
-            sprintf(out, "0300");
+            snprintf(out, bufsize, "0300");
         }
     }
     else if (strcmp(type, "lmt01") == 0) {
@@ -647,10 +658,10 @@ bool convert_from(char *type, char *param, char *out)
             param += 11;    // Skip command
 
             uint8_t period = atoi(param);
-            sprintf(out, "0600%02x", period);
+            snprintf(out, bufsize, "0600%02x", period);
         }
         else if (strstr(param, "get") == param) {
-            sprintf(out, "0601");
+            snprintf(out, bufsize, "0601");
         }
         else if (strstr(param, "set_gpios ") == param) {
 		/*	 param += 10;	// Skip command
@@ -658,7 +669,7 @@ bool convert_from(char *type, char *param, char *out)
 		     uint8_t gpio = 0;
 		     while ((gpio = strtol(param, param, 10))
 
-		     sprintf(out, "0602");*/
+		     snprintf(out, bufsize, "0602");*/
         }
     }
     else if (strcmp(type, "6adc") == 0) {
@@ -666,17 +677,17 @@ bool convert_from(char *type, char *param, char *out)
             param += 11;    // Skip command
 
             uint8_t period = atoi(param);
-            sprintf(out, "0a00%02x", period);
+            snprintf(out, bufsize, "0a00%02x", period);
         }
         else if (strstr(param, "get") == param) {
-            sprintf(out, "0a01");
+            snprintf(out, bufsize, "0a01");
         }
         else if (strstr(param, "set_gpio ") == param) {
             param += 9; // Skip command
 
             uint8_t gpio = atoi(param);
 
-            sprintf(out, "0a02%02x", gpio);
+            snprintf(out, bufsize, "0a02%02x", gpio);
         }
         else if (strstr(param, "set_lines ") == param) {
             param += 10;    // Skip command
@@ -689,7 +700,7 @@ bool convert_from(char *type, char *param, char *out)
                 }
             }
 
-            sprintf(out, "0a03%02x", lines_en);
+            snprintf(out, bufsize, "0a03%02x", lines_en);
         }
     }
     else if (strcmp(type, "uart") == 0) {
@@ -701,7 +712,7 @@ bool convert_from(char *type, char *param, char *out)
                 return false;
             }
 
-            sprintf(out, "0700%s", hex);
+            snprintf(out, bufsize, "0700%s", hex);
         }
         else if (strstr(param, "set_baudrate ") == param) {
             param += 13; // Skip commands
@@ -712,7 +723,7 @@ bool convert_from(char *type, char *param, char *out)
                 return false;
             }
 
-            sprintf(out, "0701%02x", baudrate);
+            snprintf(out, bufsize, "0701%02x", baudrate);
         }
         else {
             return false;
@@ -723,17 +734,17 @@ bool convert_from(char *type, char *param, char *out)
             param += 11;    // Skip command
 
             uint8_t period = atoi(param);
-            sprintf(out, "0800%02x", period);
+            snprintf(out, bufsize, "0800%02x", period);
         }
         else if (strstr(param, "get") == param) {
-            sprintf(out, "0801");
+            snprintf(out, bufsize, "0801");
         }
         else if (strstr(param, "set_i2c ") == param) { 
              param += 8;	// Skip command
 
              uint8_t i2c = atoi(param);
 
-             sprintf(out, "0802%02x", i2c);
+             snprintf(out, bufsize, "0802%02x", i2c);
         }
     }
 	else if (strcmp(type, "lps331") == 0) {
@@ -741,22 +752,22 @@ bool convert_from(char *type, char *param, char *out)
             param += 11;    // Skip command
 
             uint8_t period = atoi(param);
-            sprintf(out, "0b00%02x", period);
+            snprintf(out, bufsize, "0b00%02x", period);
         }
         else if (strstr(param, "get") == param) {
-            sprintf(out, "0b01");
+            snprintf(out, bufsize, "0b01");
         }
         else if (strstr(param, "set_i2c ") == param) { 
              param += 8;	// Skip command
 
              uint8_t i2c = atoi(param);
 
-             sprintf(out, "0b02%02x", i2c);
+             snprintf(out, bufsize, "0b02%02x", i2c);
         }
     }
 	else if (strcmp(type, "echo") == 0) {
         if (strstr(param, "get") == param) {
-            sprintf(out, "0d00");
+            snprintf(out, bufsize, "0d00");
         }
     }
     else if (strcmp(type, "opt3001") == 0) {
@@ -764,17 +775,17 @@ bool convert_from(char *type, char *param, char *out)
             param += 11;    // Skip command
 
             uint8_t period = atoi(param);
-            sprintf(out, "0f00%02x", period);
+            snprintf(out, bufsize, "0f00%02x", period);
         }
         else if (strstr(param, "get") == param) {
-            sprintf(out, "0f01");
+            snprintf(out, bufsize, "0f01");
         }
         else if (strstr(param, "set_i2c ") == param) { 
              param += 8;	// Skip command
 
              uint8_t i2c = atoi(param);
 
-             sprintf(out, "0f02%02x", i2c);
+             snprintf(out, bufsize, "0f02%02x", i2c);
         }
     }
     else {

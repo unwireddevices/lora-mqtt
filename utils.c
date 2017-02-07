@@ -61,7 +61,7 @@ void bytes_to_hex(uint8_t *bytes, size_t num_bytes, char *str, bool reverse_orde
 	size_t i;
 	for (i = 0; i < num_bytes; i++) {
 		char buf[2];
-		sprintf(buf, "%02x", bytes[(reverse_order) ? num_bytes - 1 - i : i]);
+		snprintf(buf, sizeof(buf), "%02x", bytes[(reverse_order) ? num_bytes - 1 - i : i]);
 		strcat(str, buf);
 	}
 }

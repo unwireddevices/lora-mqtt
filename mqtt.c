@@ -152,7 +152,7 @@ static bool add_device(uint64_t nodeid, unsigned short nodeclass, bool was_joine
 	if (e != NULL) {
 		/* Clear invitation flag */
 		if (nodeclass == LS_ED_CLASS_C && e->has_been_invited && was_joined) {
-			sprintf(logbuf, "[+] Device successfully invited");
+			snprintf(logbuf, sizeof(logbuf), "[+] Device successfully invited");
 			logprint(logbuf);
 
 			e->has_been_invited = false;
@@ -353,7 +353,7 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				sprintf(logbuf, "[error] Unable to parse list reply: %s\n", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str - 16);
 				logprint(logbuf);
 				return;
 			}
@@ -365,7 +365,7 @@ static void serve_reply(char *str) {
 
 			uint64_t appid64;
 			if (!hex_to_bytes(appid, (uint8_t *) &appid64, !is_big_endian())) {
-				sprintf(logbuf, "[error] Unable to parse list reply: %s\n", str - 32);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str - 32);
 				logprint(logbuf);
 				return;
 			}
@@ -378,7 +378,7 @@ static void serve_reply(char *str) {
 
 			uint64_t abil64;
 			if (!hex_to_bytes(ability, (uint8_t *) &abil64, !is_big_endian())) {
-				sprintf(logbuf, "[error] Unable to parse list reply: %s\n", str - 48);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str - 48);
 				logprint(logbuf);
 				return;
 			}
@@ -391,7 +391,7 @@ static void serve_reply(char *str) {
 
 			uint16_t lseen;
 			if (!hex_to_bytes(lastseen, (uint8_t *) &lseen, !is_big_endian())) {
-				sprintf(logbuf, "[error] Unable to parse list reply: %s\n", str - 52);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str - 52);
 				logprint(logbuf);
 				return;
 			}
@@ -403,14 +403,14 @@ static void serve_reply(char *str) {
 
 			uint16_t cl;
 			if (!hex_to_bytes(nodeclass, (uint8_t *) &cl, !is_big_endian())) {
-				sprintf(logbuf, "[error] Unable to parse list reply: %s\n", str - 52);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str - 52);
 				logprint(logbuf);
 				return;
 			}
 
 			/* Refresh our internal device list info for that node */
 			if (!add_device(nodeid, cl, true)) {
-				sprintf(logbuf, "[error] Was unable to add device 0x%s with nodeclass %s to our device list!\n", addr, nodeclass);
+				snprintf(logbuf, sizeof(logbuf), "[error] Was unable to add device 0x%s with nodeclass %s to our device list!\n", addr, nodeclass);
 				logprint(logbuf);
 				return;
 			}
@@ -421,7 +421,7 @@ static void serve_reply(char *str) {
 				return;
 
 			char *msg = (char *) malloc(MQTT_MAX_MSG_SIZE);
-			sprintf(msg, "{ \"appid64\": \"0x%s\", \"last_seen\": %d, \"nodeclass\": %d }", 
+			snprintf(msg, MQTT_MAX_MSG_SIZE, "{ \"appid64\": \"0x%s\", \"last_seen\": %d, \"nodeclass\": %d }", 
 					appid, (unsigned) lseen, (unsigned) cl);
 
             publish_mqtt_message(mosq, addr, "list/", msg, (mqtt_format_t) mqtt_format);
@@ -440,14 +440,14 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				sprintf(logbuf, "[error] Unable to parse device app. data: %s", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse device app. data: %s", str - 16);
 				logprint(logbuf);
 				return;
 			}
 	
 			int16_t rssi;
 			if (!hex_to_bytesn(str, 4, (uint8_t *) &rssi, !is_big_endian())) {
-				sprintf(logbuf, "[error] Unable to parse RSSI from gate reply: %s\n", str);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse RSSI from gate reply: %s\n", str);
 				logprint(logbuf);
 				return;
 			}
@@ -457,7 +457,7 @@ static void serve_reply(char *str) {
             
             uint8_t status;
             if (!hex_to_bytesn(str, 2, &status, !is_big_endian())) {
-				sprintf(logbuf, "[error] Unable to parse status from gate reply: %s\n", str);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse status from gate reply: %s\n", str);
 				logprint(logbuf);
 				return;
 			}
@@ -467,7 +467,7 @@ static void serve_reply(char *str) {
 
 			uint8_t bytes[REPLY_LEN] = {};
 			if (!hex_to_bytes(str,  (uint8_t *) &bytes, false)) {
-				sprintf(logbuf, "[error] Unable to parse payload bytes gate reply: \"%s\" | len: %d\n", str, strlen(str));
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse payload bytes gate reply: \"%s\" | len: %d\n", str, strlen(str));
 				logprint(logbuf);
 				return;
 			}
@@ -489,7 +489,7 @@ static void serve_reply(char *str) {
             mqtt_status.temperature = 20*(status >> 5) - 30;
 
 			if (!convert_to(modid, moddata, moddatalen, topic, mqtt_msg)) {
-				sprintf(logbuf, "[error] Unable to convert gate reply \"%s\" for module %d\n", str, modid);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to convert gate reply \"%s\" for module %d\n", str, modid);
 				logprint(logbuf);
 				return;
 			}
@@ -513,14 +513,14 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				sprintf(logbuf, "[error] Unable to parse join reply: %s", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse join reply: %s", str - 16);
 				logprint(logbuf);
 				return;
 			}
 
 			unsigned short nodeclass = atoi(str);
 
-			sprintf(logbuf, "[join] Joined device with id = 0x%08X%08X and class = %c\n", 
+			snprintf(logbuf, sizeof(logbuf), "[join] Joined device with id = 0x%08X%08X and class = %c\n", 
 				(unsigned int) (nodeid >> 32), 
 				(unsigned int) (nodeid & 0xFFFFFFFF), get_node_class(nodeclass));
 			logprint(logbuf);
@@ -563,7 +563,7 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				sprintf(logbuf, "[error] Unable to parse kick packet: %s", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse kick packet: %s", str - 16);
 				logprint(logbuf);
 				return;
 			}
@@ -573,7 +573,7 @@ static void serve_reply(char *str) {
 				break;
 
 			if (kick_device(nodeid)) {
-				sprintf(logbuf, "[kick] Device with id = 0x%08X%08X kicked due to long silence\n", 
+				snprintf(logbuf, sizeof(logbuf), "[kick] Device with id = 0x%08X%08X kicked due to long silence\n", 
 					(unsigned int) (nodeid >> 32), 
 					(unsigned int) (nodeid & 0xFFFFFFFF));
 				logprint(logbuf);
@@ -603,12 +603,12 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				sprintf(logbuf, "[error] Unable to parse ack: %s", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse ack: %s", str - 16);
 				logprint(logbuf);
 				return;
 			}
 
-			sprintf(logbuf, "[ack] ACK received from %08X%08X\n", 
+			snprintf(logbuf, sizeof(logbuf), "[ack] ACK received from %08X%08X\n", 
 				(unsigned int) (nodeid >> 32), 
 				(unsigned int) (nodeid & 0xFFFFFFFF));
 			logprint(logbuf);
@@ -651,7 +651,7 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				sprintf(logbuf, "[error] Unable to parse pending frames request data: %s", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse pending frames request data: %s", str - 16);
 				logprint(logbuf);
 				return;
 			}
@@ -660,7 +660,7 @@ static void serve_reply(char *str) {
 			if (e != NULL) {
 				/* Check if there's pending frames for this class A device */
 				if (e->nodeclass == LS_ED_CLASS_A && e->num_pending > 0) {
-					sprintf(logbuf, "[pending] Gate requested next pending frame for 0x%08X%08X\n", 
+					snprintf(logbuf, sizeof(logbuf), "[pending] Gate requested next pending frame for 0x%08X%08X\n", 
 										(unsigned int) (nodeid >> 32), (unsigned int) (nodeid & 0xFFFFFFFF));
 					logprint(logbuf);					
 
@@ -677,7 +677,7 @@ static void serve_reply(char *str) {
 
 static void invite_mote(uint64_t addr) 
 {
-	sprintf(logbuf, "[inv] Sending invitation to node with address 0x%08X%08X\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
+	snprintf(logbuf, sizeof(logbuf), "[inv] Sending invitation to node with address 0x%08X%08X\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
 	logprint(logbuf);
     
     mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
@@ -690,7 +690,7 @@ static void invite_mote(uint64_t addr)
     build_mqtt_message(msg, mqtt_msg, status);
 
     char hexbuf[40];
-    bytes_to_hex((uint8_t *)&addr, 64, hexbuf, false);
+    snprintf(hexbuf, sizeof(hexbuf), "%08X%08X", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
     publish_mqtt_message(mosq, hexbuf, "device", msg, (mqtt_format_t) mqtt_format);
 
     free(msg);
@@ -731,7 +731,7 @@ static void* pending_worker(void *arg) {
 			/* Must wait for device to join before sending messages */
 			if (e->nodeclass == LS_ED_CLASS_C && e->has_been_invited) {
 				if (e->num_retries > NUM_RETRIES_INV) {
-					sprintf(logbuf, "[fail] Unable to invite node 0x%08X%08X to network after %u attempts, giving up\n", 
+					snprintf(logbuf, sizeof(logbuf), "[fail] Unable to invite node 0x%08X%08X to network after %u attempts, giving up\n", 
 						(unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF), NUM_RETRIES_INV);
 					logprint(logbuf);
 
@@ -762,7 +762,7 @@ static void* pending_worker(void *arg) {
 					e->last_inv = current;
 
 					if (e->num_retries <= NUM_RETRIES_INV) {
-						sprintf(logbuf, "[inv] [%d/%d] Next invitation retry after %d seconds\n", 
+						snprintf(logbuf, sizeof(logbuf), "[inv] [%d/%d] Next invitation retry after %d seconds\n", 
 										e->num_retries, NUM_RETRIES_INV, e->num_retries * INVITE_TIMEOUT_S);
 						logprint(logbuf);
 					}
@@ -773,7 +773,7 @@ static void* pending_worker(void *arg) {
 
 			if (current - e->last_msg > RETRY_TIMEOUT_S) {
 				if (e->num_retries > NUM_RETRIES) {
-					sprintf(logbuf, "[fail] Unable to send message to 0x%08X%08X after %u attempts, giving up\n", 
+					snprintf(logbuf, sizeof(logbuf), "[fail] Unable to send message to 0x%08X%08X after %u attempts, giving up\n", 
 						(unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF), NUM_RETRIES);
 					logprint(logbuf);
                     
@@ -803,7 +803,7 @@ static void* pending_worker(void *arg) {
 				if (!m_peek(&e->pending_fifo, buf)) /* Peek message from queue but don't remove. Will be removed on acknowledge */
 					continue;
 
-				sprintf(logbuf, "[pending] [%d/%d] Sending message to 0x%08X%08X: %s\n", 
+				snprintf(logbuf, sizeof(logbuf), "[pending] [%d/%d] Sending message to 0x%08X%08X: %s\n", 
 					e->num_retries + 1, (e->num_retries < NUM_RETRIES_BEFORE_INVITE) ? NUM_RETRIES_BEFORE_INVITE : NUM_RETRIES,
 					(unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF), buf);
 				logprint(logbuf);
@@ -919,12 +919,12 @@ static void send_static_devices_list(void) {
 
 		fclose(list);
 	} else {
-		sprintf(logbuf, "[gate] No statically personalized devices list found (%s)", STATIC_DEVS_LIST_FILE);	
+		snprintf(logbuf, sizeof(logbuf), "[gate] No statically personalized devices list found (%s)", STATIC_DEVS_LIST_FILE);	
 		logprint(logbuf);
 		return;
 	}
 
-	sprintf(logbuf, "[gate] List of statically personalized devices (%i pcs) sent", num);	
+	snprintf(logbuf, sizeof(logbuf), "[gate] List of statically personalized devices (%i pcs) sent", num);	
 	logprint(logbuf);
 }
 
@@ -1014,14 +1014,14 @@ static void devices_list(bool internal)
 
 static void message_to_mote(uint64_t addr, char *payload) 
 {
-	sprintf(logbuf, "[gate] Sending individual message to the mote with address \"%08X%08X\": \"%s\"\n", 
+	snprintf(logbuf, sizeof(logbuf), "[gate] Sending individual message to the mote with address \"%08X%08X\": \"%s\"\n", 
 					(unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF), 
 					payload);	
 	logprint(logbuf);
 
 	pending_item_t *e = pending_to_nodeid(addr);
 	if (e == NULL) {
-		sprintf(logbuf, "[error] Mote with id = %08X%08X is not in network, an invite will be sent\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
+		snprintf(logbuf, sizeof(logbuf), "[error] Mote with id = %08X%08X is not in network, an invite will be sent\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
 		logprint(logbuf);
         mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
         memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
@@ -1033,7 +1033,7 @@ static void message_to_mote(uint64_t addr, char *payload)
         build_mqtt_message(msg, mqtt_msg, status);
 
         char hexbuf[40];
-        bytes_to_hex((uint8_t *)&addr, 64, hexbuf, false);
+        snprintf(hexbuf, sizeof(hexbuf), "%08X%08X", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
         publish_mqtt_message(mosq, hexbuf, "device", msg, (mqtt_format_t) mqtt_format);
 
         free(msg);
@@ -1050,11 +1050,11 @@ static void message_to_mote(uint64_t addr, char *payload)
 
 	/* Enqueue the frame as a gate command */
 	char buf[REPLY_LEN] = {};
-	sprintf(buf, "%c%08X%08X%s", CMD_IND, (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF), payload);
+	snprintf(buf, sizeof(buf), "%c%08X%08X%s", CMD_IND, (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF), payload);
 
 	pthread_mutex_lock(&mutex_pending);
 	if (!m_enqueue(&e->pending_fifo, buf)) {
-		sprintf(logbuf, "[error] Out of memory when adding message to downlink queue for mote with id %08X%08X!\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
+		snprintf(logbuf, sizeof(logbuf), "[error] Out of memory when adding message to downlink queue for mote with id %08X%08X!\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
 		logprint(logbuf);
 		pthread_mutex_unlock(&mutex_pending);
 		return;
@@ -1075,7 +1075,7 @@ static void message_to_mote(uint64_t addr, char *payload)
 }
 
 static void message_broadcast(char *payload) {
-	sprintf(logbuf, "[gate] Sending broadcast message: \"%s\"\n", payload);	
+	snprintf(logbuf, sizeof(logbuf), "[gate] Sending broadcast message: \"%s\"\n", payload);	
 	logprint(logbuf);
 
 	/* Send gate command */
@@ -1134,7 +1134,7 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 		if (!is_broadcast) {
 			/* Not a broadcast address, parse it as hex EUI-64 address */
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				sprintf(logbuf, "[error] Invalid node address: %s\n", addr);
+				snprintf(logbuf, sizeof(logbuf), "[error] Invalid node address: %s\n", addr);
 				logprint(logbuf);
 				return;
 			}
@@ -1143,14 +1143,14 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 		char *type = topics[3];
 		
 		char buf[REPLY_LEN] = {};
-		if (!convert_from(type, (char *)message->payload, buf)) {
-			sprintf(logbuf, "[error] Convert failed. Unable to parse mqtt message: devices/lora/%s : %s, %s\n", addr, type, (char*) message->payload);
+		if (!convert_from(type, (char *)message->payload, buf, REPLY_LEN)) {
+			snprintf(logbuf, sizeof(logbuf), "[error] Convert failed. Unable to parse mqtt message: devices/lora/%s : %s, %s\n", addr, type, (char*) message->payload);
 			logprint(logbuf);
 			return;
 		}
 
 		if (!strlen(buf)) {
-			sprintf(logbuf, "[error] Buffer is empty. Unable to parse mqtt message: devices/lora/%s : %s, %s\n", addr, type, (char*) message->payload);
+			snprintf(logbuf, sizeof(logbuf), "[error] Buffer is empty. Unable to parse mqtt message: devices/lora/%s : %s, %s\n", addr, type, (char*) message->payload);
 			return;
 		}
 
@@ -1167,12 +1167,12 @@ static void my_connect_callback(struct mosquitto *m, void *userdata, int result)
 //	int i;
 	if(!result){
 		/* Subscribe to broker information topics on successful connect. */
-		sprintf(logbuf, "Subscribing to %s\n", MQTT_SUBSCRIBE_TO);
+		snprintf(logbuf, sizeof(logbuf), "Subscribing to %s\n", MQTT_SUBSCRIBE_TO);
 		logprint(logbuf);
 
 		mosquitto_subscribe(mosq, NULL, MQTT_SUBSCRIBE_TO, 2);
 	}else{
-		sprintf(logbuf, "Connect failed\n");
+		snprintf(logbuf, sizeof(logbuf), "Connect failed\n");
 		logprint(logbuf);
 	}
 }
@@ -1182,9 +1182,9 @@ static void my_subscribe_callback(struct mosquitto *m, void *userdata, int mid, 
 	int i;
 
 	char tmpbuf[100];
-	sprintf(logbuf, "Subscribed (mid: %d): %d", mid, granted_qos[0]);
+	snprintf(logbuf, sizeof(logbuf), "Subscribed (mid: %d): %d", mid, granted_qos[0]);
 	for(i=1; i<qos_count; i++){
-		sprintf(tmpbuf, ", %d", granted_qos[i]);
+		snprintf(tmpbuf, sizeof(tmpbuf), ", %d", granted_qos[i]);
 		strcat(logbuf, tmpbuf);
 	}
 	strcat(logbuf, "\n");
@@ -1214,7 +1214,7 @@ int main(int argc, char *argv[])
 
 	openlog("lora-mqtt", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_DAEMON);
 
-	sprintf(logbuf, "=== MQTT-LoRa gate (version: %s) ===\n", VERSION);
+	snprintf(logbuf, sizeof(logbuf), "=== MQTT-LoRa gate (version: %s) ===\n", VERSION);
 	logprint(logbuf);
 	
     mqtt_format = UNWDS_MQTT_REGULAR;
@@ -1244,7 +1244,7 @@ int main(int argc, char *argv[])
 //			break;
 		case 'p':
 			if (strlen(optarg) > 100) {
-				sprintf(logbuf, "Error: serial device URI is too long\n");
+				snprintf(logbuf, sizeof(logbuf), "Error: serial device URI is too long\n");
 				logprint(logbuf);
 			}
 			else {
@@ -1260,12 +1260,12 @@ int main(int argc, char *argv[])
     int pidfile;
     if (daemonize)
     {
-		sprintf(logbuf, "Attempting to run in the background\n");
+		snprintf(logbuf, sizeof(logbuf), "Attempting to run in the background\n");
 		logprint(logbuf);
 		
         if (daemon(0, 0))
         {
-            sprintf(logbuf, "Error forking to background\n");
+            snprintf(logbuf, sizeof(logbuf), "Error forking to background\n");
 			logprint(logbuf);
             exit(EXIT_FAILURE);
         }
@@ -1276,7 +1276,7 @@ int main(int argc, char *argv[])
         {
             exit(EXIT_FAILURE);
         }
-        sprintf(pidval, "%d\n", getpid());
+        snprintf(pidval, sizeof(pidval), "%d\n", getpid());
         write(pidfile, pidval, strlen(pidval));
     }
 	
@@ -1347,7 +1347,7 @@ int main(int argc, char *argv[])
             }
 			else
 			{
-				sprintf(logbuf, "Configuration file /etc/lora-mqtt/mqtt.conf not found\n");
+				snprintf(logbuf, sizeof(logbuf), "Configuration file /etc/lora-mqtt/mqtt.conf not found\n");
 				logprint(logbuf);
 				return -1;
 			}
@@ -1370,7 +1370,7 @@ int main(int argc, char *argv[])
 	uart = open(serialport, O_RDWR | O_NOCTTY | O_SYNC);
 	if (uart < 0)
 	{
-		sprintf(logbuf, "error %d opening %s: %s\n", errno, serialport, strerror (errno));
+		snprintf(logbuf, sizeof(logbuf), "error %d opening %s: %s\n", errno, serialport, strerror (errno));
 		logprint(logbuf);
 		usage();
 		return 1;
@@ -1380,19 +1380,19 @@ int main(int argc, char *argv[])
 	set_blocking(uart, 0);                	 // set no blocking
 
 	if(pthread_create(&reader_thread, NULL, uart_reader, NULL)) {
-		sprintf(logbuf, "Error creating reader thread\n");
+		snprintf(logbuf, sizeof(logbuf), "Error creating reader thread\n");
 		logprint(logbuf);
 		return 1;
 	}
 
 	if(pthread_create(&publisher_thread, NULL, publisher, NULL)) {
-		sprintf(logbuf, "Error creating publisher thread\n");
+		snprintf(logbuf, sizeof(logbuf), "Error creating publisher thread\n");
 		logprint(logbuf);
 		return 1;
 	}
 
 	if (pthread_create(&pending_thread, NULL, pending_worker, NULL)) {
-		sprintf(logbuf, "Error creating pending queue worker thread");
+		snprintf(logbuf, sizeof(logbuf), "Error creating pending queue worker thread");
 		logprint(logbuf);
 		return 1;
 	}
@@ -1400,7 +1400,7 @@ int main(int argc, char *argv[])
 	mosquitto_lib_init();
 	mosq = mosquitto_new(NULL, true, NULL);
 	if(!mosq){
-		sprintf(logbuf, "Error: Out of memory.\n");
+		snprintf(logbuf, sizeof(logbuf), "Error: Out of memory.\n");
 		logprint(logbuf);
 		return 1;
 	}
@@ -1410,12 +1410,12 @@ int main(int argc, char *argv[])
 	mosquitto_subscribe_callback_set(mosq, my_subscribe_callback);
 
 	if(mosquitto_connect(mosq, host, port, keepalive)){
-		sprintf(logbuf, "Unable to connect.\n");
+		snprintf(logbuf, sizeof(logbuf), "Unable to connect.\n");
 		logprint(logbuf);
 		return 1;
 	}
 
-	sprintf(logbuf, "[mqtt] Entering event loop");
+	snprintf(logbuf, sizeof(logbuf), "[mqtt] Entering event loop");
 	logprint(logbuf);
 
 	mosquitto_loop_forever(mosq, -1, 1);
