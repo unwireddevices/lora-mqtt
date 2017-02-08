@@ -34,6 +34,7 @@ typedef struct {
 } mqtt_status_t;
 
 extern bool mqtt_retain;
+extern bool mqtt_sepio;
 extern int mqtt_qos;
 
 bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *msg);

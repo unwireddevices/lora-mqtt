@@ -1140,7 +1140,17 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 			}
 		}
 
-		char *type = topics[3];
+        char *type;
+        if (mqtt_sepio) {
+            if (memcmp(topics[3], "mosi", 4) != 0) {
+                snprintf(logbuf, sizeof(logbuf), "[warning] MQTT message ignored: direction is not MOSI");
+				logprint(logbuf);
+				return;
+            }
+            type = topics[4];
+        } else {
+            type = topics[3];
+        }
 		
 		char buf[REPLY_LEN] = {};
 		if (!convert_from(type, (char *)message->payload, buf, REPLY_LEN)) {
@@ -1338,6 +1348,17 @@ int main(int argc, char *argv[])
                             } else {
                                 mqtt_retain = false;
                                 puts("MQTT retain messages disabled");
+                            }
+                        }
+                        if (!strcmp(token, "mqtt_sepio")) {
+                            char *retain;
+                            retain = strtok(NULL, "\t =\n\r");
+                            if (!strcmp(retain, "true")) {
+                                mqtt_sepio = true;
+                                puts("MQTT separate in/out topcis enabled");
+                            } else {
+                                mqtt_sepio = false;
+                                puts("MQTT separate in/out topcis disabled");
                             }
                         }
                     }

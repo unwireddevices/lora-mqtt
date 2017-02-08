@@ -10,6 +10,7 @@
 #include "utils.h"
 
 bool mqtt_retain = false;
+bool mqtt_sepio = false;
 int mqtt_qos = 1;
 
 static int mqtt_mid = 0;
@@ -50,12 +51,15 @@ void publish_mqtt_message(mosquitto *mosq, const char *addr, const char *topic, 
     }
        
 	// Append an MQTT topic path to the topic from the reply
-	char *mqtt_topic = (char *)malloc(strlen(MQTT_PUBLISH_TO) + strlen(addr) + 1 + strlen(topic));
+	char *mqtt_topic = (char *)malloc(strlen(MQTT_PUBLISH_TO) + strlen(addr) + strlen(topic) + strlen("/miso") + 1);
 
 	strcpy(mqtt_topic, MQTT_PUBLISH_TO);
 	strcat(mqtt_topic, addr);
 	strcat(mqtt_topic, "/");
-	strcat(mqtt_topic, topic);
+    if (mqtt_sepio) {
+        strcat(mqtt_topic, "miso/");
+    }
+    strcat(mqtt_topic, topic);
     
     if (format == UNWDS_MQTT_ESCAPED) {
         mqtt_escape_quotes(msg);
