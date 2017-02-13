@@ -1,3 +1,5 @@
+#define _BSD_SOURCE
+
 #include "unwds-mqtt.h"
 #include "mqtt.h"
 
@@ -6,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include "utils.h"
 
@@ -149,13 +152,15 @@ void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status
     snprintf(buf, sizeof(buf), "%d", status.battery);
     strcat(msg, buf);
     
-    time_t rawtime;
-    struct tm *timeinfo;
-    time(&rawtime);
-    timeinfo = localtime(&rawtime);
+    char time[64];
+    struct timeval tv;
+    struct tm *tm;
+    gettimeofday(&tv, NULL);
+    tm = gmtime(&tv.tv_sec);
     
     strcat(msg, ", \"date\" : ");
-    strftime(buf, sizeof(buf), "\"%T %F\"", timeinfo);
+    strftime(time, sizeof(time), "\"%FT%T.%%uZ\"", tm);
+    snprintf(buf, sizeof(buf), time, tv.tv_usec);
     strcat(msg, buf);
 
     strcat(msg, " }}");
@@ -728,6 +733,23 @@ bool convert_from(char *type, char *param, char *out, int bufsize)
             }
 
             snprintf(out, bufsize, "0701%02x", baudrate);
+        }
+        else if (strstr(param, "set ") == param) {
+            param += 4; // Skip commands
+
+            if (strlen(param) > strlen("115200-8N1")) {
+                return false;
+            }
+
+            snprintf(out, bufsize, "0702");
+            
+            /* convert string to hex */
+            uint8_t k;
+            for (k = 0; k < strlen(param); k++) {
+                snprintf(out + 4 + 2*k, 3, "%02x", param[k]);
+            }
+            
+            printf("UART mode: %s, Command: %s\n", param, out);
         }
         else {
             return false;

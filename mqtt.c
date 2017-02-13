@@ -22,7 +22,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "1.7.0"
+#define VERSION "1.7.1"
 
 #define UART_POLLING_INTERVAL 100	// milliseconds
 #define QUEUE_POLLING_INTERVAL 10 	// milliseconds
@@ -1152,7 +1152,7 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
             type = topics[3];
         }
 		
-		char buf[REPLY_LEN] = {};
+		char buf[REPLY_LEN] = { 0 };
 		if (!convert_from(type, (char *)message->payload, buf, REPLY_LEN)) {
 			snprintf(logbuf, sizeof(logbuf), "[error] Convert failed. Unable to parse mqtt message: devices/lora/%s : %s, %s\n", addr, type, (char*) message->payload);
 			logprint(logbuf);
