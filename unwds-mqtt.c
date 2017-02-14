@@ -341,8 +341,13 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
                     return true;
 
                 case 1: { /* UMDK_UART_REPLY_RECEIVED */
-                    char hexbuf[255] = {};
-                    bytes_to_hex(moddata + 1, moddatalen - 1, hexbuf, false);
+                    char hexbuf[255] = { 0 };
+                    char hex[3] = { 0 };
+                    int k;
+                    for (k = 0; k < moddatalen - 1; k++) {
+                        snprintf(hex, 3, "%02x", moddata[k+1]);
+                        strcat(hexbuf, hex);
+                    }
                     add_value_pair(mqtt_msg, "type", "1");
                     add_value_pair(mqtt_msg, "msg", hexbuf);
                     return true;
