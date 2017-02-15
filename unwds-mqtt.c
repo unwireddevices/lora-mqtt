@@ -219,13 +219,19 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
 		{
 			strcpy(topic, "4btn");
             uint8_t btn = moddata[0];
+            uint8_t dir = moddata[1];
 
-            if (moddatalen != 1 || btn < 1 || btn > 4) {
+            if (moddatalen != 2) {
                 return false;
             }
 
             snprintf(buf, sizeof(buf), "%d", btn);
             add_value_pair(mqtt_msg, "btn", buf);
+            if (dir) {
+                add_value_pair(mqtt_msg, "state", "released");
+            } else {
+                add_value_pair(mqtt_msg, "state", "pressed");
+            }
             return true;
 
             break;
