@@ -18,11 +18,14 @@
 
 #include <sys/queue.h>
 
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 #include "mqtt.h"
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "1.7.1"
+#define VERSION "1.7.5"
 
 #define UART_POLLING_INTERVAL 100	// milliseconds
 #define QUEUE_POLLING_INTERVAL 10 	// milliseconds
@@ -494,7 +497,7 @@ static void serve_reply(char *str) {
 				return;
 			}
             
-            build_mqtt_message(msg, mqtt_msg, mqtt_status);           
+            build_mqtt_message(msg, mqtt_msg, mqtt_status, addr);           
             publish_mqtt_message(mosq, addr, topic, msg, (mqtt_format_t) mqtt_format);
             free(topic);
             free(msg);
@@ -520,9 +523,8 @@ static void serve_reply(char *str) {
 
 			unsigned short nodeclass = atoi(str);
 
-			snprintf(logbuf, sizeof(logbuf), "[join] Joined device with id = 0x%08X%08X and class = %c\n", 
-				(unsigned int) (nodeid >> 32), 
-				(unsigned int) (nodeid & 0xFFFFFFFF), get_node_class(nodeclass));
+			snprintf(logbuf, sizeof(logbuf), "[join] Joined device with id = 0x%" PRIx64 " and class = %c\n", 
+				     nodeid, get_node_class(nodeclass));
 			logprint(logbuf);
             
             mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
@@ -535,7 +537,7 @@ static void serve_reply(char *str) {
             mqtt_status_t status = { 0 };
             
             char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
-            build_mqtt_message(msg, mqtt_msg, status);           
+            build_mqtt_message(msg, mqtt_msg, status, addr);           
             publish_mqtt_message(mosq, addr, "device", msg, (mqtt_format_t) mqtt_format);
             free(msg);
             free(mqtt_msg);
@@ -548,8 +550,8 @@ static void serve_reply(char *str) {
 				if (e->num_pending) {
 					/* Notify gate about pending messages */
 					pthread_mutex_lock(&mutex_uart);
-					dprintf(uart, "%c%08X%08X%02x\r", CMD_HAS_PENDING, 
-						(unsigned int) (nodeid >> 32), (unsigned int) (nodeid & 0xFFFFFFFF), e->num_pending);
+					dprintf(uart, "%c%" PRIx64 "%02x\r", CMD_HAS_PENDING, 
+						    nodeid, e->num_pending);
 					pthread_mutex_unlock(&mutex_uart);	
 				}				
 			}
@@ -573,9 +575,7 @@ static void serve_reply(char *str) {
 				break;
 
 			if (kick_device(nodeid)) {
-				snprintf(logbuf, sizeof(logbuf), "[kick] Device with id = 0x%08X%08X kicked due to long silence\n", 
-					(unsigned int) (nodeid >> 32), 
-					(unsigned int) (nodeid & 0xFFFFFFFF));
+				snprintf(logbuf, sizeof(logbuf), "[kick] Device with id = 0x%" PRIx64 " kicked due to long silence\n", nodeid);
 				logprint(logbuf);
                 
                 mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
@@ -584,7 +584,7 @@ static void serve_reply(char *str) {
                 mqtt_status_t status = { 0 };
                 
                 char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
-                build_mqtt_message(msg, mqtt_msg, status);           
+                build_mqtt_message(msg, mqtt_msg, status, addr);           
                 publish_mqtt_message(mosq, addr, "device", msg, (mqtt_format_t) mqtt_format);
                 free(msg);
                 free(mqtt_msg);
@@ -608,9 +608,7 @@ static void serve_reply(char *str) {
 				return;
 			}
 
-			snprintf(logbuf, sizeof(logbuf), "[ack] ACK received from %08X%08X\n", 
-				(unsigned int) (nodeid >> 32), 
-				(unsigned int) (nodeid & 0xFFFFFFFF));
+			snprintf(logbuf, sizeof(logbuf), "[ack] ACK received from %" PRIx64 "\n", nodeid);
 			logprint(logbuf);
 
 			pending_item_t *e = pending_to_nodeid(nodeid);
@@ -660,8 +658,7 @@ static void serve_reply(char *str) {
 			if (e != NULL) {
 				/* Check if there's pending frames for this class A device */
 				if (e->nodeclass == LS_ED_CLASS_A && e->num_pending > 0) {
-					snprintf(logbuf, sizeof(logbuf), "[pending] Gate requested next pending frame for 0x%08X%08X\n", 
-										(unsigned int) (nodeid >> 32), (unsigned int) (nodeid & 0xFFFFFFFF));
+					snprintf(logbuf, sizeof(logbuf), "[pending] Gate requested next pending frame for 0x%" PRIx64 "\n", nodeid);
 					logprint(logbuf);					
 
 					pthread_mutex_lock(&mutex_pending);
@@ -677,7 +674,7 @@ static void serve_reply(char *str) {
 
 static void invite_mote(uint64_t addr) 
 {
-	snprintf(logbuf, sizeof(logbuf), "[inv] Sending invitation to node with address 0x%08X%08X\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
+	snprintf(logbuf, sizeof(logbuf), "[inv] Sending invitation to node with address 0x%" PRIx64 "\n", addr);
 	logprint(logbuf);
     
     mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
@@ -687,17 +684,17 @@ static void invite_mote(uint64_t addr)
     mqtt_status_t status = { 0 };
     
     char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
-    build_mqtt_message(msg, mqtt_msg, status);
-
+    
     char hexbuf[40];
-    snprintf(hexbuf, sizeof(hexbuf), "%08X%08X", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
+    snprintf(hexbuf, sizeof(hexbuf), "%" PRIx64, addr);
+    build_mqtt_message(msg, mqtt_msg, status, hexbuf);
     publish_mqtt_message(mosq, hexbuf, "device", msg, (mqtt_format_t) mqtt_format);
 
     free(msg);
     free(mqtt_msg);
 
 	pthread_mutex_lock(&mutex_uart);
-	dprintf(uart, "%c%08X%08X\r", CMD_INVITE, (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
+	dprintf(uart, "%c%" PRIx64 "\r", CMD_INVITE, addr);
 	pthread_mutex_unlock(&mutex_uart);
 }
 
@@ -731,8 +728,7 @@ static void* pending_worker(void *arg) {
 			/* Must wait for device to join before sending messages */
 			if (e->nodeclass == LS_ED_CLASS_C && e->has_been_invited) {
 				if (e->num_retries > NUM_RETRIES_INV) {
-					snprintf(logbuf, sizeof(logbuf), "[fail] Unable to invite node 0x%08X%08X to network after %u attempts, giving up\n", 
-						(unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF), NUM_RETRIES_INV);
+					snprintf(logbuf, sizeof(logbuf), "[fail] Unable to invite node 0x%" PRIx64 " to network after %u attempts, giving up\n", e->nodeid, NUM_RETRIES_INV);
 					logprint(logbuf);
 
                     mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
@@ -742,10 +738,10 @@ static void* pending_worker(void *arg) {
                     mqtt_status_t status = { 0 };
                     
                     char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
-                    build_mqtt_message(msg, mqtt_msg, status);
-
+                    
                     char hexbuf[40];
-                    snprintf(hexbuf, 40, "%08X%08X", (unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF));
+                    snprintf(hexbuf, 40, "%" PRIx64, e->nodeid);
+                    build_mqtt_message(msg, mqtt_msg, status, hexbuf);
                     publish_mqtt_message(mosq, hexbuf, "device", msg, (mqtt_format_t) mqtt_format);
 
                     free(msg);
@@ -773,8 +769,8 @@ static void* pending_worker(void *arg) {
 
 			if (current - e->last_msg > RETRY_TIMEOUT_S) {
 				if (e->num_retries > NUM_RETRIES) {
-					snprintf(logbuf, sizeof(logbuf), "[fail] Unable to send message to 0x%08X%08X after %u attempts, giving up\n", 
-						(unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF), NUM_RETRIES);
+					snprintf(logbuf, sizeof(logbuf), "[fail] Unable to send message to 0x%" PRIx64 " after %u attempts, giving up\n", 
+						      e->nodeid, NUM_RETRIES);
 					logprint(logbuf);
                     
                     mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
@@ -784,10 +780,9 @@ static void* pending_worker(void *arg) {
                     mqtt_status_t status = { 0 };
                     
                     char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
-                    build_mqtt_message(msg, mqtt_msg, status);
-
                     char hexbuf[40];
-                    snprintf(hexbuf, 40, "%08X%08X", (unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF));
+                    snprintf(hexbuf, 40, "%" PRIx64, e->nodeid);
+                    build_mqtt_message(msg, mqtt_msg, status, hexbuf);
                     publish_mqtt_message(mosq, hexbuf, "device", msg, (mqtt_format_t) mqtt_format);
 
                     free(msg);
@@ -803,9 +798,9 @@ static void* pending_worker(void *arg) {
 				if (!m_peek(&e->pending_fifo, buf)) /* Peek message from queue but don't remove. Will be removed on acknowledge */
 					continue;
 
-				snprintf(logbuf, sizeof(logbuf), "[pending] [%d/%d] Sending message to 0x%08X%08X: %s\n", 
+				snprintf(logbuf, sizeof(logbuf), "[pending] [%d/%d] Sending message to 0x%" PRIx64 ": %s\n", 
 					e->num_retries + 1, (e->num_retries < NUM_RETRIES_BEFORE_INVITE) ? NUM_RETRIES_BEFORE_INVITE : NUM_RETRIES,
-					(unsigned int) (e->nodeid >> 32), (unsigned int) (e->nodeid & 0xFFFFFFFF), buf);
+					e->nodeid, buf);
 				logprint(logbuf);
 
 				e->num_retries++;
@@ -1014,14 +1009,13 @@ static void devices_list(bool internal)
 
 static void message_to_mote(uint64_t addr, char *payload) 
 {
-	snprintf(logbuf, sizeof(logbuf), "[gate] Sending individual message to the mote with address \"%08X%08X\": \"%s\"\n", 
-					(unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF), 
-					payload);	
+	snprintf(logbuf, sizeof(logbuf), "[gate] Sending individual message to the mote with address \"%" PRIx64 "\": \"%s\"\n", 
+					addr, payload);	
 	logprint(logbuf);
 
 	pending_item_t *e = pending_to_nodeid(addr);
 	if (e == NULL) {
-		snprintf(logbuf, sizeof(logbuf), "[error] Mote with id = %08X%08X is not in network, an invite will be sent\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
+		snprintf(logbuf, sizeof(logbuf), "[error] Mote with id = %" PRIx64 " is not in network, an invite will be sent\n", addr);
 		logprint(logbuf);
         mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
         memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
@@ -1030,10 +1024,9 @@ static void message_to_mote(uint64_t addr, char *payload)
         mqtt_status_t status = { 0 };
                     
         char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
-        build_mqtt_message(msg, mqtt_msg, status);
-
         char hexbuf[40];
-        snprintf(hexbuf, sizeof(hexbuf), "%08X%08X", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
+        snprintf(hexbuf, sizeof(hexbuf), "%" PRIx64, addr);
+        build_mqtt_message(msg, mqtt_msg, status, hexbuf);
         publish_mqtt_message(mosq, hexbuf, "device", msg, (mqtt_format_t) mqtt_format);
 
         free(msg);
@@ -1050,11 +1043,11 @@ static void message_to_mote(uint64_t addr, char *payload)
 
 	/* Enqueue the frame as a gate command */
 	char buf[REPLY_LEN] = {};
-	snprintf(buf, sizeof(buf), "%c%08X%08X%s", CMD_IND, (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF), payload);
+	snprintf(buf, sizeof(buf), "%c%" PRIx64 "%s", CMD_IND, addr, payload);
 
 	pthread_mutex_lock(&mutex_pending);
 	if (!m_enqueue(&e->pending_fifo, buf)) {
-		snprintf(logbuf, sizeof(logbuf), "[error] Out of memory when adding message to downlink queue for mote with id %08X%08X!\n", (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF));
+		snprintf(logbuf, sizeof(logbuf), "[error] Out of memory when adding message to downlink queue for mote with id %" PRIx64 "!\n", addr);
 		logprint(logbuf);
 		pthread_mutex_unlock(&mutex_pending);
 		return;
@@ -1067,7 +1060,7 @@ static void message_to_mote(uint64_t addr, char *payload)
 		
 		/* Notify gate about pending messages */
 		pthread_mutex_lock(&mutex_uart);
-		dprintf(uart, "%c%08X%08X%02x\r", CMD_HAS_PENDING, (unsigned int) (addr >> 32), (unsigned int) (addr & 0xFFFFFFFF), e->num_pending);
+		dprintf(uart, "%c%" PRIx64 "%02x\r", CMD_HAS_PENDING, addr, e->num_pending);
 		pthread_mutex_unlock(&mutex_uart);		
 	}
 

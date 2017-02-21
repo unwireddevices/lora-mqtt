@@ -40,7 +40,7 @@ extern int mqtt_qos;
 bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *msg);
 bool convert_from(char *type, char *param, char *out, int bufsize);
 void publish_mqtt_message(mosquitto *mosq, const char *addr, const char *topic, char *msg, const mqtt_format_t format);
-void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status_t status);
+void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status_t status, const char *addr);
 void add_value_pair(mqtt_msg_t *msg, char const *name, char const *value);
 
 #endif

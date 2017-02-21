@@ -99,7 +99,7 @@ void publish_mqtt_message(mosquitto *mosq, const char *addr, const char *topic, 
 	free(mqtt_topic);
 }
 
-void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status_t status) {   
+void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status_t status, const char *addr) {   
     bool needs_quotes = 0;
     
     strcpy(msg, "{ \"data\": { ");
@@ -138,9 +138,12 @@ void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status
         }
     }
     
-    strcat(msg, ", \"status\": { \"rssi\" : ");
-    
     char buf[50];
+    strcat(msg, ", \"status\": { \"devEUI\" : ");
+    snprintf(buf, sizeof(buf), "%s", addr);
+    strcat(msg, buf);
+    
+    strcat(msg, ", \"temperature\" : ");
     snprintf(buf, sizeof(buf), "%d", status.rssi);
     strcat(msg, buf);
     
