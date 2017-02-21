@@ -143,15 +143,15 @@ void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status
     snprintf(buf, sizeof(buf), "%s", addr);
     strcat(msg, buf);
     
-    strcat(msg, ", \"temperature\" : ");
+    strcat(msg, ", \"rssi\": ");
     snprintf(buf, sizeof(buf), "%d", status.rssi);
     strcat(msg, buf);
     
-    strcat(msg, ", \"temperature\" : ");
+    strcat(msg, ", \"temperature\": ");
     snprintf(buf, sizeof(buf), "%d", status.temperature);
     strcat(msg, buf);
     
-    strcat(msg, ", \"battery\" : ");
+    strcat(msg, ", \"battery\": ");
     snprintf(buf, sizeof(buf), "%d", status.battery);
     strcat(msg, buf);
     
@@ -161,7 +161,7 @@ void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status
     gettimeofday(&tv, NULL);
     tm = gmtime(&tv.tv_sec);
     
-    strcat(msg, ", \"date\" : ");
+    strcat(msg, ", \"date\": ");
     strftime(time, sizeof(time), "\"%FT%T.%%uZ\"", tm);
     snprintf(buf, sizeof(buf), time, tv.tv_usec);
     strcat(msg, buf);
