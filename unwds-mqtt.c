@@ -651,6 +651,9 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
  */
 bool convert_from(char *type, char *param, char *out, int bufsize)
 {
+/*
+ * GPIO
+ */ 
     if (strcmp(type, "gpio") == 0) {
         if (strstr(param, "set ") == param) {
             param += 4; // skip command
@@ -700,11 +703,17 @@ bool convert_from(char *type, char *param, char *out, int bufsize)
             snprintf(out, bufsize, "01%02x", gpio_cmd);
         }
     }
+/*
+ * GPS
+ */ 
     else if (strcmp(type, "gps") == 0) {
         if (strstr(param, "get") == param) {
             snprintf(out, bufsize, "0300");
         }
     }
+/*
+ * LMT01
+ */ 
     else if (strcmp(type, "lmt01") == 0) {
         if (strstr(param, "set_period ") == param) {
             param += 11;    // Skip command
@@ -724,6 +733,9 @@ bool convert_from(char *type, char *param, char *out, int bufsize)
 		     snprintf(out, bufsize, "0602");*/
         }
     }
+/*
+ * 6ADC
+ */ 
     else if (strcmp(type, "6adc") == 0) {
         if (strstr(param, "set_period ") == param) {
             param += 11;    // Skip command
@@ -755,6 +767,9 @@ bool convert_from(char *type, char *param, char *out, int bufsize)
             snprintf(out, bufsize, "0a03%02x", lines_en);
         }
     }
+/*
+ * UART
+ */ 
     else if (strcmp(type, "uart") == 0) {
         if (strstr(param, "send ") == param) {
             uint8_t bytes[200] = {};
@@ -798,6 +813,9 @@ bool convert_from(char *type, char *param, char *out, int bufsize)
             return false;
         }
     }
+/*
+ * SHT21
+ */ 
     else if (strcmp(type, "sht21") == 0) {
         if (strstr(param, "set_period ") == param) {
             param += 11;    // Skip command
@@ -816,6 +834,9 @@ bool convert_from(char *type, char *param, char *out, int bufsize)
              snprintf(out, bufsize, "0802%02x", i2c);
         }
     }
+/*
+ * LPS331
+ */ 
 	else if (strcmp(type, "lps331") == 0) {
         if (strstr(param, "set_period ") == param) {
             param += 11;    // Skip command
@@ -834,11 +855,17 @@ bool convert_from(char *type, char *param, char *out, int bufsize)
              snprintf(out, bufsize, "0b02%02x", i2c);
         }
     }
+/*
+ * ECHO
+ */ 
 	else if (strcmp(type, "echo") == 0) {
         if (strstr(param, "get") == param) {
             snprintf(out, bufsize, "0d00");
         }
     }
+/*
+ * OPT3001
+ */ 
     else if (strcmp(type, "opt3001") == 0) {
         if (strstr(param, "set_period ") == param) {
             param += 11;    // Skip command
@@ -855,6 +882,20 @@ bool convert_from(char *type, char *param, char *out, int bufsize)
              uint8_t i2c = atoi(param);
 
              snprintf(out, bufsize, "0f02%02x", i2c);
+        }
+    }
+/*
+ * BME280
+ */ 
+    else if (strcmp(type, "bme280") == 0) {
+        if (strstr(param, "set_period ") == param) {
+            param += 11;    // Skip command
+
+            uint8_t period = atoi(param);
+            snprintf(out, bufsize, "1100%02x", period);
+        }
+        else if (strstr(param, "get") == param) {
+            snprintf(out, bufsize, "1101");
         }
     }
     else {
