@@ -297,27 +297,20 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
 		}
 
         case 6: /* LMT01 */ {
-			if (moddatalen < 2) {
-                return false;
-            }
-
-            /*puts("moddata: ");
-               int j;
-               for (j = 0; j < moddatalen; j++) {
-                printf("%02x", moddata[j]);
-               }
-               puts("");*/
-
             strcpy(topic, "lmt01");
 
-            if (strcmp((const char *)moddata, "ok") == 0) {
-                add_value_pair(mqtt_msg, "msg", "ok");
+            if (moddatalen == 1) {
+                if (moddata[0] == 0) {
+                    add_value_pair(mqtt_msg, "msg", "ok");
+                } else {
+                    add_value_pair(mqtt_msg, "msg", "error");
+                }
                 return true;
             }
 
             int i;
             for (i = 0; i < 8; i += 2) {
-                uint32_t sensor = 0;
+                int16_t sensor = 0;
                 if (is_big_endian()) {
                     sensor = (moddata[i + 1] << 8) | moddata[i]; /* We're in big endian there, swap bytes */
                 }
@@ -332,7 +325,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
                     add_value_pair(mqtt_msg, ch, "null");
                 }
                 else {
-                    snprintf(buf, sizeof(buf), "%.3f", (float) (sensor / 16.0) - 100.0);
+                    snprintf(buf, sizeof(buf), "%d.%d", sensor/10, abs(sensor%10));
                     add_value_pair(mqtt_msg, ch, buf);
                 }
             }
@@ -387,25 +380,18 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
 		}
 		case 8: /* SHT21 */
 		{
-            if (moddatalen < 2) {
-                return false;
-            }
-
-            /*puts("moddata: ");
-               int j;
-               for (j = 0; j < moddatalen; j++) {
-                printf("%02x", moddata[j]);
-               }
-               puts("");*/
-
             strcpy(topic, "sht21");
 
-            if (strcmp((const char*)moddata, "ok") == 0) {
-                add_value_pair(mqtt_msg, "msg", "ok");
+            if (moddatalen == 1) {
+                if (moddata[0] == 0) {
+                    add_value_pair(mqtt_msg, "msg", "ok");
+                } else {
+                    add_value_pair(mqtt_msg, "msg", "error");
+                }
                 return true;
             }
 
-			uint16_t temp = 0;
+			int16_t temp = 0;
 			if (is_big_endian()) {
 				temp = (moddata[1] << 8) | moddata[0]; /* We're in big endian there, swap bytes */
 			}
@@ -413,11 +399,12 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
 				temp = (moddata[0] << 8) | moddata[1];
 			}
 
-			uint8_t humid = moddata[2];
-            snprintf(buf, sizeof(buf), "%.02f", (float) (temp / 16.0 - 100));
+			int16_t humid = moddata[2];
+            
+            snprintf(buf, sizeof(buf), "%d.%d", temp/10, abs(temp%10));
             add_value_pair(mqtt_msg, "temp", buf);
             
-            snprintf(buf, sizeof(buf), "%d", humid);
+            snprintf(buf, sizeof(buf), "%d.%d", humid/10, humid%10);
             add_value_pair(mqtt_msg, "humid", buf);
             
 			return true;
@@ -441,16 +428,13 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
             strcpy(topic, "6adc");
 
 			if (moddatalen == 1) {
-				uint8_t fail = moddata[0];
-
-				if (fail) {
-                    add_value_pair(mqtt_msg, "msg", "fail");
-				} else {
+                if (moddata[0] == 0) {
                     add_value_pair(mqtt_msg, "msg", "ok");
-				}
-
-				return true;
-			}
+                } else {
+                    add_value_pair(mqtt_msg, "msg", "error");
+                }
+                return true;
+            }
 
             int i;
             for (i = 0; i < 16; i += 2) {
@@ -477,14 +461,14 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
         }
         case 11: /* LPS331 */
 		{
-            if (moddatalen < 2) {
-                return false;
-            }
-
             strcpy(topic, "lps331");
 
-            if (strcmp((const char*)moddata, "ok") == 0) {
-                add_value_pair(mqtt_msg, "msg", "ok");
+            if (moddatalen == 1) {
+                if (moddata[0] == 0) {
+                    add_value_pair(mqtt_msg, "msg", "ok");
+                } else {
+                    add_value_pair(mqtt_msg, "msg", "error");
+                }
                 return true;
             }
 
@@ -512,7 +496,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
                 pressure += (moddata[2] << 8);
             }
 
-            snprintf(buf, sizeof(buf), "%.1f", ((float)temperature / 16.0) - 100.0);
+            snprintf(buf, sizeof(buf), "%d.%d", temperature/10, abs(temperature%10));
             add_value_pair(mqtt_msg, "temperature", buf);
             snprintf(buf, sizeof(buf), "%d", pressure);
             add_value_pair(mqtt_msg, "pressure", buf);
@@ -523,8 +507,12 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
         case 12: { /* 4counter */
             strcpy(topic, "4counter");
 
-            if (strcmp((const char*)moddata, "ok") == 0) {
-                add_value_pair(mqtt_msg, "msg", "ok");
+            if (moddatalen == 1) {
+                if (moddata[0] == 0) {
+                    add_value_pair(mqtt_msg, "msg", "ok");
+                } else {
+                    add_value_pair(mqtt_msg, "msg", "error");
+                }
                 return true;
             }
 
@@ -585,14 +573,14 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
 		}
 		case 15: /* OPT3001 */
 		{
-            if (moddatalen < 2) {
-                return false;
-            }
-
             strcpy(topic, "opt3001");
 
-            if (strcmp((const char*)moddata, "ok") == 0) {
-                add_value_pair(mqtt_msg, "msg", "ok");
+            if (moddatalen == 1) {
+                if (moddata[0] == 0) {
+                    add_value_pair(mqtt_msg, "msg", "ok");
+                } else {
+                    add_value_pair(mqtt_msg, "msg", "error");
+                }
                 return true;
             }
 
@@ -606,6 +594,47 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
 
             snprintf(buf, sizeof(buf), "%d", lum);
             add_value_pair(mqtt_msg, "luminocity", buf);
+			
+			return true;
+		}
+        
+        case 17: /* BME280 */
+		{
+            strcpy(topic, "bme280");
+
+            if (moddatalen == 1) {
+                if (moddata[0] == 0) {
+                    add_value_pair(mqtt_msg, "msg", "ok");
+                } else {
+                    add_value_pair(mqtt_msg, "msg", "error");
+                }
+                return true;
+            }
+
+			int16_t temp = 0;
+            int16_t hum = 0;
+            uint16_t press = 0;
+            
+			if (is_big_endian()) {
+                /* We're in big endian here, swap bytes */
+				temp = (moddata[1] << 8) | moddata[0];
+                hum = (moddata[3] << 8) | moddata[2];
+                press = (moddata[5] << 8) | moddata[4];
+			}
+			else {
+				temp = (moddata[0] << 8) | moddata[1];
+                hum = (moddata[2] << 8) | moddata[3];
+                press = (moddata[4] << 8) | moddata[5];
+			}
+
+            snprintf(buf, sizeof(buf), "%d.%d", temp/10, abs(temp%10));
+            add_value_pair(mqtt_msg, "temperature", buf);
+            
+            snprintf(buf, sizeof(buf), "%d.%d", hum/10, hum%10);
+            add_value_pair(mqtt_msg, "humidity", buf);
+            
+            snprintf(buf, sizeof(buf), "%d", press);
+            add_value_pair(mqtt_msg, "pressure", buf);
 			
 			return true;
 		}
