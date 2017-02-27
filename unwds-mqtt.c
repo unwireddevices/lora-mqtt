@@ -322,7 +322,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
                 char ch[3] = {};
                 snprintf(ch, sizeof(ch), "s%d", (i / 2) + 1);
 
-                if (sensor == 0xFFFF) {
+                if (sensor == 0x7FFF) {
                     add_value_pair(mqtt_msg, ch, "null");
                 }
                 else {
