@@ -141,7 +141,7 @@ void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status
     
     char buf[50];
     strcat(msg, ", \"status\": { \"devEUI\" : ");
-    snprintf(buf, sizeof(buf), "%s", addr);
+    snprintf(buf, sizeof(buf), "\"%s\"", addr);
     strcat(msg, buf);
     
     strcat(msg, ", \"rssi\": ");
