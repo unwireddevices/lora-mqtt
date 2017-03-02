@@ -257,11 +257,13 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
 
                     uint8_t *bytes = (uint8_t *) (moddata + 1);
 
-                    float lat, lon;
+                    int lat, lat_d, lon, lon_d;
 
                     /* This code is endian-safe */
-                    lat = (bytes[0] + (bytes[1] << 8) + (bytes[2] << 16)) / 1000.0f;
-                    lon = (bytes[3] + (bytes[4] << 8) + (bytes[5] << 16)) / 1000.0f;
+                    lat = bytes[0] + (bytes[1] << 8);
+                    lat_d = bytes[2];
+                    lon = bytes[3] + (bytes[4] << 8);
+                    lon_d = bytes[5];
 
                     /* Apply sign bits from reply */
                     if ((moddata[0] >> 5) & 1) {
@@ -273,9 +275,9 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
                     }
 
                     add_value_pair(mqtt_msg, "valid", "true");
-                    snprintf(buf, sizeof(buf), "%03.3f", lat);
+                    snprintf(buf, sizeof(buf), "%03d.%d", lat, lat_d);
                     add_value_pair(mqtt_msg, "lat", buf);
-                    snprintf(buf, sizeof(buf), "%04.3f", lon);
+                    snprintf(buf, sizeof(buf), "%04d.%d", lon, lon_d);
                     add_value_pair(mqtt_msg, "lon", buf);
                     break;
 				}
