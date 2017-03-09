@@ -120,11 +120,9 @@ void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status
         strcat(msg, "\": ");
         
         char *endptr = NULL;
-        float f = strtof(mqtt_msg[i].value, &endptr);
+        strtof(mqtt_msg[i].value, &endptr);
         
-        if ( &mqtt_msg[i].value[strlen(mqtt_msg[i].value)] == endptr  ) || \
-             !strcmp(mqtt_msg[i].value, "true") || !strcmp(mqtt_msg[i].value, "false") || \
-             !strcmp(mqtt_msg[i].value, "null")) {
+        if ( &mqtt_msg[i].value[strlen(mqtt_msg[i].value)] == endptr  ) {
             needs_quotes = 0;
         } else {
             needs_quotes = 1;
