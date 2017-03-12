@@ -1,0 +1,17 @@
+#!/bin/sh /etc/rc.common
+
+# OpenWRT lora-mqtt init script
+
+START=98
+
+start() {
+    echo start
+    service_start /usr/bin/mqtt -d
+    service_start /usr/bin/mqtt -d
+}
+
+stop() {
+    echo stop
+    service_stop /usr/bin/mqtt
+    service_stop /usr/bin/mqtt
+}
