@@ -49,7 +49,7 @@ static void mqtt_escape_quotes(char *msg) {
     free(buf);
 }
 
-void publish_mqtt_message(mosquitto *mosq, const char *addr, const char *topic, char *msg, const mqtt_format_t format) {
+void publish_mqtt_message(struct mosquitto *mosq, const char *addr, const char *topic, char *msg, const mqtt_format_t format) {
     if (!mosq) {
         return;
     }
@@ -180,6 +180,19 @@ void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status
  */
 bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg)
 {
+    int num_modules = sizeof(unwds_modules_list)/sizeof(unwds_module_desc_t);
+    
+    int i = 0;
+    for (i = 0; i<num_modules; i++) {
+        if (unwds_modules_list[i].id == modid) {
+            if (unwds_modules_list[i].reply) {
+                umdk_reply_ptr = unwds_modules_list[i].reply;
+                return umdk_reply_ptr(moddata, moddatalen, topic, mqtt_msg);
+            }
+        }
+    }
+    return false;
+#if 0
     switch (modid) {
         case UNWDS_GPIO_MODULE_ID: { /* GPIO */
             if (!umdk_gpio_reply(moddata, moddatalen, topic, mqtt_msg)) {
@@ -267,6 +280,7 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
     }
 
     return true;
+#endif
 }
 
 /**
@@ -274,6 +288,20 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
  */
 bool convert_from(char *type, char *param, char *out, int bufsize)
 {
+    int num_modules = sizeof(unwds_modules_list)/sizeof(unwds_module_desc_t);
+    
+    int i = 0;
+    for (i = 0; i<num_modules; i++) {
+        if (strcmp(type, unwds_modules_list[i].name) == 0) {
+            if (unwds_modules_list[i].cmd) {
+                umdk_command_ptr = unwds_modules_list[i].cmd;
+                umdk_command_ptr(param, out, bufsize);
+                return true;
+            }
+        }
+    }
+    return false;
+#if 0
 /*
  * GPIO
  */ 
@@ -339,5 +367,6 @@ bool convert_from(char *type, char *param, char *out, int bufsize)
     }
 
     return true;
+#endif
 }
 

@@ -7,8 +7,8 @@
 # Modify your Options here
 # After that, please "make clean" and "make" to re-compile your code
 
-# CFLAGS=
-CXXFLAGS = -v -O1 -Wall -Werror -I./include -I./modules/include
+CFLAGS = -v -O1 -Wall -Werror -I./include -I./modules/include
+# CXXFLAGS = 
 LDFLAGS = -lcares -lcrypto -lssl -lmosquitto -lpthread -pthread
 
 # do not use the default `rv` option

@@ -18,6 +18,8 @@
 #ifndef UNWDS_IDS_H
 #define UNWDS_IDS_H
 
+#include "unwds-modules.h"
+
 typedef enum {
     UNWDS_GPIO_MODULE_ID = 1,
     UNWDS_4BTN_MODULE_ID,
@@ -36,6 +38,13 @@ typedef enum {
     UNWDS_OPT3001_MODULE_ID,
     UNWDS_DALI_MODULE_ID,
     UNWDS_BME280_MODULE_ID,
-} UNWDS_MODULE_IDS_t;
+} unwds_module_ids_t;
+
+typedef struct {
+    uint8_t id;
+    char    name[20];
+    void*   cmd;
+    void*   reply;
+} unwds_module_desc_t;
 
 #endif
