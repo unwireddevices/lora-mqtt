@@ -25,7 +25,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "1.8.1"
+#define VERSION "1.9.0"
 
 #define UART_POLLING_INTERVAL 100	// milliseconds
 #define QUEUE_POLLING_INTERVAL 10 	// milliseconds
@@ -470,7 +470,7 @@ static void serve_reply(char *str) {
 
 			uint8_t bytes[REPLY_LEN] = {};
 			if (!hex_to_bytes(str,  (uint8_t *) &bytes, false)) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse payload bytes gate reply: \"%s\" | len: %d\n", str, strlen(str));
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse payload bytes gate reply: \"%s\" | len: %zu\n", str, strlen(str));
 				logprint(logbuf);
 				return;
 			}
@@ -1260,7 +1260,7 @@ int main(int argc, char *argv[])
     }
 	
 	// fork to background if needed and create pid file
-    int pidfile;
+    int pidfile = 0;
     if (daemonize)
     {
 		snprintf(logbuf, sizeof(logbuf), "Attempting to run in the background\n");

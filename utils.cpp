@@ -21,6 +21,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <syslog.h>
+#include <time.h>
+#include <sys/time.h>
 
 #include "utils.h"
 

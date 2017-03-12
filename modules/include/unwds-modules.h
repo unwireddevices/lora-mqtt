@@ -1,0 +1,55 @@
+/*
+ * Copyright (C) 2016 Unwired Devices [info@unwds.com]
+ *
+ * This file is subject to the terms and conditions of the GNU Lesser
+ * General Public License v2.1. See the file LICENSE in the top level
+ * directory for more details.
+ */
+
+/**
+ * @defgroup    
+ * @ingroup     
+ * @brief       
+ * @{
+ * @file		unwds-modules.h
+ * @brief       functions to access unwds modules
+ * @author      Oleg Artamonov
+ */
+ 
+#ifndef UNWDS_MODULES_H
+#define UNWDS_MODULES_H
+
+#include <inttypes.h>
+
+#include "unwds-ids.h"
+#include "unwds-mqtt.h"
+
+bool umdk_4btn_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
+bool umdk_4counter_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
+bool umdk_6adc_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
+bool umdk_bme280_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
+bool umdk_gpio_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
+bool umdk_gps_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
+bool umdk_lmt01_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
+bool umdk_lps331_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
+bool umdk_opt3001_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
+bool umdk_pir_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
+bool umdk_rssiecho_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
+bool umdk_sht21_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
+bool umdk_uart_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
+
+void umdk_4btn_command(char *param, char *out, int bufsize);
+void umdk_4counter_command(char *param, char *out, int bufsize);
+void umdk_6adc_command(char *param, char *out, int bufsize);
+void umdk_bme280_command(char *param, char *out, int bufsize);
+void umdk_gpio_command(char *param, char *out, int bufsize);
+void umdk_gps_command(char *param, char *out, int bufsize);
+void umdk_lmt01_command(char *param, char *out, int bufsize);
+void umdk_lps331_command(char *param, char *out, int bufsize);
+void umdk_opt3001_command(char *param, char *out, int bufsize);
+void umdk_pir_command(char *param, char *out, int bufsize);
+void umdk_rssiecho_command(char *param, char *out, int bufsize);
+void umdk_sht21_command(char *param, char *out, int bufsize);
+void umdk_uart_command(char *param, char *out, int bufsize);
+
+#endif
