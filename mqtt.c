@@ -470,7 +470,7 @@ static void serve_reply(char *str) {
 
 			uint8_t bytes[REPLY_LEN] = {};
 			if (!hex_to_bytes(str,  (uint8_t *) &bytes, false)) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse payload bytes gate reply: \"%s\" | len: %d\n", str, strlen(str));
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse payload bytes gate reply: \"%s\" | len: %zu\n", str, strlen(str));
 				logprint(logbuf);
 				return;
 			}
