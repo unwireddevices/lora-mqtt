@@ -123,9 +123,15 @@ void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status
         char *endptr = NULL;
         strtof(mqtt_msg[i].value, &endptr);
         
+        /* numbers in JSON do not need to be escaped in quotes */
         if ( &mqtt_msg[i].value[strlen(mqtt_msg[i].value)] == endptr  ) {
             needs_quotes = 0;
         } else {
+            needs_quotes = 1;
+        }
+        
+        /* leading zeros are not allowed for regular numbers in JSON */
+        if ((mqtt_msg[i].value[0] == '0') && (mqtt_msg[i].value[1] != '.') && (mqtt_msg[i].value[1] != 0)) {
             needs_quotes = 1;
         }
         
