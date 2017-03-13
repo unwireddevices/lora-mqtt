@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=lora-mqtt
-PKG_VERSION:=1.8.1
+PKG_VERSION:=1.9.1
 PKG_RELEASE:=1
 
 # PKG_SOURCE_PROTO:=git
@@ -39,7 +39,7 @@ define Package/lora-mqtt/install
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_DIR) $(1)/etc/lora-mqtt
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/mqtt $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/bin/mqtt $(1)/usr/bin/
 	$(INSTALL_BIN) ./files/mqtt.lora.init $(1)/etc/init.d/mqtt.lora
 	$(INSTALL_CONF) ./files/mqtt.conf $(1)/etc/lora-mqtt/mqtt.conf
 endef
