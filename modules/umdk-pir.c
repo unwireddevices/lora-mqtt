@@ -24,10 +24,10 @@
 #include "unwds-modules.h"
 #include "utils.h"
 
-bool umdk_pir_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg)
+bool umdk_pir_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
-    strcpy(topic, "pir");
+    
     uint8_t pir = moddata[0];
 
     if (moddatalen != 1) {

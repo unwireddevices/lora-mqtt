@@ -26,14 +26,13 @@
 
 void umdk_gps_command(char *param, char *out, int bufsize) {
     if (strstr(param, "get") == param) {
-        snprintf(out, bufsize, "0300");
+        snprintf(out, bufsize, "00");
     }
 }
 
-bool umdk_gps_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg)
+bool umdk_gps_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
-    strcpy(topic, "gps");
 
     if (moddatalen < 1) {
         return false;

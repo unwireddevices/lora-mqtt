@@ -187,7 +187,8 @@ bool convert_to(uint8_t modid, uint8_t *moddata, int moddatalen, char *topic, mq
         if (unwds_modules_list[i].id == modid) {
             if (unwds_modules_list[i].reply) {
                 umdk_reply_ptr = unwds_modules_list[i].reply;
-                return umdk_reply_ptr(moddata, moddatalen, topic, mqtt_msg);
+                strcpy(topic, unwds_modules_list[i].name);
+                return umdk_reply_ptr(moddata, moddatalen, mqtt_msg);
             }
         }
     }
@@ -206,7 +207,10 @@ bool convert_from(char *type, char *param, char *out, int bufsize)
         if (strcmp(type, unwds_modules_list[i].name) == 0) {
             if (unwds_modules_list[i].cmd) {
                 umdk_command_ptr = unwds_modules_list[i].cmd;
-                umdk_command_ptr(param, out, bufsize);
+                /* first byte - two characters with ASCII HEX - is a module ID */
+                snprintf(out, 3, "%02x", unwds_modules_list[i].id);
+                /* the rest is data */
+                umdk_command_ptr(param, out + 2, bufsize);
                 return true;
             }
         }

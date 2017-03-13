@@ -28,18 +28,17 @@ void umdk_bme280_command(char *param, char *out, int bufsize) {
         param += strlen("set_period ");    // Skip command
 
         uint8_t period = atoi(param);
-        snprintf(out, bufsize, "1100%02x", period);
+        snprintf(out, bufsize, "00%02x", period);
     }
     else if (strstr(param, "get") == param) {
-        snprintf(out, bufsize, "1101");
+        snprintf(out, bufsize, "01");
     }
 }
 
-bool umdk_bme280_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg)
+bool umdk_bme280_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
-    strcpy(topic, "bme280");
-
+    
     if (moddatalen == 1) {
         if (moddata[0] == 0) {
             add_value_pair(mqtt_msg, "msg", "ok");

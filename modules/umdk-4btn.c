@@ -24,11 +24,10 @@
 #include "unwds-modules.h"
 #include "utils.h"
 
-bool umdk_4btn_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg)
+bool umdk_4btn_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
-    
-    strcpy(topic, "4btn");
+
     uint8_t btn = moddata[0];
     uint8_t dir = moddata[1];
 

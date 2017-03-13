@@ -24,19 +24,19 @@
 #include "unwds-ids.h"
 #include "unwds-mqtt.h"
 
-bool umdk_4btn_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
-bool umdk_4counter_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
-bool umdk_6adc_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
-bool umdk_bme280_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
-bool umdk_gpio_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
-bool umdk_gps_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
-bool umdk_lmt01_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
-bool umdk_lps331_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
-bool umdk_opt3001_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
-bool umdk_pir_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
-bool umdk_rssiecho_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
-bool umdk_sht21_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
-bool umdk_uart_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg);
+bool umdk_4btn_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_4counter_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_6adc_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_bme280_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_gpio_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_gps_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_lmt01_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_lps331_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_opt3001_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_pir_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_rssiecho_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_sht21_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_uart_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 
 void umdk_4counter_command(char *param, char *out, int bufsize);
 void umdk_6adc_command(char *param, char *out, int bufsize);
@@ -69,7 +69,7 @@ static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_BME280_MODULE_ID,  .name = "bme280",  .cmd = &umdk_bme280_command,     .reply = &umdk_bme280_reply   },
 };
 
-bool (*umdk_reply_ptr)(uint8_t*, int, char*, mqtt_msg_t*);
+bool (*umdk_reply_ptr)(uint8_t*, int, mqtt_msg_t*);
 void (*umdk_command_ptr)(char*, char*, int);
 
 #endif

@@ -44,7 +44,7 @@ void umdk_gpio_command(char *param, char *out, int bufsize) {
 
         printf("[mqtt-gpio] Set command | Pin: %d, value: %d, cmd: 0x%02x\n", pin, value, gpio_cmd);
 
-        snprintf(out, bufsize, "01%02x", gpio_cmd);
+        snprintf(out, bufsize, "%02x", gpio_cmd);
     }
     else if (strstr(param, "get ") == param) {
         param += strlen("get "); // skip command
@@ -57,7 +57,7 @@ void umdk_gpio_command(char *param, char *out, int bufsize) {
 
         printf("[mqtt-gpio] Get command | Pin: %d, cmd: 0x%02x\n", pin, gpio_cmd);
 
-        snprintf(out, bufsize, "01%02x", gpio_cmd);
+        snprintf(out, bufsize, "%02x", gpio_cmd);
     }
     else if (strstr(param, "toggle ") == param) {
         param += strlen("toggle "); // skip command
@@ -70,14 +70,13 @@ void umdk_gpio_command(char *param, char *out, int bufsize) {
 
         printf("[mqtt-gpio] Toggle command | Pin: %d, cmd: 0x%02x\n", pin, gpio_cmd);
 
-        snprintf(out, bufsize, "01%02x", gpio_cmd);
+        snprintf(out, bufsize, "%02x", gpio_cmd);
     }
 }
 
-bool umdk_gpio_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg)
+bool umdk_gpio_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     uint8_t reply_type = moddata[0];
-    strcpy(topic, "gpio");
     
     switch (reply_type) {
         case 0: { /* UNWD_GPIO_REPLY_OK_0 */

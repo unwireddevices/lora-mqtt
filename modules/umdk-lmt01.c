@@ -29,10 +29,10 @@ void umdk_lmt01_command(char *param, char *out, int bufsize) {
         param += strlen("set_period ");    // Skip command
 
         uint8_t period = atoi(param);
-        snprintf(out, bufsize, "0600%02x", period);
+        snprintf(out, bufsize, "00%02x", period);
     }
     else if (strstr(param, "get") == param) {
-        snprintf(out, bufsize, "0601");
+        snprintf(out, bufsize, "01");
     }
     else if (strstr(param, "set_gpios ") == param) {
     /*	 param += strlen("set_gpios ");	// Skip command
@@ -40,14 +40,13 @@ void umdk_lmt01_command(char *param, char *out, int bufsize) {
          uint8_t gpio = 0;
          while ((gpio = strtol(param, param, 10))
 
-         snprintf(out, bufsize, "0602");*/
+         snprintf(out, bufsize, "02");*/
     }
 }
 
-bool umdk_lmt01_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg)
+bool umdk_lmt01_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
-    strcpy(topic, "lmt01");
 
     if (moddatalen == 1) {
         if (moddata[0] == 0) {

@@ -33,7 +33,7 @@ void umdk_uart_command(char *param, char *out, int bufsize) {
             return;
         }
 
-        snprintf(out, bufsize, "0700%s", hex);
+        snprintf(buf, bufsize, "00%s", hex);
     }
     else if (strstr(param, "set_baudrate ") == param) {
         param += strlen("set_baudrate "); // Skip commands
@@ -44,7 +44,7 @@ void umdk_uart_command(char *param, char *out, int bufsize) {
             return;
         }
 
-        snprintf(out, bufsize, "0701%02x", baudrate);
+        snprintf(out, bufsize, "01%02x", baudrate);
     }
     else if (strstr(param, "set ") == param) {
         param += strlen("set "); // Skip commands
@@ -53,7 +53,7 @@ void umdk_uart_command(char *param, char *out, int bufsize) {
             return;
         }
 
-        snprintf(out, bufsize, "0702");
+        snprintf(out, bufsize, "02");
         
         /* convert string to hex */
         uint8_t k;
@@ -68,11 +68,9 @@ void umdk_uart_command(char *param, char *out, int bufsize) {
     }
 }
 
-bool umdk_uart_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg)
+bool umdk_uart_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     uint8_t reply_type = moddata[0];
-
-    strcpy(topic, "uart");
 
     switch (reply_type) {
         case 0: /* UMDK_UART_REPLY_SENT */

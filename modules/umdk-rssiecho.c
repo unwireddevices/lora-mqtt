@@ -26,18 +26,16 @@
 
 void umdk_rssiecho_command(char *param, char *out, int bufsize) {
     if (strstr(param, "get") == param) {
-        snprintf(out, bufsize, "0d00");
+        snprintf(out, bufsize, "00");
     }
 }
 
-bool umdk_rssiecho_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg)
+bool umdk_rssiecho_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
     if (moddatalen < 2) {
         return false;
     }
-
-    strcpy(topic, "echo");
 
     /* Extract RSSI value */
     int16_t rssi = 0;

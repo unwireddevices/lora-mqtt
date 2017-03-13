@@ -29,17 +29,17 @@ void umdk_6adc_command(char *param, char *out, int bufsize) {
         param += strlen("set_period ");    // Skip command
 
         uint8_t period = atoi(param);
-        snprintf(out, bufsize, "0a00%02x", period);
+        snprintf(out, bufsize, "00%02x", period);
     }
     else if (strstr(param, "get") == param) {
-        snprintf(out, bufsize, "0a01");
+        snprintf(out, bufsize, "01");
     }
     else if (strstr(param, "set_gpio ") == param) {
         param += strlen("set_gpio "); // Skip command
 
         uint8_t gpio = atoi(param);
 
-        snprintf(out, bufsize, "0a02%02x", gpio);
+        snprintf(out, bufsize, "02%02x", gpio);
     }
     else if (strstr(param, "set_lines ") == param) {
         param += strlen("set_lines ");    // Skip command
@@ -52,14 +52,13 @@ void umdk_6adc_command(char *param, char *out, int bufsize) {
             }
         }
 
-        snprintf(out, bufsize, "0a03%02x", lines_en);
+        snprintf(out, bufsize, "03%02x", lines_en);
     }
 }
 
-bool umdk_6adc_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg)
+bool umdk_6adc_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
-    strcpy(topic, "6adc");
 
     if (moddatalen == 1) {
         if (moddata[0] == 0) {

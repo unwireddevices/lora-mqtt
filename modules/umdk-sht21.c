@@ -29,24 +29,23 @@ void umdk_sht21_command(char *param, char *out, int bufsize) {
         param += strlen("set_period ");    // Skip command
 
         uint8_t period = atoi(param);
-        snprintf(out, bufsize, "0800%02x", period);
+        snprintf(out, bufsize, "00%02x", period);
     }
     else if (strstr(param, "get") == param) {
-        snprintf(out, bufsize, "0801");
+        snprintf(out, bufsize, "01");
     }
     else if (strstr(param, "set_i2c ") == param) { 
          param += strlen("set_i2c ");	// Skip command
 
          uint8_t i2c = atoi(param);
 
-         snprintf(out, bufsize, "0802%02x", i2c);
+         snprintf(out, bufsize, "02%02x", i2c);
     }
 }
 
-bool umdk_sht21_reply(uint8_t *moddata, int moddatalen, char *topic, mqtt_msg_t *mqtt_msg)
+bool umdk_sht21_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
-    strcpy(topic, "sht21");
 
     if (moddatalen == 1) {
         if (moddata[0] == 0) {
