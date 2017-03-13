@@ -33,7 +33,7 @@ void umdk_uart_command(char *param, char *out, int bufsize) {
             return;
         }
 
-        snprintf(buf, bufsize, "00%s", hex);
+        snprintf(out, bufsize, "00%s", hex);
     }
     else if (strstr(param, "set_baudrate ") == param) {
         param += strlen("set_baudrate "); // Skip commands

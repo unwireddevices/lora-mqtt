@@ -74,7 +74,7 @@ bool umdk_lmt01_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             add_value_pair(mqtt_msg, ch, "null");
         }
         else {
-            snprintf(buf, sizeof(buf), "%d.%d", sensor/10, abs(sensor%10));
+            int_to_float_str(buf, sensor, 1);
             add_value_pair(mqtt_msg, ch, buf);
         }
     }

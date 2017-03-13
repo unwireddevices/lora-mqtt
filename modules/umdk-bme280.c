@@ -63,11 +63,11 @@ bool umdk_bme280_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
         hum = (moddata[2] << 8) | moddata[3];
         press = (moddata[4] << 8) | moddata[5];
     }
-
-    snprintf(buf, sizeof(buf), "%d.%d", temp/10, abs(temp%10));
+    
+    int_to_float_str(buf, temp, 1);
     add_value_pair(mqtt_msg, "temperature", buf);
     
-    snprintf(buf, sizeof(buf), "%d.%d", hum/10, hum%10);
+    int_to_float_str(buf, hum, 1);
     add_value_pair(mqtt_msg, "humidity", buf);
     
     snprintf(buf, sizeof(buf), "%d", press);

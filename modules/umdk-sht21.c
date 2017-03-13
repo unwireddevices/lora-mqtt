@@ -66,10 +66,10 @@ bool umdk_sht21_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 
     int16_t humid = moddata[2];
     
-    snprintf(buf, sizeof(buf), "%d.%d", temp/10, abs(temp%10));
+    int_to_float_str(buf, temp, 1);
     add_value_pair(mqtt_msg, "temp", buf);
     
-    snprintf(buf, sizeof(buf), "%d.%d", humid/10, humid%10);
+    int_to_float_str(buf, humid, 1);
     add_value_pair(mqtt_msg, "humid", buf);
     
     return true;

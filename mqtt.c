@@ -25,7 +25,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "1.9.0"
+#define VERSION "1.9.1"
 
 #define UART_POLLING_INTERVAL 100	// milliseconds
 #define QUEUE_POLLING_INTERVAL 10 	// milliseconds

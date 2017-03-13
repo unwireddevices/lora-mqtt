@@ -80,8 +80,9 @@ bool umdk_lps331_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
         pressure += (moddata[2] << 8);
     }
 
-    snprintf(buf, sizeof(buf), "%d.%d", temperature/10, abs(temperature%10));
+    int_to_float_str(buf, temperature, 1);
     add_value_pair(mqtt_msg, "temperature", buf);
+
     snprintf(buf, sizeof(buf), "%d", pressure);
     add_value_pair(mqtt_msg, "pressure", buf);
     

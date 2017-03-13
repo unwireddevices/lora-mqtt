@@ -22,9 +22,15 @@
 #include <stdbool.h>
 
 bool hex_to_bytes(char *hexstr, uint8_t *bytes, bool reverse_order);
+
 bool hex_to_bytesn(char *hexstr, int len, uint8_t *bytes, bool reverse_order);
+
 void bytes_to_hex(uint8_t *bytes, size_t num_bytes, char *str, bool reverse_order);
+
 bool is_big_endian(void);
+
 void logprint(char *str);
+
+void int_to_float_str(char *buf, int decimal, uint8_t precision);
 
 #endif /* LORA_STAR_UNI_UTILS_H_ */
