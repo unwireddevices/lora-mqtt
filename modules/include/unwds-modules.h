@@ -66,6 +66,7 @@ void umdk_uart_command(char *param, char *out, int bufsize);
 static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_GPIO_MODULE_ID,    .name = "gpio",    .cmd = &umdk_gpio_command,       .reply = &umdk_gpio_reply     },
     { .id = UNWDS_4BTN_MODULE_ID,    .name = "4btn",    .cmd = NULL,                     .reply = &umdk_4btn_reply     },
+    { .id = UNWDS_4COUNTER_MODULE_ID,.name = "4counter",.cmd = &umdk_4counter_command,   .reply = &umdk_4counter_reply },
     { .id = UNWDS_GPS_MODULE_ID,     .name = "gps",     .cmd = &umdk_gps_command,        .reply = &umdk_gps_reply      },
     { .id = UNWDS_LSM6DS3_MODULE_ID, .name = "lsm6ds3", .cmd = NULL,                     .reply = NULL                 },
     { .id = UNWDS_LM75_MODULE_ID,    .name = "lm75",    .cmd = NULL,                     .reply = NULL                 },
