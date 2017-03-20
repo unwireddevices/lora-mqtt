@@ -24,8 +24,8 @@
  * @ingroup
  * @brief
  * @{
- * @file	umdk-4counter.c
- * @brief   umdk-4counter message parser
+ * @file	umdk-counter.c
+ * @brief   umdk-counter message parser
  * @author  Oleg Artamonov [oleg@unwds.com]
  */
 
@@ -36,13 +36,13 @@
 #include "unwds-modules.h"
 #include "utils.h"
 
-void umdk_4counter_command(char *param, char *out, int bufsize)
+void umdk_counter_command(char *param, char *out, int bufsize)
 {
     return;
 }
 
 
-bool umdk_4counter_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
+bool umdk_counter_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
 

@@ -24,8 +24,8 @@
  * @ingroup
  * @brief
  * @{
- * @file	umdk-6adc.c
- * @brief   umdk-6adc message parser
+ * @file	umdk-adc.c
+ * @brief   umdk-adc message parser
  * @author  Eugeny Ponomarev [ep@unwds.com]
  * @author  Oleg Artamonov [oleg@unwds.com]
  */
@@ -37,7 +37,7 @@
 #include "unwds-modules.h"
 #include "utils.h"
 
-void umdk_6adc_command(char *param, char *out, int bufsize) {
+void umdk_adc_command(char *param, char *out, int bufsize) {
     if (strstr(param, "set_period ") == param) {
         param += strlen("set_period ");    // Skip command
 
@@ -69,7 +69,7 @@ void umdk_6adc_command(char *param, char *out, int bufsize) {
     }
 }
 
-bool umdk_6adc_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
+bool umdk_adc_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
 
