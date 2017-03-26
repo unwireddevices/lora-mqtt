@@ -123,19 +123,19 @@ static const int MIN_PINGS_SKIPPED = 10;
 
 static bool static_devices_list_sent = false;
 
-static char get_node_class(unsigned short nodeclass) {
+static char *get_node_class(unsigned short nodeclass) {
 	switch (nodeclass) {
 		case 0:
-			return 'A';
+			return "A";
 
 		case 1:
-			return 'B';
+			return "B";
 
 		case 2:
-			return 'C';
+			return "C";
 
 		default:
-			return '?';
+			return "?";
 	}
 }
 
@@ -543,18 +543,17 @@ static void serve_reply(char *str) {
 			}
 
 			unsigned short nodeclass = atoi(str);
-
-			snprintf(logbuf, sizeof(logbuf), "[join] Joined device with id = 0x%" PRIx64 " and class = %c\n", 
-				     nodeid, get_node_class(nodeclass));
+            char *cl = get_node_class(nodeclass);
+			snprintf(logbuf, sizeof(logbuf), "[join] Joined device with id = 0x%" PRIx64 " and class = %s\n", 
+				     nodeid, cl);
 			logprint(logbuf);
             
             mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
             memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
             
             add_value_pair(mqtt_msg, "joined", "1");            
-            char cl = get_node_class(nodeclass);
-            add_value_pair(mqtt_msg, "class", &cl);
-            
+            add_value_pair(mqtt_msg, "class", cl);
+
             mqtt_status_t status = { 0 };
             
             char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
