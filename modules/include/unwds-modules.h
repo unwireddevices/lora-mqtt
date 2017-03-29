@@ -50,6 +50,7 @@ bool umdk_pir_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_rssiecho_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_sht21_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_uart_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 
 void umdk_counter_command(char *param, char *out, int bufsize);
 void umdk_adc_command(char *param, char *out, int bufsize);
@@ -62,6 +63,7 @@ void umdk_opt3001_command(char *param, char *out, int bufsize);
 void umdk_rssiecho_command(char *param, char *out, int bufsize);
 void umdk_sht21_command(char *param, char *out, int bufsize);
 void umdk_uart_command(char *param, char *out, int bufsize);
+void umdk_mercury_command(char *param, char *out, int bufsize);
 
 static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_GPIO_MODULE_ID,    .name = "gpio",    .cmd = &umdk_gpio_command,       .reply = &umdk_gpio_reply     },
@@ -81,6 +83,7 @@ static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_OPT3001_MODULE_ID, .name = "opt3001", .cmd = &umdk_opt3001_command,    .reply = &umdk_opt3001_reply  },
     { .id = UNWDS_DALI_MODULE_ID,    .name = "dali",    .cmd = NULL,                     .reply = NULL                 },
     { .id = UNWDS_BME280_MODULE_ID,  .name = "bme280",  .cmd = &umdk_bme280_command,     .reply = &umdk_bme280_reply   },
+		{ .id = UNWDS_MERCURY_MODULE_ID, .name = "mercury", .cmd = &umdk_mercury_command,    .reply = &umdk_mercury_reply  },
 };
 
 bool (*umdk_reply_ptr)(uint8_t*, int, mqtt_msg_t*);
