@@ -51,7 +51,13 @@ typedef enum {
     UNWDS_OPT3001_MODULE_ID,
     UNWDS_DALI_MODULE_ID,
     UNWDS_BME280_MODULE_ID,
-} unwds_module_ids_t;
+    /* Proprietary 100 to 199 */
+    UNWDS_MERCURY_MODULE_ID = 100,
+    /* Customer 200 to 250*/
+    UNWDS_CUSTOMER_MODULE_ID = 200,
+    /* System 251 to 254 */
+    UNWDS_CONFIG_MODULE_ID = 251,
+} UNWDS_MODULE_IDS_t;
 
 typedef struct {
     uint8_t id;
