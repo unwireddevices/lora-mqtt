@@ -44,6 +44,12 @@ typedef enum {
     UMDK_COUNTER_CMD_SET_P2L_COEFF = 4,
 } umdk_counter_cmd_t;
 
+typedef enum {
+    UMDK_COUNTER_REPLY_OK = 0,
+    UMDK_COUNTER_REPLY_UNKNOWN_COMMAND = 1,
+    UMDK_COUNTER_REPLY_INV_PARAMETER = 2,
+} umdk_counter_reply_t;
+
 void umdk_counter_command(char *param, char *out, int bufsize)
 {
     if (strstr(param, "period ") == param) {
@@ -76,20 +82,21 @@ void umdk_counter_command(char *param, char *out, int bufsize)
         param += strlen("values "); // skip command
         
         uint32_t values[4];
-        for (int i = 0; i < 4; i++) {
+        int i = 0;
+        for (i = 0; i < 4; i++) {
             values[i] = strtol(param, &param, 10);
         }
         
         uint32_t v_compressed[3];
         
-        v_compressed[0]  = c_conv[0] << 8;
-        v_compressed[0] |= (c_conv[1] >> 16) & 0xFF;
+        v_compressed[0]  = values[0] << 8;
+        v_compressed[0] |= (values[1] >> 16) & 0xFF;
         
-        v_compressed[1] = c_conv[1] << 16;
-        v_compressed[1] |= (c_conv[2] >> 8) & 0xFFFF;
+        v_compressed[1] = values[1] << 16;
+        v_compressed[1] |= (values[2] >> 8) & 0xFFFF;
         
-        v_compressed[2] = (c_conv[2] << 24);
-        v_compressed[2] |= c_conv[3] & 0xFFFFFF;
+        v_compressed[2] = (values[2] << 24);
+        v_compressed[2] |= values[3] & 0xFFFFFF;
         
         snprintf(out, bufsize, "%02x%08x%08x%08x",
                     UMDK_COUNTER_CMD_SET_INITIAL_VALUES,
@@ -105,10 +112,16 @@ bool umdk_counter_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     char buf[100];
 
     if (moddatalen == 1) {
-        if (moddata[0] == 0) {
-            add_value_pair(mqtt_msg, "msg", "ok");
-        } else {
-            add_value_pair(mqtt_msg, "msg", "error");
+        switch (moddata[0]) {
+            case UMDK_COUNTER_REPLY_OK:
+                add_value_pair(mqtt_msg, "msg", "ok");
+                break;
+            case UMDK_COUNTER_REPLY_UNKNOWN_COMMAND:
+                add_value_pair(mqtt_msg, "msg", "invalid command");
+                break;
+            case UMDK_COUNTER_REPLY_INV_PARAMETER:
+                add_value_pair(mqtt_msg, "msg", "invalid parameter");
+                break;
         }
         return true;
     }
@@ -142,7 +155,7 @@ bool umdk_counter_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
         add_value_pair(mqtt_msg, ch, buf);
     }
     
-    snprintf(buf, sizeof(buf), "%" PRIu8, moddata[12];
+    snprintf(buf, sizeof(buf), "%" PRIu8, moddata[12]);
     add_value_pair(mqtt_msg, "coeff", buf);
     
     return true;
