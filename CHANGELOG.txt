@@ -1,3 +1,7 @@
+04.17.2017
+
+* commercial version of umdk-counter moved to umdk-pulse
+
 04.16.2017
 
 * added support for counter module commands
