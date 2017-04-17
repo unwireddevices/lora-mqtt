@@ -40,6 +40,8 @@ typedef enum {
     UMDK_COUNTER_CMD_SET_PERIOD = 0,
     UMDK_COUNTER_CMD_POLL = 1,
     UMDK_COUNTER_CMD_RESET = 2,
+    UMDK_COUNTER_CMD_SET_INITIAL_VALUES = 3,
+    UMDK_COUNTER_CMD_SET_P2L_COEFF = 4,
 } umdk_counter_cmd_t;
 
 typedef enum {
@@ -59,6 +61,15 @@ void umdk_counter_command(char *param, char *out, int bufsize)
         snprintf(out, bufsize, "%02x%02x", UMDK_COUNTER_CMD_SET_PERIOD, period);
     }
     
+    if (strstr(param, "coeff ") == param) {
+        param += strlen("coeff "); // skip command
+
+        uint8_t coeff = strtol(param, &param, 10);
+        printf("[mqtt-counter] Set coefficient: %" PRIu8 " l/p\n", coeff);
+
+        snprintf(out, bufsize, "%02x%02x", UMDK_COUNTER_CMD_SET_P2L_COEFF, coeff);
+    }
+    
     if (strstr(param, "reset") == param) {
         snprintf(out, bufsize, "%02x", UMDK_COUNTER_CMD_RESET);
     }
@@ -66,7 +77,32 @@ void umdk_counter_command(char *param, char *out, int bufsize)
     if (strstr(param, "get") == param) {
         snprintf(out, bufsize, "%02x", UMDK_COUNTER_CMD_POLL);
     }
-  
+    
+    if (strstr(param, "values ") == param) {
+        param += strlen("values "); // skip command
+        
+        uint32_t values[4];
+        int i = 0;
+        for (i = 0; i < 4; i++) {
+            values[i] = strtol(param, &param, 10);
+        }
+        
+        uint32_t v_compressed[3];
+        
+        v_compressed[0]  = values[0] << 8;
+        v_compressed[0] |= (values[1] >> 16) & 0xFF;
+        
+        v_compressed[1] = values[1] << 16;
+        v_compressed[1] |= (values[2] >> 8) & 0xFFFF;
+        
+        v_compressed[2] = (values[2] << 24);
+        v_compressed[2] |= values[3] & 0xFFFFFF;
+        
+        snprintf(out, bufsize, "%02x%08x%08x%08x",
+                    UMDK_COUNTER_CMD_SET_INITIAL_VALUES,
+                    v_compressed[0], v_compressed[1], v_compressed[2]);
+    }
+    
     return;
 }
 
@@ -118,6 +154,9 @@ bool umdk_counter_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
         snprintf(buf, sizeof(buf), "%u", values[i]);
         add_value_pair(mqtt_msg, ch, buf);
     }
+    
+    snprintf(buf, sizeof(buf), "%" PRIu8, moddata[12]);
+    add_value_pair(mqtt_msg, "coeff", buf);
     
     return true;
 }
