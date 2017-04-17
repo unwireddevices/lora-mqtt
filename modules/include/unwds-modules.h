@@ -39,6 +39,7 @@
 
 bool umdk_4btn_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_counter_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_pulse_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_adc_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_bme280_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_gpio_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
@@ -54,6 +55,7 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_config_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 
 void umdk_counter_command(char *param, char *out, int bufsize);
+void umdk_pulse_command(char *param, char *out, int bufsize);
 void umdk_adc_command(char *param, char *out, int bufsize);
 void umdk_bme280_command(char *param, char *out, int bufsize);
 void umdk_gpio_command(char *param, char *out, int bufsize);
@@ -87,6 +89,7 @@ static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_BME280_MODULE_ID,  .name = "bme280",  .cmd = &umdk_bme280_command,     .reply = &umdk_bme280_reply   },
     { .id = UNWDS_MERCURY_MODULE_ID, .name = "mercury", .cmd = &umdk_mercury_command,    .reply = &umdk_mercury_reply  },
     { .id = UNWDS_CONFIG_MODULE_ID,  .name = "config",  .cmd = &umdk_config_command,     .reply = &umdk_config_reply   },
+    { .id = UNWDS_PULSE_MODULE_ID,   .name = "pulse",   .cmd = &umdk_pulse_command,      .reply = &umdk_pulse_reply    },
 };
 
 bool (*umdk_reply_ptr)(uint8_t*, int, mqtt_msg_t*);

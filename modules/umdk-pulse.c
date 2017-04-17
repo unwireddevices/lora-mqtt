@@ -24,8 +24,8 @@
  * @ingroup
  * @brief
  * @{
- * @file	umdk-counter.c
- * @brief   umdk-counter message parser
+ * @file	umdk-pulse.c
+ * @brief   umdk-pulse message parser
  * @author  Oleg Artamonov [oleg@unwds.com]
  */
 
@@ -37,20 +37,20 @@
 #include "utils.h"
 
 typedef enum {
-    UMDK_COUNTER_CMD_SET_PERIOD = 0,
-    UMDK_COUNTER_CMD_POLL = 1,
-    UMDK_COUNTER_CMD_RESET = 2,
-    UMDK_COUNTER_CMD_SET_INITIAL_VALUES = 3,
-    UMDK_COUNTER_CMD_SET_P2L_COEFF = 4,
-} umdk_counter_cmd_t;
+    UMDK_PULSE_CMD_SET_PERIOD = 0,
+    UMDK_PULSE_CMD_POLL = 1,
+    UMDK_PULSE_CMD_RESET = 2,
+    UMDK_PULSE_CMD_SET_INITIAL_VALUES = 3,
+    UMDK_PULSE_CMD_SET_P2L_COEFF = 4,
+} umdk_pulse_cmd_t;
 
 typedef enum {
-    UMDK_COUNTER_REPLY_OK = 0,
-    UMDK_COUNTER_REPLY_UNKNOWN_COMMAND = 1,
-    UMDK_COUNTER_REPLY_INV_PARAMETER = 2,
-} umdk_counter_reply_t;
+    UMDK_PULSE_REPLY_OK = 0,
+    UMDK_PULSE_REPLY_UNKNOWN_COMMAND = 1,
+    UMDK_PULSE_REPLY_INV_PARAMETER = 2,
+} umdk_pulse_reply_t;
 
-void umdk_counter_command(char *param, char *out, int bufsize)
+void umdk_pulse_command(char *param, char *out, int bufsize)
 {
     if (strstr(param, "period ") == param) {
         param += strlen("period "); // skip command
@@ -58,7 +58,7 @@ void umdk_counter_command(char *param, char *out, int bufsize)
         uint8_t period = strtol(param, &param, 10);
         printf("[mqtt-counter] Set period: %" PRIu8 " hrs\n", period);
 
-        snprintf(out, bufsize, "%02x%02x", UMDK_COUNTER_CMD_SET_PERIOD, period);
+        snprintf(out, bufsize, "%02x%02x", UMDK_PULSE_CMD_SET_PERIOD, period);
     }
     
     if (strstr(param, "coeff ") == param) {
@@ -67,15 +67,15 @@ void umdk_counter_command(char *param, char *out, int bufsize)
         uint8_t coeff = strtol(param, &param, 10);
         printf("[mqtt-counter] Set coefficient: %" PRIu8 " l/p\n", coeff);
 
-        snprintf(out, bufsize, "%02x%02x", UMDK_COUNTER_CMD_SET_P2L_COEFF, coeff);
+        snprintf(out, bufsize, "%02x%02x", UMDK_PULSE_CMD_SET_P2L_COEFF, coeff);
     }
     
     if (strstr(param, "reset") == param) {
-        snprintf(out, bufsize, "%02x", UMDK_COUNTER_CMD_RESET);
+        snprintf(out, bufsize, "%02x", UMDK_PULSE_CMD_RESET);
     }
     
     if (strstr(param, "get") == param) {
-        snprintf(out, bufsize, "%02x", UMDK_COUNTER_CMD_POLL);
+        snprintf(out, bufsize, "%02x", UMDK_PULSE_CMD_POLL);
     }
     
     if (strstr(param, "values ") == param) {
@@ -98,8 +98,14 @@ void umdk_counter_command(char *param, char *out, int bufsize)
         v_compressed[2] = (values[2] << 24);
         v_compressed[2] |= values[3] & 0xFFFFFF;
         
+        if (is_big_endian()) {
+            for (i = 0; i < 3; i++ ) {
+                v_compressed[i] = ((v_compressed[i] >> 24) & 0xff) | ((v_compressed[i] << 8) & 0xff0000) | ((v_compressed[i] >> 8) & 0xff00) | ((v_compressed[i] << 24) & 0xff000000);
+            }
+        }
+        
         snprintf(out, bufsize, "%02x%08x%08x%08x",
-                    UMDK_COUNTER_CMD_SET_INITIAL_VALUES,
+                    UMDK_PULSE_CMD_SET_INITIAL_VALUES,
                     v_compressed[0], v_compressed[1], v_compressed[2]);
     }
     
@@ -107,19 +113,19 @@ void umdk_counter_command(char *param, char *out, int bufsize)
 }
 
 
-bool umdk_counter_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
+bool umdk_pulse_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
 
     if (moddatalen == 1) {
         switch (moddata[0]) {
-            case UMDK_COUNTER_REPLY_OK:
+            case UMDK_PULSE_REPLY_OK:
                 add_value_pair(mqtt_msg, "msg", "ok");
                 break;
-            case UMDK_COUNTER_REPLY_UNKNOWN_COMMAND:
+            case UMDK_PULSE_REPLY_UNKNOWN_COMMAND:
                 add_value_pair(mqtt_msg, "msg", "invalid command");
                 break;
-            case UMDK_COUNTER_REPLY_INV_PARAMETER:
+            case UMDK_PULSE_REPLY_INV_PARAMETER:
                 add_value_pair(mqtt_msg, "msg", "invalid parameter");
                 break;
         }
