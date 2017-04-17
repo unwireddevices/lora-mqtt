@@ -42,6 +42,8 @@ void bytes_to_hex(uint8_t *bytes, size_t num_bytes, char *str, bool reverse_orde
 
 bool is_big_endian(void);
 
+void uint32_to_le(uint32_t *num);
+
 void logprint(char *str);
 
 void int_to_float_str(char *buf, int decimal, uint8_t precision);

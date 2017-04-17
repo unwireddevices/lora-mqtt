@@ -81,6 +81,8 @@ void umdk_pulse_command(char *param, char *out, int bufsize)
     if (strstr(param, "values ") == param) {
         param += strlen("values "); // skip command
         
+        uint8_t coeff = strtol(param, &param, 10);
+        
         uint32_t values[4];
         int i = 0;
         for (i = 0; i < 4; i++) {
@@ -98,14 +100,13 @@ void umdk_pulse_command(char *param, char *out, int bufsize)
         v_compressed[2] = (values[2] << 24);
         v_compressed[2] |= values[3] & 0xFFFFFF;
         
-        if (is_big_endian()) {
-            for (i = 0; i < 3; i++ ) {
-                v_compressed[i] = ((v_compressed[i] >> 24) & 0xff) | ((v_compressed[i] << 8) & 0xff0000) | ((v_compressed[i] >> 8) & 0xff00) | ((v_compressed[i] << 24) & 0xff000000);
-            }
+        for (i = 0; i < 3; i++ ) {
+            uint32_to_le(&v_compressed[i]);
         }
         
-        snprintf(out, bufsize, "%02x%08x%08x%08x",
+        snprintf(out, bufsize, "%02x%02x%08x%08x%08x",
                     UMDK_PULSE_CMD_SET_INITIAL_VALUES,
+                    coeff,
                     v_compressed[0], v_compressed[1], v_compressed[2]);
     }
     
@@ -141,11 +142,9 @@ bool umdk_pulse_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     /* we need to swap bytes inside UINT32s if we are on BE system (e.g. MIPS CPU) */
     /* then we can just use functions reverse to those used to encode */
     uint32_t *num = (uint32_t *)&moddata[0];
-    if (is_big_endian()) {
-        for (i = 0; i < 3; i++ ) {
-            *num = ((*num >> 24) & 0xff) | ((*num << 8) & 0xff0000) | ((*num >> 8) & 0xff00) | ((*num << 24) & 0xff000000);
-            num++;
-        }
+    for (i = 0; i < 3; i++ ) {
+        uint32_to_le(num);
+        num++;
     }
 
     /* let's unpack 12 bytes back into 4 values */

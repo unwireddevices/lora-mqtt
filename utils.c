@@ -91,6 +91,17 @@ bool is_big_endian(void)
     return bint.c[0] == 1; 
 }
 
+void uint32_to_le(uint32_t *num)
+{
+    int i = 0;
+    
+    if (is_big_endian()) {
+        for (i = 0; i < 3; i++ ) {
+            *num = ((*num >> 24) & 0xff) | ((*num << 8) & 0xff0000) | ((*num >> 8) & 0xff00) | ((*num << 24) & 0xff000000);
+        }
+    }
+}
+
 void logprint(char *str)
 {
 	time_t t = time(NULL);
