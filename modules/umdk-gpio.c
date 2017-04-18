@@ -37,6 +37,24 @@
 #include "unwds-modules.h"
 #include "utils.h"
 
+typedef enum {
+	UMDK_GPIO_REPLY_OK_0 = 0,
+	UMDK_GPIO_REPLY_OK_1 = 1,
+	UMDK_GPIO_REPLY_OK = 2,
+	UMDK_GPIO_REPLY_ERR_PIN = 3,
+	UMDK_GPIO_REPLY_ERR_FORMAT = 4,
+    UMDK_GPIO_REPLY_OK_AINAF = 5,
+    UMDK_GPIO_REPLY_OK_ALL = 6
+} umdk_gpio_reply_t;
+
+typedef enum {
+	UMDK_GPIO_GET = 0,
+	UMDK_GPIO_SET_0 = 1,
+	UMDK_GPIO_SET_1 = 2,
+	UMDK_GPIO_TOGGLE = 3,
+    UMDK_GPIO_GET_ALL = 4,
+} umdk_gpio_action_t;
+
 void umdk_gpio_command(char *param, char *out, int bufsize) {
     if (strstr(param, "set ") == param) {
         param += strlen("set "); // skip command
@@ -46,10 +64,10 @@ void umdk_gpio_command(char *param, char *out, int bufsize) {
 
         uint8_t gpio_cmd = 0;
         if (value == 1) {
-            gpio_cmd = UNWDS_GPIO_SET_1 << 6;  // 10 in upper two bits of cmd byte is SET TO ONE command
+            gpio_cmd = UMDK_GPIO_SET_1 << 5;  // 10 in upper two bits of cmd byte is SET TO ONE command
         }
         else if (value == 0) {
-            gpio_cmd = UNWDS_GPIO_SET_0 << 6;  // 01 in upper two bits of cmd byte is SET TO ZERO command
+            gpio_cmd = UMDK_GPIO_SET_0 << 5;  // 01 in upper two bits of cmd byte is SET TO ZERO command
 
         }
         // Append pin number bits and mask exceeding bits just in case
@@ -62,11 +80,16 @@ void umdk_gpio_command(char *param, char *out, int bufsize) {
     else if (strstr(param, "get ") == param) {
         param += strlen("get "); // skip command
 
-        uint8_t pin = strtol(param, &param, 10);
-
-        uint8_t gpio_cmd = UNWDS_GPIO_GET << 6;
-        // Append pin number bits and mask exceeding bits just in case
-        gpio_cmd |= pin & 0x3F;
+        uint8_t pin;
+        uint8_t gpio_cmd;
+        
+        if (strstr(param, "all") == param) {
+            pin = 0;
+            gpio_cmd = UMDK_GPIO_GET_ALL << 5;
+        } else {
+            pin = strtol(param, &param, 10);
+            gpio_cmd = (UMDK_GPIO_GET << 5) | (pin & 0x1F);
+        }
 
         printf("[mqtt-gpio] Get command | Pin: %d, cmd: 0x%02x\n", pin, gpio_cmd);
 
@@ -77,7 +100,7 @@ void umdk_gpio_command(char *param, char *out, int bufsize) {
 
         uint8_t pin = strtol(param, &param, 10);
 
-        uint8_t gpio_cmd = UNWDS_GPIO_TOGGLE << 6;
+        uint8_t gpio_cmd = UMDK_GPIO_TOGGLE << 6;
         // Append pin number bits and mask exceeding bits just in case
         gpio_cmd |= pin & 0x3F;
 
@@ -90,33 +113,88 @@ void umdk_gpio_command(char *param, char *out, int bufsize) {
 bool umdk_gpio_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     uint8_t reply_type = moddata[0];
-    
     switch (reply_type) {
-        case 0: { /* UNWD_GPIO_REPLY_OK_0 */
+        case UMDK_GPIO_REPLY_OK_ALL: {
+            /* bit 0: pin value, bit 1: 0 for IN, 1 for OUT, bit 3: AF/AIN, bit 4: reserved */
+            /* 0b111 means pin not used, 0b110 — AIN, 0b100 — AF */
+            
+            int i = 0;
+            char buf[100] = {};
+            char status[10];
+            
+            strcat(buf, "[ ");
+            for (i = 0; i < ((moddatalen - 1) * 2); i++) {
+                int pin_data = (moddata[1 + i/2] >> (4*(i%2))) & 0b111;
+                snprintf(status, sizeof(status), "%d, ", pin_data);
+                strcat(buf, status);
+            }
+            strcat(buf, "]");
+            add_value_pair(mqtt_msg, "gpios", buf);
+            
+            /*
+            for (i = 0; i < ((moddatalen - 1) * 2); i++) {
+                int pin_data = (moddata[1 + i/2] >> (4*(i%2))) & 0b111;
+                if (pin_data == 0b111) {
+                    snprintf(status, 10, "NC");
+                } else {
+                    switch(pin_data >> 2) {
+                        case 0b00:
+                            snprintf(status, 10, "DI");
+                            break;
+                        case 0b01:
+                            snprintf(status, 10, "DO");
+                            break;
+                        case 0b10:
+                            snprintf(status, 10, "AF");
+                            break;
+                        case 0b11:
+                            snprintf(status, 10, "AI");
+                            break;
+                    }
+                }
+                snprintf(buf, sizeof(buf), "{ \"s\": \"%s\", \"v\": %d}", status, pin_data & 0x1);
+                snprintf(status, sizeof(status), "DIO %d", i);
+                add_value_pair(mqtt_msg, status, buf);
+                
+                printf("Pin: %d, status: %s, value: %d\n", i, status, pin_data & 0x1);
+            }
+            */
+            break;
+        }
+
+        case UMDK_GPIO_REPLY_OK_0: { /*  */
             add_value_pair(mqtt_msg, "type", "0");
             add_value_pair(mqtt_msg, "msg", "0");
             break;
         }
-        case 1: { /* UNWD_GPIO_REPLY_OK_1 */
+        case UMDK_GPIO_REPLY_OK_1: { /*  */
             add_value_pair(mqtt_msg, "type", "1");
             add_value_pair(mqtt_msg, "msg", "1");
             break;
         }
-        case 2: { /* UNWD_GPIO_REPLY_OK */
+        case UMDK_GPIO_REPLY_OK: { /*  */
             add_value_pair(mqtt_msg, "type", "0");
             add_value_pair(mqtt_msg, "msg", "set ok");
             break;
         }
-        case 3: { /* UNWD_GPIO_REPLY_ERR_PIN */
+        case UMDK_GPIO_REPLY_ERR_PIN: { /*  */
             add_value_pair(mqtt_msg, "type", "3");
             add_value_pair(mqtt_msg, "msg", "invalid pin");
             break;
         }
-        case 4: { /* UNWD_GPIO_REPLY_ERR_FORMAT */
+        case UMDK_GPIO_REPLY_ERR_FORMAT: { /*  */
             add_value_pair(mqtt_msg, "type", "4");
             add_value_pair(mqtt_msg, "msg", "invalid format");
             break;
         }
+        case UMDK_GPIO_REPLY_OK_AINAF: {
+            add_value_pair(mqtt_msg, "type", "0");
+            add_value_pair(mqtt_msg, "msg", "3");
+            break;
+        }
+        default:
+            puts("ERROR DECODING COMMAND");
+            break;
     }
     return true;
 }

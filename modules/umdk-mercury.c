@@ -84,7 +84,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		
 		snprintf(out, bufsize, "0F%02x", month);
 	}
-	else if (strstr(param, "get value curr") == param) { 
+	else if (strstr(param, "get current") == param) { 
 		snprintf(out, bufsize, "0F0F");
 	}
 	else if (strstr(param, "get schedule ") == param) { 
@@ -92,7 +92,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		uint8_t month = strtol(param, &param, 10);
 		uint8_t dow = strtol(param, NULL, 10);
 
-		snprintf(out, bufsize, "0E%01x%01x", month, dow);
+		snprintf(out, bufsize, "0E%02x%02x", month, dow);
 	}
 }
 
@@ -110,11 +110,14 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     }
 
 	mercury_cmd_t cmd = moddata[0];
+    uint32_t *num;
 	uint8_t i;
 	switch(cmd) {
 		case MERCURY_CMD_GET_SERIAL: {
-			uint32_t serial = (moddata[1] << 24) + (moddata[2] << 16) + (moddata[3] << 8) + (moddata[4] << 0); 
-			snprintf(buf, sizeof(buf), "%d", serial);
+			uint32_t *serial = (uint32_t *)&moddata[1];
+            uint32_to_le(serial);
+            
+			snprintf(buf, sizeof(buf), "%d", *serial);
 			add_value_pair(mqtt_msg, "Serial number: ", buf);		
 			return true;
 			break;
@@ -123,7 +126,9 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		case MERCURY_CMD_GET_TOTAL_VALUE: {
 			uint32_t value[5] = { 0 };
 			for(i = 0; i < 5; i++) {
-				value[i] = (moddata[4*i + 1] << 24) + (moddata[4*i + 2] << 16) + (moddata[4*i + 3] << 8) + (moddata[4*i + 4] << 0);
+                num = (uint32_t *)&moddata[4*i + 1];
+                uint32_to_le(num);
+				value[i] = *num;
 			}
 			 
 			char tariff[5] = { };
@@ -142,7 +147,9 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		case MERCURY_CMD_GET_VALUE: {
 			uint32_t value[5] = { 0 };
 			for(i = 0; i < 5; i++) {
-				value[i] = (moddata[4*i + 1] << 24) + (moddata[4*i + 2] << 16) + (moddata[4*i + 3] << 8) + (moddata[4*i + 4] << 0);
+                num = (uint32_t *)&moddata[4*i + 1];
+                uint32_to_le(num);
+				value[i] = *num;
 			}
 			 
 			char tariff[5] = { };
