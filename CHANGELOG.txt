@@ -1,7 +1,11 @@
-04.17.2017
+18.04.2017
+
+* MH-Z19 module added
+
+17.04.2017
 
 * commercial version of umdk-counter moved to umdk-pulse
 
-04.16.2017
+16.04.2017
 
 * added support for counter module commands
