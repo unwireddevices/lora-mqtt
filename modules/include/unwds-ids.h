@@ -56,6 +56,7 @@ typedef enum {
     UNWDS_MERCURY_MODULE_ID = 100,
     UNWDS_NAMUR_MODULE_ID = 101,
     UNWDS_PULSE_MODULE_ID = 102,
+		UNWDS_IBUTTON_MODULE_ID = 103,
     /* Customer 200 to 250*/
     UNWDS_CUSTOMER_MODULE_ID = 200,
     /* System 251 to 254 */
