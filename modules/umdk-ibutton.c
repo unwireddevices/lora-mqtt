@@ -91,8 +91,8 @@ bool umdk_ibutton_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 
 	uint32_t *id_high = ((uint32_t *)&moddata[1]);
 	uint32_t *id_low = ((uint32_t *)&moddata[5]);
-	uint32_to_le(*id_high);
-	uint32_to_le(*id_low);	
+	uint32_to_le(id_high);
+	uint32_to_le(id_low);	
 	snprintf(buf, sizeof(buf), "%08X%08X", *id_high, *id_low);
 			
 	switch(cmd) {
