@@ -72,29 +72,29 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		uint32_t destination = strtol(param, &param, 10);
 		uint32_t new_address = strtol(param, &param, 10);
 		
-		snprintf(out, bufsize, "%02x%08x%08x", MERCURY_CMD_SET_NEW_ADDR, destination, new_address);
+		snprintf(out, bufsize, "%02x%010u%010u", MERCURY_CMD_SET_NEW_ADDR, destination, new_address);
 	}
 	else if (strstr(param, "get serial ") == param) {
 		param += strlen("get serial ");    // Skip command
 		uint32_t destination = strtol(param, &param, 10);
-		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_SERIAL, destination);
+		snprintf(out, bufsize, "%02x%010u", MERCURY_CMD_GET_SERIAL, destination);
 	}
 	else if (strstr(param, "get total ") == param) { 
 		param += strlen("get total ");    // Skip command
 		uint32_t destination = strtol(param, &param, 10);
-		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_TOTAL_VALUE, destination);
+		snprintf(out, bufsize, "%02x%010u", MERCURY_CMD_GET_TOTAL_VALUE, destination);
 	}
 	else if (strstr(param, "get value ") == param) { 
 		param += strlen("get value ");    // Skip command
 		uint32_t destination = strtol(param, &param, 10);
 		uint8_t month = strtol(param, NULL, 10);
 		
-		snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_GET_VALUE, destination, month);
+		snprintf(out, bufsize, "%02x%010u%02u", MERCURY_CMD_GET_VALUE, destination, month);
 	}
 	else if (strstr(param, "get current ") == param) { 
 		param += strlen("get current ");    // Skip command
 		uint32_t destination = strtol(param, &param, 10);
-		snprintf(out, bufsize, "%02x%08x0F", MERCURY_CMD_GET_VALUE, destination);
+		snprintf(out, bufsize, "%02x%010u0F", MERCURY_CMD_GET_VALUE, destination);
 	}
 	else if (strstr(param, "get schedule ") == param) { 
 		param += strlen("get schedule "); // skip command
@@ -102,13 +102,13 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		uint8_t month = strtol(param, &param, 10);
 		uint8_t dow = strtol(param, NULL, 10);
 
-		snprintf(out, bufsize, "%02x%08x%02x%02x", MERCURY_CMD_GET_SCHEDULE, destination, month, dow);
+		snprintf(out, bufsize, "%02x%010u%02u%02u", MERCURY_CMD_GET_SCHEDULE, destination, month, dow);
 	}
 	else if (strstr(param, "get timedate ") == param) { 
 		param += strlen("get timedate ");    // Skip command
 		uint32_t destination = strtol(param, &param, 10);
 		
-		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_TIMEDATE, destination);
+		snprintf(out, bufsize, "%02x%010u", MERCURY_CMD_GET_TIMEDATE, destination);
 	}
 	else if (strstr(param, "set timedate ") == param) { 
 		param += strlen("set timedate "); // skip command
@@ -132,7 +132,7 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		char buf_addr[20];
 		uint32_t *address = (uint32_t *)&moddata[0];
     uint32_to_le(address);
-		snprintf(buf_addr, sizeof(buf_addr), "%u  ", *address);	
+		snprintf(buf_addr, sizeof(buf_addr), "%010u  ", *address);	
 						
     if (moddatalen == 5) {
         if (moddata[4] == 1) {
@@ -154,7 +154,7 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			uint32_t *serial = (uint32_t *)&moddata[5];
       uint32_to_le(serial);
             
-			snprintf(buf, sizeof(buf), "Serial number: %u", *serial);
+			snprintf(buf, sizeof(buf), "Serial number: %010u", *serial);
 			add_value_pair(mqtt_msg, buf_addr, buf);		
 			return true;
 			break;
@@ -171,10 +171,10 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
 				snprintf(tariff, sizeof(tariff), "T%02d:", i);		
-				snprintf(buf, sizeof(buf), " %u", value[i]);
+				snprintf(buf, sizeof(buf), " %010u", value[i]);
 				add_value_pair(mqtt_msg, tariff, buf);								
 			}
-			snprintf(buf, sizeof(buf), " %u", value[4]);
+			snprintf(buf, sizeof(buf), " %010u", value[4]);
 			add_value_pair(mqtt_msg, "Summary: ", buf);		
 			
 			return true;
@@ -194,10 +194,10 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
 				snprintf(tariff, sizeof(tariff), "T%02d:", i);
-				snprintf(buf, sizeof(buf), "%u", value[i]);
+				snprintf(buf, sizeof(buf), "%010u", value[i]);
 				add_value_pair(mqtt_msg, tariff, buf);				
 			}
-			snprintf(buf, sizeof(buf), "%u", value[4]);
+			snprintf(buf, sizeof(buf), "%010u", value[4]);
 			add_value_pair(mqtt_msg, "Summary: ", buf);		
 	
 			return true;
