@@ -95,7 +95,7 @@ static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_CONFIG_MODULE_ID,  .name = "config",  .cmd = &umdk_config_command,     .reply = &umdk_config_reply   },
     { .id = UNWDS_PULSE_MODULE_ID,   .name = "pulse",   .cmd = &umdk_pulse_command,      .reply = &umdk_pulse_reply    },
     { .id = UNWDS_MHZ19_MODULE_ID,   .name = "mhz19",   .cmd = &umdk_mhz19_command,      .reply = &umdk_mhz19_reply    },
-		{ .id = UNWDS_IBUTTON_MODULE_ID, .name = "ibutton", .cmd = &umdk_ibutton_command,    .reply = &umdk_ibutton_reply  },
+    { .id = UNWDS_IBUTTON_MODULE_ID, .name = "ibutton", .cmd = &umdk_ibutton_command,    .reply = &umdk_ibutton_reply  },
 };
 
 bool (*umdk_reply_ptr)(uint8_t*, int, mqtt_msg_t*);

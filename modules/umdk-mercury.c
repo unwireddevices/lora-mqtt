@@ -62,7 +62,7 @@ typedef enum {
     MERCURY_CMD_SET_HOLIDAYS = 0x13,		/* Set the table of holidays */
     MERCURY_CMD_SET_SCHEDULE = 0x14,		/* Set the schedule of tariffs */
     MERCURY_CMD_GET_WORKING_TIME = 0x15,	/* Read the total working time of battery and device */
-		MERCURY_CMD_SET_TIMEDATE = 0x16,	/* Set the internal time */
+    MERCURY_CMD_SET_TIMEDATE = 0x16,	/* Set the internal time */
 } mercury_cmd_t;
 
 void umdk_mercury_command(char *param, char *out, int bufsize) {
