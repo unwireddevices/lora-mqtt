@@ -1,5 +1,6 @@
 18.04.2017
 
+* Release 1.9.3
 * MH-Z19 module added
 
 17.04.2017
