@@ -93,12 +93,15 @@ bool is_big_endian(void)
 
 void uint32_to_le(uint32_t *num)
 {
-    int i = 0;
-    
     if (is_big_endian()) {
-        for (i = 0; i < 3; i++ ) {
-            *num = ((*num >> 24) & 0xff) | ((*num << 8) & 0xff0000) | ((*num >> 8) & 0xff00) | ((*num << 24) & 0xff000000);
-        }
+        *num = ((*num >> 24) & 0xff) | ((*num << 8) & 0xff0000) | ((*num >> 8) & 0xff00) | ((*num << 24) & 0xff000000);
+    }
+}
+
+void uint16_to_le(uint16_t *num)
+{
+    if (is_big_endian()) {
+        *num = ((*num >> 8) & 0xff) | ((*num << 8) & 0xff00);
     }
 }
 

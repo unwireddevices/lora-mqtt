@@ -37,18 +37,24 @@
 #include "utils.h"
 
 typedef enum {
-    UMDK_PULSE_CMD_SET_PERIOD = 0,
-    UMDK_PULSE_CMD_POLL = 1,
-    UMDK_PULSE_CMD_RESET = 2,
-    UMDK_PULSE_CMD_SET_INITIAL_VALUES = 3,
-    UMDK_PULSE_CMD_SET_P2L_COEFF = 4,
+    UMDK_PULSE_CMD_SET_PERIOD,
+    UMDK_PULSE_CMD_POLL,
+    UMDK_PULSE_CMD_RESET,
+    UMDK_PULSE_CMD_SET_INITIAL_VALUES,
+    UMDK_PULSE_CMD_SET_P2L_COEFF,
+    UMDK_PULSE_CMD_RESET_TAMPER,
 } umdk_pulse_cmd_t;
 
 typedef enum {
-    UMDK_PULSE_REPLY_OK = 0,
-    UMDK_PULSE_REPLY_UNKNOWN_COMMAND = 1,
-    UMDK_PULSE_REPLY_INV_PARAMETER = 2,
+    UMDK_PULSE_REPLY_OK,
+    UMDK_PULSE_REPLY_UNKNOWN_COMMAND,
+    UMDK_PULSE_REPLY_INV_PARAMETER,
+    UMDK_PULSE_REPLY_DATA,
+    UMDK_PULSE_REPLY_LEAK,
+    UMDK_PULSE_REPLY_TAMPER,
 } umdk_pulse_reply_t;
+
+#define UMDK_PULSE_HIST_HOURS 4
 
 void umdk_pulse_command(char *param, char *out, int bufsize)
 {
@@ -76,6 +82,10 @@ void umdk_pulse_command(char *param, char *out, int bufsize)
     
     if (strstr(param, "get") == param) {
         snprintf(out, bufsize, "%02x", UMDK_PULSE_CMD_POLL);
+    }
+    
+    if (strstr(param, "tamper") == param) {
+        snprintf(out, bufsize, "%02x", UMDK_PULSE_CMD_RESET_TAMPER);
     }
     
     if (strstr(param, "values ") == param) {
@@ -117,51 +127,85 @@ void umdk_pulse_command(char *param, char *out, int bufsize)
 bool umdk_pulse_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
+    int i = 0;
 
-    if (moddatalen == 1) {
-        switch (moddata[0]) {
-            case UMDK_PULSE_REPLY_OK:
-                add_value_pair(mqtt_msg, "msg", "ok");
-                break;
-            case UMDK_PULSE_REPLY_UNKNOWN_COMMAND:
-                add_value_pair(mqtt_msg, "msg", "invalid command");
-                break;
-            case UMDK_PULSE_REPLY_INV_PARAMETER:
-                add_value_pair(mqtt_msg, "msg", "invalid parameter");
-                break;
+    switch (moddata[0]) {
+        case UMDK_PULSE_REPLY_OK:
+            add_value_pair(mqtt_msg, "msg", "ok");
+            break;
+        case UMDK_PULSE_REPLY_UNKNOWN_COMMAND:
+            add_value_pair(mqtt_msg, "msg", "invalid command");
+            break;
+        case UMDK_PULSE_REPLY_INV_PARAMETER:
+            add_value_pair(mqtt_msg, "msg", "invalid parameter");
+            break;
+        case UMDK_PULSE_REPLY_LEAK:
+            add_value_pair(mqtt_msg, "msg", "leak");
+            break;
+        case UMDK_PULSE_REPLY_TAMPER:
+            add_value_pair(mqtt_msg, "msg", "tamper");
+            break;
+        case UMDK_PULSE_REPLY_DATA: {
+            uint8_t tamper = moddata[1] & (1<<7);
+            uint8_t hours = (moddata[1] >> 2) & 0b11111;
+            uint8_t channels = (moddata[1] & 0b11) + 1;
+            
+            /* absolute data compressed to 3 bytes per counter, has to be decoded to regular UINT32 */
+            union {
+                uint32_t num;
+                uint8_t  bytes[4];
+            } values[channels];
+            
+            int k = 0;
+            
+            for (i = 0; i < channels; i++) {
+                if (is_big_endian) {
+                    for (k = 0; k < 3; k++) {
+                        values[i].bytes[2 - k] = moddata[2 + i*3 + k];
+                    } else {
+                        values[i].bytes[k] = moddata[2 + i*3 + k];
+                    }
+                }
+            }
+            /* most recent absolute data are in values[i].num now */
+            
+            /* let's decode hourly data */
+            uint32_t history[channels][hours] = { };
+            for (i = 0; i < channels; i++) {
+                for (k = 0; k < hours - 1; k++) {
+                    uint16_t *tmp = (uint16_t *)&moddata[2 + channels*3 + i*2*hours + k];
+                    uint16_to_le(tmp);
+                    history[i][k + 1] = *tmp;
+                }
+                history[i][0] = values[i].num;
+            }
+            
+            /* convert delta values to absolute values */
+            for (i = 0; i < channels; i++) {
+                for (k = 1; k < hours; k++) {
+                    history[i][k] = history[i][k-1] - history[i][k];
+                }
+            }
+            
+            /* now history[i] holds absolute values for counter `i` for `hours` hours */
+            
+            char ch[10];
+            
+            for (i = 0; i < channels; i++) {
+                snprintf(buf, 1, "[ ");
+                for (k = 0; k < hours; k++) {
+                    snprintf(buf, 10, "%" PRIu32 ", ", history[i][k]);
+                }
+                strcat(buf, "]");
+                snprintf(ch, 10, "P%d", i+1);
+                add_value_pair(mqtt_msg, ch, buf);
+            }
+            
+            add_value_pair(mqtt_msg, "tamper", tamper? "broken" : "ok");
+            
+            break;
         }
-        return true;
     }
-
-    /* Extract counter values */
-    uint8_t i = 0;
-    uint32_t values[4] = { 0 };
-    char ch[5] = {};
-
-    /* data encoded in 3 UINT32 numbers on Little Endian system */
-    /* we need to swap bytes inside UINT32s if we are on BE system (e.g. MIPS CPU) */
-    /* then we can just use functions reverse to those used to encode */
-    uint32_t *num = (uint32_t *)&moddata[0];
-    for (i = 0; i < 3; i++ ) {
-        uint32_to_le(num);
-        num++;
-    }
-
-    /* let's unpack 12 bytes back into 4 values */
-    num = (uint32_t *)&moddata[0];
-    values[0] = num[0] >> 8;
-    values[1] = ((num[0] & 0xFF) << 16) | (num[1] >> 16);
-    values[2] = ((num[1] & 0xFFFF) << 8) | (num[2] >> 24);
-    values[3] = num[2] & 0xFFFFFF;
-    
-    for (i = 0; i < 4; i++) {   
-        snprintf(ch, sizeof(ch), "v%d", i);
-        snprintf(buf, sizeof(buf), "%u", values[i]);
-        add_value_pair(mqtt_msg, ch, buf);
-    }
-    
-    snprintf(buf, sizeof(buf), "%" PRIu8, moddata[12]);
-    add_value_pair(mqtt_msg, "coeff", buf);
     
     return true;
 }
