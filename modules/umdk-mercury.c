@@ -121,33 +121,41 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		uint8_t month = strtol(param, &param, 10);
 		uint8_t year = strtol(param, NULL, 10);
 
-		snprintf(out, bufsize, "%02x%08x%02x%02x%02x%02x%02x%02x%02x", MERCURY_CMD_SET_TIMEDATE, destination, dow, hour, min, sec, day, month, year);
+		snprintf(out, bufsize, "%02x%08x%02x%02x%02x%02x%02x%02x%02x", 
+														MERCURY_CMD_SET_TIMEDATE, destination, dow, hour, min, sec, day, month, year);
 	}
 }
 
 bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
+		char buf_addr[20];
+		uint32_t *address = (uint32_t *)&moddata[0];
+    uint32_to_le(address);
+		snprintf(buf_addr, sizeof(buf_addr), "%u  ", *address);	
+						
+    if (moddatalen == 5) {
+        if (moddata[4] == 1) {
 
-    if (moddatalen == 1) {
-        if (moddata[0] == 0) {
-            add_value_pair(mqtt_msg, "msg", "ok");
+            add_value_pair(mqtt_msg, buf_addr, " ok");
         } else {
-            add_value_pair(mqtt_msg, "msg", "error");
+            add_value_pair(mqtt_msg, buf_addr, " error");
         }
         return true;
     }
-
-	mercury_cmd_t cmd = moddata[0];
-  uint32_t *num;
+		
+	mercury_cmd_t cmd = moddata[4];	
+  
+	uint32_t *num;
 	uint8_t i;
+	
 	switch(cmd) {
 		case MERCURY_CMD_GET_SERIAL: {
-			uint32_t *serial = (uint32_t *)&moddata[1];
-            uint32_to_le(serial);
+			uint32_t *serial = (uint32_t *)&moddata[5];
+      uint32_to_le(serial);
             
-			snprintf(buf, sizeof(buf), "%d", *serial);
-			add_value_pair(mqtt_msg, "Serial number: ", buf);		
+			snprintf(buf, sizeof(buf), "Serial number: %u", *serial);
+			add_value_pair(mqtt_msg, buf_addr, buf);		
 			return true;
 			break;
 		}
@@ -159,14 +167,14 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
                 uint32_to_le(num);
 				value[i] = *num;
 			}
-			 
+			 		
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
-				snprintf(tariff, sizeof(tariff), "T%02d:", i);
-				snprintf(buf, sizeof(buf), "%u", value[i]);
-				add_value_pair(mqtt_msg, tariff, buf);				
+				snprintf(tariff, sizeof(tariff), "T%02d:", i);		
+				snprintf(buf, sizeof(buf), " %u", value[i]);
+				add_value_pair(mqtt_msg, tariff, buf);								
 			}
-			snprintf(buf, sizeof(buf), "%u", value[4]);
+			snprintf(buf, sizeof(buf), " %u", value[4]);
 			add_value_pair(mqtt_msg, "Summary: ", buf);		
 			
 			return true;
@@ -180,7 +188,9 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
                 uint32_to_le(num);
 				value[i] = *num;
 			}
-			 
+			
+			add_value_pair(mqtt_msg, buf_addr, "Values: ");	
+			
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
 				snprintf(tariff, sizeof(tariff), "T%02d:", i);
@@ -196,6 +206,7 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		
 		case MERCURY_CMD_GET_SCHEDULE: {
 			
+			add_value_pair(mqtt_msg, buf_addr, "Schedule: ");	
 			char tariff[5] = { };
 			for(i = 0; i < moddatalen; i++) {
 				snprintf(tariff, sizeof(tariff), "T%02d ", moddata[3*i + 1] + 1);		
@@ -208,16 +219,16 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		}		
 		
 		case MERCURY_CMD_GET_TIMEDATE: {
-			
-		uint8_t time[7] = { 0 };
+		
+			uint8_t time[7] = { 0 };
 			for(i = 0; i < 7; i++) {
 				time[i] = moddata[i + 1];
 			}
 		
-			snprintf(buf, sizeof(buf), "Dow: %02X Time: %02X:%02X:%02X Date: %02X-%02X-%02X", 
-								time[0], time[1], time[2], time[3], time[4], time[5], time[6]);		
+			snprintf(buf, sizeof(buf), "Timedate: Dow: %02X Time: %02X:%02X:%02X Date: %02X-%02X-%02X", 
+																	time[0], time[1], time[2], time[3], time[4], time[5], time[6]);		
 			
-			add_value_pair(mqtt_msg, "Timedate: ", buf);		
+			add_value_pair(mqtt_msg, buf_addr, buf);		
 	
 			return true;
 			break;
