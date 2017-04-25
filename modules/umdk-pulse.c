@@ -158,9 +158,9 @@ bool umdk_pulse_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             
             int k = 0;
             
-            for (i = 0; i < channels; i++) {
-                if (is_big_endian) {
-                    for (k = 0; k < 3; k++) {
+            for (i = 0; i < channels; i++) {                
+                for (k = 0; k < 3; k++) {
+                    if (is_big_endian()) {
                         values[i].bytes[2 - k] = moddata[2 + i*3 + k];
                     } else {
                         values[i].bytes[k] = moddata[2 + i*3 + k];
@@ -170,7 +170,7 @@ bool umdk_pulse_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             /* most recent absolute data are in values[i].num now */
             
             /* let's decode hourly data */
-            uint32_t history[channels][hours] = { };
+            uint32_t history[channels][hours];
             for (i = 0; i < channels; i++) {
                 for (k = 0; k < hours - 1; k++) {
                     uint16_t *tmp = (uint16_t *)&moddata[2 + channels*3 + i*2*hours + k];
