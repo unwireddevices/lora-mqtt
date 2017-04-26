@@ -86,7 +86,7 @@ static bool m_enqueue(fifo_t *l, char *v);
 static bool m_dequeue(fifo_t *l, char *v);
 static bool is_fifo_empty(fifo_t *l);
 
-#define MAX_NODES 128
+#define MAX_PENDING_NODES 128
 
 #define RETRY_TIMEOUT_S 35
 #define INVITE_TIMEOUT_S 45
@@ -96,24 +96,22 @@ static bool is_fifo_empty(fifo_t *l);
 #define NUM_RETRIES_BEFORE_INVITE 2
 
 /* Pending messages queue pool */
-static bool pending_free[MAX_NODES];
+static bool pending_free[MAX_PENDING_NODES];
 typedef struct {
 	uint64_t nodeid;
-	unsigned short nodeclass;
-
-	bool has_been_invited;
-
-	fifo_t pending_fifo;
-
-	bool can_send;
+    fifo_t pending_fifo;
+    
 	time_t last_msg;
 	time_t last_inv;
-
+    
+	unsigned short nodeclass;
+	bool has_been_invited;
+	bool can_send;
 	unsigned short num_retries;
 	unsigned short num_pending;
 } pending_item_t;
 
-static pending_item_t pending[MAX_NODES];
+static pending_item_t pending[MAX_PENDING_NODES];
 
 /* The devices list is requested for gate needs, so don't post in MQTT it's results */
 static bool list_for_gate = false;
@@ -146,7 +144,7 @@ static char *get_node_class(unsigned short nodeclass) {
 
 static void init_pending(void) {
 	int i;	
-	for (i = 0; i < MAX_NODES; i++) {
+	for (i = 0; i < MAX_PENDING_NODES; i++) {
 		pending_free[i] = true;
 		pending[i].nodeid = 0;
 		pending[i].nodeclass = 0;
@@ -160,7 +158,7 @@ static void init_pending(void) {
 
 static pending_item_t *pending_to_nodeid(uint64_t nodeid) {
 	int i;	
-	for (i = 0; i < MAX_NODES; i++) {
+	for (i = 0; i < MAX_PENDING_NODES; i++) {
 		if (pending_free[i])
 			continue;
 
@@ -197,7 +195,7 @@ static bool add_device(uint64_t nodeid, unsigned short nodeclass, bool was_joine
 	}
 
 	int i;
-	for (i = 0; i < MAX_NODES; i++) {
+	for (i = 0; i < MAX_PENDING_NODES; i++) {
 		/* Free cell found, occupy */
 		if (pending_free[i]) {
 			pending_free[i] = false;
@@ -229,7 +227,7 @@ static bool kick_device(uint64_t nodeid) {
 	pthread_mutex_lock(&mutex_pending);
 
 	int i;
-	for (i = 0; i < MAX_NODES; i++) {
+	for (i = 0; i < MAX_PENDING_NODES; i++) {
 		if (pending_free[i])
 			continue;
 
@@ -374,6 +372,7 @@ static void serve_reply(char *str) {
 
 	gate_reply_type_t reply = (gate_reply_type_t)str[0];
 	str += 1;
+    char *str_orig = str;
 
 	switch (reply) {
 		case REPLY_LIST: {
@@ -385,7 +384,7 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -397,7 +396,7 @@ static void serve_reply(char *str) {
 
 			uint64_t appid64;
 			if (!hex_to_bytes(appid, (uint8_t *) &appid64, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str - 32);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -409,7 +408,7 @@ static void serve_reply(char *str) {
 
 			uint16_t lseen;
 			if (!hex_to_bytes(lastseen, (uint8_t *) &lseen, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str - 52);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -421,7 +420,7 @@ static void serve_reply(char *str) {
 
 			uint16_t cl;
 			if (!hex_to_bytes(nodeclass, (uint8_t *) &cl, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str - 52);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -456,7 +455,7 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse device app. data: %s", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse device app. data: %s", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -527,7 +526,7 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse join reply: %s", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse join reply: %s", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -576,7 +575,7 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse kick packet: %s", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse kick packet: %s", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -612,7 +611,7 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse ack: %s", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse ack: %s", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -649,7 +648,7 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse pending frames request data: %s", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse pending frames request data: %s", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -708,7 +707,7 @@ static void* pending_worker(void *arg) {
 		pthread_mutex_lock(&mutex_pending);
 
 		int i;	
-		for (i = 0; i < MAX_NODES; i++) {
+		for (i = 0; i < MAX_PENDING_NODES; i++) {
 			if (pending_free[i]) {
                 usleep(1e3 * QUEUE_POLLING_INTERVAL);
 				continue;
@@ -1351,9 +1350,7 @@ int main(int argc, char *argv[])
 	devlist_needed = true;
 
 	init_pending();
-
-	TAILQ_INIT(&inputq);
-
+    
 	uart = open(serialport, O_RDWR | O_NOCTTY | O_SYNC);
 	if (uart < 0)
 	{

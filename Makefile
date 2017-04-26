@@ -7,7 +7,7 @@
 # Modify your Options here
 # After that, please "make clean" and "make" to re-compile your code
 
-CFLAGS = -v -O1 -Wall -Werror -I./include -I./modules/include
+CFLAGS = -v -O2 -Wall -Werror -I./include -I./modules/include
 # CXXFLAGS = 
 LDFLAGS = -lcares -lcrypto -lssl -lmosquitto -lpthread -pthread
 
