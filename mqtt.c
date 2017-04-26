@@ -61,7 +61,9 @@ static pthread_t pending_thread;
 static pthread_mutex_t mutex_uart;
 static pthread_mutex_t mutex_queue;
 static pthread_mutex_t mutex_pending;
+/*
 static pthread_mutex_t mutex_pong;
+*/
 
 static uint8_t mqtt_format;
 
@@ -118,8 +120,10 @@ static bool devlist_needed = false;
 static void devices_list(bool internal);
 
 /* If too many pings was skipped by gate, the connection might be faulty */
+/*
 static int pings_skipped = 0;
 static const int MIN_PINGS_SKIPPED = 10;
+*/
 
 static bool static_devices_list_sent = false;
 
@@ -458,9 +462,11 @@ static void serve_reply(char *str) {
 
 		case REPLY_IND: {
             puts("[info] Reply type: REPLY_IND");
+            /*
 			pthread_mutex_lock(&mutex_pong);
 			pings_skipped = 0;
 			pthread_mutex_unlock(&mutex_pong);
+            */
 
 			char addr[17] = {};
 			memcpy(addr, str, 16);
@@ -532,9 +538,11 @@ static void serve_reply(char *str) {
 
 		case REPLY_JOIN: {
             puts("[info] Reply type: REPLY_JOIN");
+            /*
 			pthread_mutex_lock(&mutex_pong);
 			pings_skipped = 0;
 			pthread_mutex_unlock(&mutex_pong);
+            */
 
 			char addr[17] = {};
 			memcpy(addr, str, 16);
@@ -620,9 +628,11 @@ static void serve_reply(char *str) {
 
 		case REPLY_ACK: {
             puts("[info] Reply type: REPLY_ACK");
+            /*
 			pthread_mutex_lock(&mutex_pong);
 			pings_skipped = 0;
 			pthread_mutex_unlock(&mutex_pong);
+            */
 
 			char addr[17] = {};
 			memcpy(addr, str, 16);
@@ -657,7 +667,7 @@ static void serve_reply(char *str) {
 			pthread_mutex_unlock(&mutex_pending);			
 		}
 		break;
-
+/*
 		case REPLY_PONG: {
             puts("[info] Reply type: REPLY_PONG");
 			pthread_mutex_lock(&mutex_pong);
@@ -665,12 +675,14 @@ static void serve_reply(char *str) {
 			pthread_mutex_unlock(&mutex_pong);
 		}
 		break;
-
+*/
 		case REPLY_PENDING_REQ: {
             puts("[info] Reply type: REPLY_PENDING_REQ");
+            /*
 			pthread_mutex_lock(&mutex_pong);
 			pings_skipped = 0;
 			pthread_mutex_unlock(&mutex_pong);
+            */
 
 			char addr[17] = {};
 			memcpy(addr, str, 16);
@@ -965,15 +977,19 @@ static void *uart_reader(void *arg)
 		char c;
 		int r = 0, i = 0;
 
+        /*
 		pthread_mutex_lock(&mutex_pong);
 		if (pings_skipped++ >= MIN_PINGS_SKIPPED) {
 			puts("[!!!] No response from LoRa gate! Check the connection!");
 		}
 		pthread_mutex_unlock(&mutex_pong);
+        */
 
 		pthread_mutex_lock(&mutex_uart);
 
+        /*
 		dprintf(uart, "%c\r", CMD_PING);
+        */
 		dprintf(uart, "%c\r", CMD_FLUSH);
 
 		while ((r = read(uart, &c, 1)) != 0) {
@@ -1404,7 +1420,7 @@ int main(int argc, char *argv[])
 	pthread_mutex_init(&mutex_uart, NULL);
 	pthread_mutex_init(&mutex_queue, NULL);
 	pthread_mutex_init(&mutex_pending, NULL);
-	pthread_mutex_init(&mutex_pong, NULL);
+	//pthread_mutex_init(&mutex_pong, NULL);
 
 	/* Request a devices list on a first launch */
 	devlist_needed = true;
