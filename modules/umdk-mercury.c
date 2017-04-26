@@ -74,17 +74,20 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		uint32_t destination = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
 		uint32_t new_address = strtol(param, &param, 10);
-		
+		uint32_to_le(&destination);
+		uint32_to_le(&new_address);
 		snprintf(out, bufsize, "%02x%08x%08x", MERCURY_CMD_SET_NEW_ADDR, destination, new_address);
 	}
 	else if (strstr(param, "get serial ") == param) {
 		param += strlen("get serial ");    // Skip command
 		uint32_t destination = strtol(param, &param, 10);
+		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_SERIAL, destination);
 	}
 	else if (strstr(param, "get total ") == param) { 
 		param += strlen("get total ");    // Skip command
 		uint32_t destination = strtol(param, &param, 10);
+		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_TOTAL_VALUE, destination);
 	}
 	else if (strstr(param, "get value ") == param) { 
@@ -92,12 +95,13 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		uint32_t destination = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
 		uint8_t month = strtol(param, NULL, 10);
-		
+		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_GET_VALUE, destination, month);
 	}
 	else if (strstr(param, "get current ") == param) { 
 		param += strlen("get current ");    // Skip command
 		uint32_t destination = strtol(param, &param, 10);
+		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x0F", MERCURY_CMD_GET_VALUE, destination);
 	}
 	else if (strstr(param, "get schedule ") == param) { 
@@ -107,7 +111,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		uint8_t month = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
 		uint8_t dow = strtol(param, NULL, 10);
-
+		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x%02x%02x", MERCURY_CMD_GET_SCHEDULE, destination, month, dow);
 	}
 	else if (strstr(param, "get timedate ") == param) { 
@@ -133,7 +137,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		uint8_t month = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
 		uint8_t year = strtol(param, NULL, 10);
-
+		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x%02x%02x%02x%02x%02x%02x%02x", 
 														MERCURY_CMD_SET_TIMEDATE, destination, dow, hour, min, sec, day, month, year);
 	}
