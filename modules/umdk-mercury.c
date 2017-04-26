@@ -117,7 +117,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 	else if (strstr(param, "get timedate ") == param) { 
 		param += strlen("get timedate ");    // Skip command
 		uint32_t destination = strtol(param, &param, 10);
-		
+		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_TIMEDATE, destination);
 	}
 	else if (strstr(param, "set timedate ") == param) { 
