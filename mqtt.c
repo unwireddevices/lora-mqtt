@@ -49,7 +49,7 @@
 #define VERSION "1.9.4"
 
 #define UART_POLLING_INTERVAL 100	// milliseconds
-#define QUEUE_POLLING_INTERVAL 10 	// milliseconds
+#define QUEUE_POLLING_INTERVAL 1 	// milliseconds
 
 static struct mosquitto *mosq = NULL;
 static int uart = 0;
@@ -360,6 +360,8 @@ static void set_blocking (int fd, int should_block)
 }
 
 static void serve_reply(char *str) {
+    puts("[info] Gate reply received");
+    
 	if (strlen(str) > REPLY_LEN * 2) {
 		puts("[error] Received too long reply from the gate");
 		return;
@@ -370,6 +372,7 @@ static void serve_reply(char *str) {
 
 	switch (reply) {
 		case REPLY_LIST: {
+            puts("[info] Reply type: REPLY_LIST");
 			/* Read EUI64 */
 			char addr[17] = {};
 			memcpy(addr, str, 16);
@@ -454,6 +457,7 @@ static void serve_reply(char *str) {
 		break;
 
 		case REPLY_IND: {
+            puts("[info] Reply type: REPLY_IND");
 			pthread_mutex_lock(&mutex_pong);
 			pings_skipped = 0;
 			pthread_mutex_unlock(&mutex_pong);
@@ -527,6 +531,7 @@ static void serve_reply(char *str) {
 		break;
 
 		case REPLY_JOIN: {
+            puts("[info] Reply type: REPLY_JOIN");
 			pthread_mutex_lock(&mutex_pong);
 			pings_skipped = 0;
 			pthread_mutex_unlock(&mutex_pong);
@@ -579,6 +584,7 @@ static void serve_reply(char *str) {
 		break;
 
 		case REPLY_KICK: {
+            puts("[info] Reply type: REPLY_KICK");
 			char addr[17] = {};
 			memcpy(addr, str, 16);
 			str += 16;
@@ -613,6 +619,7 @@ static void serve_reply(char *str) {
 		break;
 
 		case REPLY_ACK: {
+            puts("[info] Reply type: REPLY_ACK");
 			pthread_mutex_lock(&mutex_pong);
 			pings_skipped = 0;
 			pthread_mutex_unlock(&mutex_pong);
@@ -652,6 +659,7 @@ static void serve_reply(char *str) {
 		break;
 
 		case REPLY_PONG: {
+            puts("[info] Reply type: REPLY_PONG");
 			pthread_mutex_lock(&mutex_pong);
 			pings_skipped = 0;
 			pthread_mutex_unlock(&mutex_pong);
@@ -659,6 +667,7 @@ static void serve_reply(char *str) {
 		break;
 
 		case REPLY_PENDING_REQ: {
+            puts("[info] Reply type: REPLY_PENDING_REQ");
 			pthread_mutex_lock(&mutex_pong);
 			pings_skipped = 0;
 			pthread_mutex_unlock(&mutex_pong);
@@ -689,6 +698,9 @@ static void serve_reply(char *str) {
 			}			
 		}
 		break;
+        default:
+            puts("[error] Reply type: unknown reply type");
+            break;
 	}
 }
 
