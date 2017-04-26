@@ -48,6 +48,15 @@
 
 #define VERSION "2.0.0"
 
+#define MAX_PENDING_NODES 1000
+
+#define RETRY_TIMEOUT_S 35
+#define INVITE_TIMEOUT_S 45
+
+#define NUM_RETRIES 5
+#define NUM_RETRIES_INV 5
+#define NUM_RETRIES_BEFORE_INVITE 2
+
 #define UART_POLLING_INTERVAL 100	// milliseconds
 #define QUEUE_POLLING_INTERVAL 1 	// milliseconds
 #define REPLY_LEN 1024
@@ -85,15 +94,6 @@ typedef struct TAILQ fifo_t;
 static bool m_enqueue(fifo_t *l, char *v);
 static bool m_dequeue(fifo_t *l, char *v);
 static bool is_fifo_empty(fifo_t *l);
-
-#define MAX_PENDING_NODES 128
-
-#define RETRY_TIMEOUT_S 35
-#define INVITE_TIMEOUT_S 45
-
-#define NUM_RETRIES 5
-#define NUM_RETRIES_INV 5
-#define NUM_RETRIES_BEFORE_INVITE 2
 
 /* Pending messages queue pool */
 static bool pending_free[MAX_PENDING_NODES];
@@ -1322,10 +1322,10 @@ int main(int argc, char *argv[])
                             retain = strtok(NULL, "\t =\n\r");
                             if (!strcmp(retain, "true")) {
                                 mqtt_sepio = true;
-                                puts("MQTT separate in/out topcis enabled");
+                                puts("MQTT separate in/out topics enabled");
                             } else {
                                 mqtt_sepio = false;
-                                puts("MQTT separate in/out topcis disabled");
+                                puts("MQTT separate in/out topics disabled");
                             }
                         }
                     }
