@@ -65,7 +65,7 @@ typedef enum {
     MERCURY_CMD_SET_TIMEDATE = 0x16,	/* Set the internal time */
 } mercury_cmd_t;
 
-static char str_dow[8][3] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Hol" };
+static char str_dow[8][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Hol" };
 
 void umdk_mercury_command(char *param, char *out, int bufsize) {
 	
@@ -150,7 +150,7 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		char buf_addr[20];
 		uint32_t *address = (uint32_t *)(&moddata[0]);
 		uint32_to_le(address);
-		snprintf(buf_addr, sizeof(buf_addr), "%010u", *address);	
+		snprintf(buf_addr, sizeof(buf_addr), "%u", *address);	
 		
 		add_value_pair(mqtt_msg, "Address", buf_addr);
 						
@@ -173,7 +173,7 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		case MERCURY_CMD_GET_SERIAL: {
 			uint32_t *serial = (uint32_t *)(&moddata[5]);
 			uint32_to_le(serial);      
-			snprintf(buf, sizeof(buf), "%010u", *serial);
+			snprintf(buf, sizeof(buf), "%u", *serial);
 			add_value_pair(mqtt_msg, "Serial number", buf);		
 			return true;
 			break;
@@ -190,11 +190,11 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
 				snprintf(tariff, sizeof(tariff), "T%02d", i);		
-				snprintf(buf, sizeof(buf), " %010u", value[i]);
+				snprintf(buf, sizeof(buf), " %u", value[i]);
 				add_value_pair(mqtt_msg, tariff, buf);								
 			}
-			snprintf(buf, sizeof(buf), " %010u", value[4]);
-			add_value_pair(mqtt_msg, "Summary", buf);		
+			snprintf(buf, sizeof(buf), " %u", value[4]);
+			add_value_pair(mqtt_msg, "Total", buf);		
 			
 			return true;
 			break;
@@ -211,11 +211,11 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
 				snprintf(tariff, sizeof(tariff), "T%02d", i);
-				snprintf(buf, sizeof(buf), "%010u", value[i]);
+				snprintf(buf, sizeof(buf), "%u", value[i]);
 				add_value_pair(mqtt_msg, tariff, buf);				
 			}
-			snprintf(buf, sizeof(buf), "%010u", value[4]);
-			add_value_pair(mqtt_msg, "Summary", buf);		
+			snprintf(buf, sizeof(buf), "%u", value[4]);
+			add_value_pair(mqtt_msg, "Total", buf);		
 	
 			return true;
 			break;
@@ -242,12 +242,8 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			for(i = 0; i < 7; i++) {
 				time[i] = moddata[i + 5];
 			}
-			
-			char dow[3];
-			strncpy(dow, str_dow[time[0]], 3);
 
-			add_value_pair(mqtt_msg, "DoW", dow);
-			//add_value_pair(mqtt_msg, "DoW", time[0]);
+			add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
 			
 			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);	
 			add_value_pair(mqtt_msg, "Time", time_buf);
