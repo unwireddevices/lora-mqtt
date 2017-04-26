@@ -36,7 +36,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <syslog.h>
-
+#include <sys/msg.h>
 #include <sys/queue.h>
 
 #define __STDC_FORMAT_MACROS
@@ -46,10 +46,19 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "1.9.4"
+#define VERSION "2.0.0"
 
 #define UART_POLLING_INTERVAL 100	// milliseconds
 #define QUEUE_POLLING_INTERVAL 1 	// milliseconds
+#define REPLY_LEN 1024
+
+int msgqid;
+extern int errno;
+
+struct msg_buf {
+  long mtype;
+  char mtext[REPLY_LEN];
+} msg_rx;
 
 static struct mosquitto *mosq = NULL;
 static int uart = 0;
@@ -59,7 +68,6 @@ static pthread_t reader_thread;
 static pthread_t pending_thread;
 
 static pthread_mutex_t mutex_uart;
-static pthread_mutex_t mutex_queue;
 static pthread_mutex_t mutex_pending;
 /*
 static pthread_mutex_t mutex_pong;
@@ -69,8 +77,6 @@ static uint8_t mqtt_format;
 
 char logbuf[1024];
 
-#define REPLY_LEN 1024
-
 typedef struct entry {
 	TAILQ_ENTRY(entry) entries;   /* Circular queue. */	
 	char buf[REPLY_LEN];
@@ -78,8 +84,6 @@ typedef struct entry {
 
 TAILQ_HEAD(TAILQ, entry) inputq;
 typedef struct TAILQ fifo_t;
-
-// static fifo_t *inputqp;              /* UART input requests queue */
 
 static bool m_enqueue(fifo_t *l, char *v);
 static bool m_dequeue(fifo_t *l, char *v);
@@ -400,20 +404,6 @@ static void serve_reply(char *str) {
 				logprint(logbuf);
 				return;
 			}
-
-			/* Read ability mask */
-			/*
-			char ability[17] = {};
-			memcpy(ability, str, 16);
-			str += 16;
-
-			uint64_t abil64;
-			if (!hex_to_bytes(ability, (uint8_t *) &abil64, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str - 48);
-				logprint(logbuf);
-				return;
-			}
-			*/
 
 			/* Read last seen time */
 			char lastseen[5] = {};
@@ -867,38 +857,21 @@ static void* pending_worker(void *arg) {
 		}
 
 		pthread_mutex_unlock(&mutex_pending);
-
-		//usleep(1e3);
 	}
 
 	return 0;
 }
 
-/* Polls publish queue and publishes the messages into MQTT */
+/* Publishes messages into MQTT */
 static void *publisher(void *arg)
-{
+{ 
 	while(1) {
-        usleep(1e3 * QUEUE_POLLING_INTERVAL);
-
-		pthread_mutex_lock(&mutex_queue);
-
-		/* Checks wether queue is empty */
-		if (is_fifo_empty(&inputq)) {
-			pthread_mutex_unlock(&mutex_queue);
-			continue;
-		}
-
-		/* Pick an element from the head */
-		char buf[REPLY_LEN];
-		if (!m_dequeue(&inputq, buf)) {
-			pthread_mutex_unlock(&mutex_queue);		
-			continue;
-		}
-
-		pthread_mutex_unlock(&mutex_queue);
-		serve_reply(buf);
-
-		/* usleep(1e3 * QUEUE_POLLING_INTERVAL); */
+        /* Wait for a message to arrive */
+        if (msgrcv(msgqid, &msg_rx, sizeof(msg_rx.mtext), 0, 0) < 0) {
+            puts("[error] Failed to receive internal message");
+            continue;
+        }
+		serve_reply(msg_rx.mtext);
 	}	
 	
 	return NULL;
@@ -1001,29 +974,26 @@ static void *uart_reader(void *arg)
 		buf[i] = '\0';
 
 		if (strlen(buf) > 0) {
-			pthread_mutex_lock(&mutex_queue);
-			
-			char *running = strdup(buf), *token;
-			const char *delims = "\n";
-
-			while (strlen(token = strsep(&running, delims))) {
-				char buf[REPLY_LEN] = {};
-				memcpy(buf, token, strlen(token));
-
-				/* Insert reply to the queue */
-				if (!m_enqueue(&inputq, buf)) {
-					if (!running) {
-						free(running);
-					}
-					break;
-				}
-
-				if (running == NULL)
-					break;
-				
-			}
-			
-			pthread_mutex_unlock(&mutex_queue);
+            
+            char *running = strdup(buf), *token;
+            const char *delims = "\n";
+            
+            while (strlen(token = strsep(&running, delims))) {
+                if((strlen(token) + 1 ) > sizeof(msg_rx.mtext)) {
+                    puts("[error] Oversized message, unable to send");
+                    continue;
+                }
+                
+                msg_rx.mtype = 1;
+                memcpy(msg_rx.mtext, token, strlen(token));
+                msg_rx.mtext[strlen(token)] = 0;
+                
+                if (msgsnd(msgqid, &msg_rx, sizeof(msg_rx.mtext), 0) < 0) {
+                    perror( strerror(errno) );
+                    printf("[error] Failed to send internal message");
+                    continue;
+                }
+            }
 		}
 
 		usleep(1e3 * UART_POLLING_INTERVAL);
@@ -1254,14 +1224,12 @@ void usage(void) {
 
 int main(int argc, char *argv[])
 {
-//	int i;
 	const char *host = "localhost";
 	int port = 1883;
 	int keepalive = 60;
     
     mqtt_qos = 1;
     mqtt_retain = false;
-//	bool clean_session = true;
 
 	openlog("lora-mqtt", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_DAEMON);
 
@@ -1331,12 +1299,13 @@ int main(int argc, char *argv[])
         write(pidfile, pidval, strlen(pidval));
     }
 	
-	/* wait for 60 seconds */
-	/*
-	if (daemonize) {
-		usleep(60*1e6);
-	}
-	*/
+    
+    /* Create message queue */
+    msgqid = msgget(IPC_PRIVATE, IPC_CREAT);
+    if (msgqid < 0) {
+        puts("Failed to create message queue");
+        exit(EXIT_FAILURE);
+    }
 	
 	FILE* config = NULL;
     char* token;
@@ -1418,7 +1387,6 @@ int main(int argc, char *argv[])
 	printf("Using serial port device: %s\n", serialport);
 	
 	pthread_mutex_init(&mutex_uart, NULL);
-	pthread_mutex_init(&mutex_queue, NULL);
 	pthread_mutex_init(&mutex_pending, NULL);
 	//pthread_mutex_init(&mutex_pong, NULL);
 
