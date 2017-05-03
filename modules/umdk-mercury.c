@@ -73,9 +73,9 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 	
 	if (strstr(param, "set address ") == param) {
 		param += strlen("set address ");    // Skip command
-		uint32_t destination = strtol(param, &param, 10);
-		param += strlen(" ");    						// Skip space
 		uint32_t new_address = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		uint32_t destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
 		uint32_to_le(&new_address);
 		snprintf(out, bufsize, "%02x%08x%08x", MERCURY_CMD_SET_NEW_ADDR, destination, new_address);
@@ -94,9 +94,9 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 	}
 	else if (strstr(param, "get value ") == param) { 
 		param += strlen("get value ");    // Skip command
-		uint32_t destination = strtol(param, &param, 10);
+		uint8_t month = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
-		uint8_t month = strtol(param, NULL, 10);
+		uint32_t destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_GET_VALUE, destination, month);
 	}
@@ -108,13 +108,14 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 	}
 	else if (strstr(param, "get schedule ") == param) { 
 		param += strlen("get schedule "); // skip command
-		uint32_t destination = strtol(param, &param, 10);
-		param += strlen(" ");    						// Skip space
 		uint8_t month = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
-		uint8_t dow = strtol(param, NULL, 10);
+		uint8_t dow = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		uint32_t destination = strtol(param, &param, 10);
+		uint8_t date = (uint8_t)((month << 4) + (dow << 0));
 		uint32_to_le(&destination);
-		snprintf(out, bufsize, "%02x%08x%02x%02x", MERCURY_CMD_GET_SCHEDULE, destination, month, dow);
+		snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_GET_SCHEDULE, destination, date);
 	}
 	else if (strstr(param, "get timedate ") == param) { 
 		param += strlen("get timedate ");    // Skip command
@@ -124,8 +125,6 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 	}
 	else if (strstr(param, "set timedate ") == param) { 
 		param += strlen("set timedate "); // skip command
-		uint32_t destination = strtol(param, &param, 10);
-		param += strlen(" ");    						// Skip space
 		uint8_t dow = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
 		uint8_t hour = strtol(param, &param, 10);
@@ -138,7 +137,9 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		param += strlen(" ");    						// Skip space
 		uint8_t month = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
-		uint8_t year = strtol(param, NULL, 10);
+		uint8_t year = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		uint32_t destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x%02x%02x%02x%02x%02x%02x%02x", 
 														MERCURY_CMD_SET_TIMEDATE, destination, dow, hour, min, sec, day, month, year);
@@ -217,10 +218,10 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
 				snprintf(tariff, sizeof(tariff), "T%02d", i);		
-				snprintf(buf, sizeof(buf), "%u,%u", value[i]/100, value[i]%100);
+				snprintf(buf, sizeof(buf), "%u.%u", value[i]/100, value[i]%100);
 				add_value_pair(mqtt_msg, tariff, buf);								
 			}
-			snprintf(buf, sizeof(buf), "%u,%u", value[4]/100, value[4]%100);
+			snprintf(buf, sizeof(buf), "%u.%u", value[4]/100, value[4]%100);
 			add_value_pair(mqtt_msg, "Total", buf);		
 			
 			return true;
@@ -238,10 +239,10 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
 				snprintf(tariff, sizeof(tariff), "T%02d", i);
-				snprintf(buf, sizeof(buf), "%u,%u", value[i]/100, value[i]%100);
+				snprintf(buf, sizeof(buf), "%u.%u", value[i]/100, value[i]%100);
 				add_value_pair(mqtt_msg, tariff, buf);				
 			}
-			snprintf(buf, sizeof(buf), "%u,%u", value[4]/100, value[4]%100);
+			snprintf(buf, sizeof(buf), "%u.%u", value[4]/100, value[4]%100);
 			add_value_pair(mqtt_msg, "Total", buf);		
 	
 			return true;
