@@ -141,8 +141,46 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		param += strlen(" ");    						// Skip space
 		uint32_t destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
-		snprintf(out, bufsize, "%02x%08x%02x%02x%02x%02x%02x%02x%02x", 
+		snprintf(out, bufsize, "%02x%08x%02d%02d%02d%02d%02d%02d%02d", 
 														MERCURY_CMD_SET_TIMEDATE, destination, dow, hour, min, sec, day, month, year);
+	}
+	else if (strstr(param, "set schedule ") == param) { 
+		uint8_t i = 0;
+		uint8_t tariff_hour[8] = { 0xFF };
+		uint8_t hour = 0xFF;
+		uint8_t tariff = 0xFF;
+		uint8_t min[8] = { 0xFF };
+		memset(tariff_hour, 0xFF, sizeof(tariff_hour));
+		memset(min, 0xFF, sizeof(min));
+		param += strlen("set schedule "); // skip command
+		uint8_t month = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		uint8_t dow = strtol(param, &param, 10);
+		uint8_t date = (uint8_t)((month << 4) + (dow << 0));
+		param += strlen(" ");    						// Skip space
+		uint8_t checkpoint = strtol(param, &param, 10);
+
+		for(i = 0; i < checkpoint; i++) {
+			param += strlen(" ");    						// Skip space
+			tariff = strtol(param, &param, 10);
+			tariff--;
+			param += strlen(" ");    						// Skip space
+			hour = strtol(param, &param, 10);
+			tariff_hour[i] = (uint8_t)((tariff << 6) + ((hour & 0x3F) << 0));
+			param += strlen(" ");    						// Skip space
+			min[i] = strtol(param, &param, 10);
+		}
+	
+		param += strlen(" ");    						// Skip space	
+		uint32_t destination = strtol(param, &param, 10);
+		uint32_to_le(&destination);
+		
+		uint8_t num_char;
+		num_char = snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_SET_SCHEDULE, destination);
+		for(i = 0; i < sizeof(tariff_hour); i++) {
+			num_char += snprintf(out + num_char, bufsize - num_char, "%02x%02x", tariff_hour[i], min[i]);
+		}
+		snprintf(out + num_char, bufsize - num_char, "%02x", date);
 	}
 	else if (strstr(param, "add ") == param) { 
 		param += strlen("add ");    // Skip command
