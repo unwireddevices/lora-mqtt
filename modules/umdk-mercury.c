@@ -38,7 +38,9 @@
 #include "utils.h"
 
 typedef enum {
-    MERCURY_CMD_INIT_ADDR = 0xFF,		/* Set address at initialization */
+		MERCURY_CMD_RESET = 0xFF,		/* Clear database */
+    MERCURY_CMD_ADD_ADDR = 0xFE,		/* Add address  in database */
+		MERCURY_CMD_REMOVE_ADDR = 0xFD,		/* Remove address from database */
 
     MERCURY_CMD_GET_ADDR = 0x00,		/* Read the address */
     MERCURY_CMD_GET_SERIAL = 0x01,		/* Read the serial number */
@@ -140,6 +142,21 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x%02x%02x%02x%02x%02x%02x%02x", 
 														MERCURY_CMD_SET_TIMEDATE, destination, dow, hour, min, sec, day, month, year);
+	}
+	else if (strstr(param, "add ") == param) { 
+		param += strlen("add ");    // Skip command
+		uint32_t add_address = strtol(param, &param, 10);
+		uint32_to_le(&add_address);
+		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_ADD_ADDR, add_address);
+	}
+	else if (strstr(param, "remove ") == param) { 
+		param += strlen("remove ");    // Skip command
+		uint32_t remove_address = strtol(param, &param, 10);
+		uint32_to_le(&remove_address);
+		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_REMOVE_ADDR, remove_address);
+	}
+	else if (strstr(param, "reset") == param) { 
+		snprintf(out, bufsize, "%02x", MERCURY_CMD_RESET);
 	}
 }
 
