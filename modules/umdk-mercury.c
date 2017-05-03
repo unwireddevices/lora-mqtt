@@ -147,11 +147,13 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 	else if (strstr(param, "set schedule ") == param) { 
 		uint8_t i = 0;
 		uint8_t tariff_hour[8] = { 0xFF };
-		uint8_t hour = 0xFF;
+		uint8_t hour_tmp = 0xFF;
 		uint8_t tariff = 0xFF;
 		uint8_t min[8] = { 0xFF };
+		uint8_t min_tmp = 0xFF;
 		memset(tariff_hour, 0xFF, sizeof(tariff_hour));
 		memset(min, 0xFF, sizeof(min));
+
 		param += strlen("set schedule "); // skip command
 		uint8_t month = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
@@ -165,10 +167,11 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 			tariff = strtol(param, &param, 10);
 			tariff--;
 			param += strlen(" ");    						// Skip space
-			hour = strtol(param, &param, 10);
-			tariff_hour[i] = (uint8_t)((tariff << 6) + ((hour & 0x3F) << 0));
+			hour_tmp = strtol(param, &param, 10);
+			tariff_hour[i] = (uint8_t)((tariff << 6) + ( ((((hour_tmp >> 4) & 0x3) * 10) + (hour_tmp & 0x0F)) << 0));
 			param += strlen(" ");    						// Skip space
-			min[i] = strtol(param, &param, 10);
+			min_tmp = strtol(param, &param, 10);
+			min[i] = (uint8_t)((((min_tmp >> 4) & 0x3) * 10) + (min_tmp & 0x0F));
 		}
 	
 		param += strlen(" ");    						// Skip space	
