@@ -217,10 +217,10 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
 				snprintf(tariff, sizeof(tariff), "T%02d", i);		
-				snprintf(buf, sizeof(buf), " %u", value[i]);
+				snprintf(buf, sizeof(buf), "%u,%u", value[i]/100, value[i]%100);
 				add_value_pair(mqtt_msg, tariff, buf);								
 			}
-			snprintf(buf, sizeof(buf), " %u", value[4]);
+			snprintf(buf, sizeof(buf), "%u,%u", value[4]/100, value[4]%100);
 			add_value_pair(mqtt_msg, "Total", buf);		
 			
 			return true;
@@ -238,10 +238,10 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
 				snprintf(tariff, sizeof(tariff), "T%02d", i);
-				snprintf(buf, sizeof(buf), "%u", value[i]);
+				snprintf(buf, sizeof(buf), "%u,%u", value[i]/100, value[i]%100);
 				add_value_pair(mqtt_msg, tariff, buf);				
 			}
-			snprintf(buf, sizeof(buf), "%u", value[4]);
+			snprintf(buf, sizeof(buf), "%u,%u", value[4]/100, value[4]%100);
 			add_value_pair(mqtt_msg, "Total", buf);		
 	
 			return true;
@@ -252,8 +252,8 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			
 			char tariff[5] = { };
 			for(i = 0; i < moddatalen; i++) {
-				snprintf(tariff, sizeof(tariff), "T%02d ", moddata[3*i + 5] + 1);		
-				snprintf(buf, sizeof(buf), "%02d:%02d ",  moddata[3*i + 6],  moddata[3*i + 7]);
+				snprintf(tariff, sizeof(tariff), "T%02d", moddata[3*i + 5] + 1);		
+				snprintf(buf, sizeof(buf), "%02d:%02d",  moddata[3*i + 6],  moddata[3*i + 7]);
 				add_value_pair(mqtt_msg, tariff, buf);			
 			}
 			
