@@ -145,15 +145,16 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 	}
 	else if (strstr(param, "add ") == param) { 
 		param += strlen("add ");    // Skip command
+		uint8_t number = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
 		uint32_t add_address = strtol(param, &param, 10);
 		uint32_to_le(&add_address);
-		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_ADD_ADDR, add_address);
+		snprintf(out, bufsize, "%02x%02x%08x", MERCURY_CMD_ADD_ADDR, number, add_address);
 	}
 	else if (strstr(param, "remove ") == param) { 
 		param += strlen("remove ");    // Skip command
-		uint32_t remove_address = strtol(param, &param, 10);
-		uint32_to_le(&remove_address);
-		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_REMOVE_ADDR, remove_address);
+		uint8_t number = strtol(param, &param, 10);
+		snprintf(out, bufsize, "%02x%02x", MERCURY_CMD_REMOVE_ADDR, number);
 	}
 	else if (strstr(param, "reset") == param) { 
 		snprintf(out, bufsize, "%02x", MERCURY_CMD_RESET);
@@ -164,6 +165,16 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
 		char buf[100];
 		
+		if (moddatalen == 1) {
+			if (moddata[0] == 1) {
+				add_value_pair(mqtt_msg, "Msg", "Ok");
+			} 
+			else {
+				add_value_pair(mqtt_msg, "Msg", "Error");
+			}
+			return true;
+		}
+		
 		char buf_addr[20];
 		uint32_t *address = (uint32_t *)(&moddata[0]);
 		uint32_to_le(address);
@@ -173,7 +184,6 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 						
     if (moddatalen == 5) {
         if (moddata[4] == 1) {
-
             add_value_pair(mqtt_msg, "Msg", "Ok");
         } else {
             add_value_pair(mqtt_msg, "Msg", "Error");
