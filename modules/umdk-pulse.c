@@ -151,31 +151,33 @@ bool umdk_pulse_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             uint8_t channels = (moddata[1] & 0b11) + 1;
             
             /* absolute data compressed to 3 bytes per counter, has to be decoded to regular UINT32 */
+
             union {
                 uint32_t num;
                 uint8_t  bytes[4];
             } values[channels];
             
             int k = 0;
-            
-            for (i = 0; i < channels; i++) {                
+
+            for (i = 0; i < channels; i++) {
+                values[i].num = 0;
                 for (k = 0; k < 3; k++) {
                     if (is_big_endian()) {
-                        values[i].bytes[2 - k] = moddata[2 + i*3 + k];
+                        values[i].bytes[3-k] = moddata[2 + i*3 + k];
                     } else {
-                        values[i].bytes[k] = moddata[2 + i*3 + k];
+                        values[i].bytes[k+1] = moddata[2 + i*3 + k];
                     }
                 }
             }
             /* most recent absolute data are in values[i].num now */
-            
+                        
             /* let's decode hourly data */
             uint32_t history[channels][hours];
             for (i = 0; i < channels; i++) {
                 for (k = 0; k < hours - 1; k++) {
-                    uint16_t *tmp = (uint16_t *)&moddata[2 + channels*3 + i*2*hours + k];
-                    uint16_to_le(tmp);
-                    history[i][k + 1] = *tmp;
+                    uint16_t *tmp16 = (uint16_t *)&moddata[2 + channels*3 + i*2*(hours - 1) + k*2];
+                    uint16_to_le(tmp16);
+                    history[i][k + 1] = *tmp16;
                 }
                 history[i][0] = values[i].num;
             }
@@ -190,11 +192,17 @@ bool umdk_pulse_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             /* now history[i] holds absolute values for counter `i` for `hours` hours */
             
             char ch[10];
+            char strtmp[10];
             
             for (i = 0; i < channels; i++) {
-                snprintf(buf, 1, "[ ");
+                snprintf(buf, 3, "[ ");
                 for (k = 0; k < hours; k++) {
-                    snprintf(buf, 10, "%" PRIu32 ", ", history[i][k]);
+                    snprintf(strtmp, 10, "%" PRIu32, history[i][k]);
+                    strcat(buf, strtmp);
+                    if (k < hours - 1 ) {
+                        strcat(buf, ",");
+                    }
+                    strcat(buf, " ");
                 }
                 strcat(buf, "]");
                 snprintf(ch, 10, "P%d", i+1);
