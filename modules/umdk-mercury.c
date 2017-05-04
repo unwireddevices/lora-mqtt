@@ -42,6 +42,11 @@ typedef enum {
     MERCURY_CMD_ADD_ADDR = 0xFE,		/* Add address  in database */
 		MERCURY_CMD_REMOVE_ADDR = 0xFD,		/* Remove address from database */
 
+		MERCURY_CMD_SET_SCHED_DAY = 0xF1,
+		MERCURY_CMD_SET_SCHED_YEAR = 0xF2,
+				
+		MERCURY_CMD_PROPRIETARY_COMMAND = 0xF0,		/* Less this value single command of mercury */
+
     MERCURY_CMD_GET_ADDR = 0x00,		/* Read the address */
     MERCURY_CMD_GET_SERIAL = 0x01,		/* Read the serial number */
     MERCURY_CMD_SET_NEW_ADDR = 0x02,		/* Set new address */
@@ -64,31 +69,32 @@ typedef enum {
     MERCURY_CMD_SET_HOLIDAYS = 0x13,		/* Set the table of holidays */
     MERCURY_CMD_SET_SCHEDULE = 0x14,		/* Set the schedule of tariffs */
     MERCURY_CMD_GET_WORKING_TIME = 0x15,	/* Read the total working time of battery and device */
-    MERCURY_CMD_SET_TIMEDATE = 0x16,	/* Set the internal time */
+		MERCURY_CMD_SET_TIMEDATE = 0x16,	/* Set the internal time */
 } mercury_cmd_t;
 
 static char str_dow[8][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Hol" };
 
 void umdk_mercury_command(char *param, char *out, int bufsize) {
-	
+	uint32_t destination;
+		
 	if (strstr(param, "set address ") == param) {
 		param += strlen("set address ");    // Skip command
 		uint32_t new_address = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
-		uint32_t destination = strtol(param, &param, 10);
+		destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
 		uint32_to_le(&new_address);
 		snprintf(out, bufsize, "%02x%08x%08x", MERCURY_CMD_SET_NEW_ADDR, destination, new_address);
 	}
 	else if (strstr(param, "get serial ") == param) {
 		param += strlen("get serial ");    // Skip command
-		uint32_t destination = strtol(param, &param, 10);
+		destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_SERIAL, destination);
 	}
 	else if (strstr(param, "get total ") == param) { 
 		param += strlen("get total ");    // Skip command
-		uint32_t destination = strtol(param, &param, 10);
+		destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_TOTAL_VALUE, destination);
 	}
@@ -96,13 +102,13 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		param += strlen("get value ");    // Skip command
 		uint8_t month = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
-		uint32_t destination = strtol(param, &param, 10);
+		destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_GET_VALUE, destination, month);
 	}
 	else if (strstr(param, "get current ") == param) { 
 		param += strlen("get current ");    // Skip command
-		uint32_t destination = strtol(param, &param, 10);
+		destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x0F", MERCURY_CMD_GET_VALUE, destination);
 	}
@@ -112,14 +118,14 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		param += strlen(" ");    						// Skip space
 		uint8_t dow = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
-		uint32_t destination = strtol(param, &param, 10);
+		destination = strtol(param, &param, 10);
 		uint8_t date = (uint8_t)((month << 4) + (dow << 0));
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_GET_SCHEDULE, destination, date);
 	}
 	else if (strstr(param, "get timedate ") == param) { 
 		param += strlen("get timedate ");    // Skip command
-		uint32_t destination = strtol(param, &param, 10);
+		destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_TIMEDATE, destination);
 	}
@@ -139,7 +145,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		param += strlen(" ");    						// Skip space
 		uint8_t year = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
-		uint32_t destination = strtol(param, &param, 10);
+		destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x%02d%02d%02d%02d%02d%02d%02d", 
 														MERCURY_CMD_SET_TIMEDATE, destination, dow, hour, min, sec, day, month, year);
@@ -175,7 +181,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		}
 	
 		param += strlen(" ");    						// Skip space	
-		uint32_t destination = strtol(param, &param, 10);
+		destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
 		
 		uint8_t num_char;
@@ -184,6 +190,79 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 			num_char += snprintf(out + num_char, bufsize - num_char, "%02x%02x", tariff_hour[i], min[i]);
 		}
 		snprintf(out + num_char, bufsize - num_char, "%02x", date);
+	}
+	else if (strstr(param, "set year ") == param) { 
+		uint8_t i = 0;
+		uint8_t tariff_hour[8] = { 0xFF };
+		uint8_t hour_tmp = 0xFF;
+		uint8_t tariff = 0xFF;
+		uint8_t min[8] = { 0xFF };
+		uint8_t min_tmp = 0xFF;
+		memset(tariff_hour, 0xFF, sizeof(tariff_hour));
+		memset(min, 0xFF, sizeof(min));
+
+		param += strlen("set year "); // skip command
+		uint8_t checkpoint = strtol(param, &param, 10);
+
+		for(i = 0; i < checkpoint; i++) {
+			param += strlen(" ");    						// Skip space
+			tariff = strtol(param, &param, 10);
+			tariff--;
+			param += strlen(" ");    						// Skip space
+			hour_tmp = strtol(param, &param, 10);
+			tariff_hour[i] = (uint8_t)((tariff << 6) + ( ((((hour_tmp >> 4) & 0x3) * 10) + (hour_tmp & 0x0F)) << 0));
+			param += strlen(" ");    						// Skip space
+			min_tmp = strtol(param, &param, 10);
+			min[i] = (uint8_t)((((min_tmp >> 4) & 0x3) * 10) + (min_tmp & 0x0F));
+		}
+	
+		param += strlen(" ");    						// Skip space	
+		destination = strtol(param, &param, 10);
+		uint32_to_le(&destination);
+		
+		uint8_t num_char;
+		num_char = snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_SET_SCHED_YEAR, destination);
+		for(i = 0; i < sizeof(tariff_hour); i++) {
+			num_char += snprintf(out + num_char, bufsize - num_char, "%02x%02x", tariff_hour[i], min[i]);
+		}
+	}
+	else if (strstr(param, "set day ") == param) { 
+		uint8_t i = 0;
+		uint8_t tariff_hour[8] = { 0xFF };
+		uint8_t hour_tmp = 0xFF;
+		uint8_t tariff = 0xFF;
+		uint8_t min[8] = { 0xFF };
+		uint8_t min_tmp = 0xFF;
+		memset(tariff_hour, 0xFF, sizeof(tariff_hour));
+		memset(min, 0xFF, sizeof(min));
+
+		param += strlen("set day "); // skip command		
+		uint8_t day = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		uint8_t checkpoint = strtol(param, &param, 10);
+
+		for(i = 0; i < checkpoint; i++) {
+			param += strlen(" ");    						// Skip space
+			tariff = strtol(param, &param, 10);
+			tariff--;
+			param += strlen(" ");    						// Skip space
+			hour_tmp = strtol(param, &param, 10);
+			tariff_hour[i] = (uint8_t)((tariff << 6) + ( ((((hour_tmp >> 4) & 0x3) * 10) + (hour_tmp & 0x0F)) << 0));
+			param += strlen(" ");    						// Skip space
+			min_tmp = strtol(param, &param, 10);
+			min[i] = (uint8_t)((((min_tmp >> 4) & 0x3) * 10) + (min_tmp & 0x0F));
+		}
+	
+		param += strlen(" ");    						// Skip space	
+		destination = strtol(param, &param, 10);
+		uint32_to_le(&destination);
+		
+		uint8_t num_char;
+		num_char = snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_SET_SCHED_DAY, destination);
+		for(i = 0; i < sizeof(tariff_hour); i++) {
+			num_char += snprintf(out + num_char, bufsize - num_char, "%02x%02x", tariff_hour[i], min[i]);
+		}
+		snprintf(out + num_char, bufsize - num_char, "%02x", day);
 	}
 	else if (strstr(param, "add ") == param) { 
 		param += strlen("add ");    // Skip command
