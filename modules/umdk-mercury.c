@@ -232,7 +232,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		uint8_t num_char;
 		num_char = snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_SET_SCHEDULE, destination);
 		for(i = 0; i < sizeof(tariff_hour); i++) {
-			num_char += snprintf(out + num_char, bufsize - num_char, "%02x%02x", tariff_hour[i], min[i]);
+			num_char += snprintf(out + num_char, bufsize - num_char, "%02d%02d", tariff_hour[i], min[i]);
 		}
 		snprintf(out + num_char, bufsize - num_char, "%02x", date);
 	}
