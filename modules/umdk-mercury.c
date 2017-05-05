@@ -217,10 +217,11 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 			tariff--;
 			param += strlen(" ");    						// Skip space
 			hour_tmp = strtol(param, &param, 10);
-			tariff_hour[i] = (uint8_t)((tariff << 6) + ( ((((hour_tmp >> 4) & 0x3) * 10) + (hour_tmp & 0x0F)) << 0));
+			tariff_hour[i] = (uint8_t)((tariff << 6) + ((hour_tmp / 10) << 4) + ((hour_tmp % 10) << 0) );
+			//tariff_hour[i] = (uint8_t)((tariff << 6) + ( ((((hour_tmp >> 4) & 0x3) * 10) + (hour_tmp & 0x0F)) << 0));
 			param += strlen(" ");    						// Skip space
 			min_tmp = strtol(param, &param, 10);
-			min[i] = (uint8_t)((((min_tmp >> 4) & 0x3) * 10) + (min_tmp & 0x0F));
+			min[i] = (uint8_t)(((min_tmp /10) << 4) + ((min_tmp %10) << 0));
 		}
 	
 		param += strlen(" ");    						// Skip space	
@@ -232,7 +233,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		uint8_t num_char;
 		num_char = snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_SET_SCHEDULE, destination);
 		for(i = 0; i < sizeof(tariff_hour); i++) {
-			num_char += snprintf(out + num_char, bufsize - num_char, "%02d%02d", tariff_hour[i], min[i]);
+			num_char += snprintf(out + num_char, bufsize - num_char, "%02x%02x", tariff_hour[i], min[i]);
 		}
 		snprintf(out + num_char, bufsize - num_char, "%02x", date);
 	}
