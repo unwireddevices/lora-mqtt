@@ -42,8 +42,11 @@ typedef enum {
     MERCURY_CMD_ADD_ADDR = 0xFE,		/* Add address  in database */
 		MERCURY_CMD_REMOVE_ADDR = 0xFD,		/* Remove address from database */
 
-		MERCURY_CMD_SET_SCHED_DAY = 0xF1,
-		MERCURY_CMD_SET_SCHED_YEAR = 0xF2,
+		MERCURY_CMD_SET_SCHED_HOLIDAY = 0xF5,
+		MERCURY_CMD_SET_SCHED_WEEKDAY = 0xF4,
+		MERCURY_CMD_SET_SCHED_WEEKEND = 0xF3,
+		MERCURY_CMD_SET_SCHED_DAY = 0xF2,
+		MERCURY_CMD_SET_SCHED_YEAR = 0xF1,
 				
 		MERCURY_CMD_PROPRIETARY_COMMAND = 0xF0,		/* Less this value single command of mercury */
 
@@ -71,6 +74,15 @@ typedef enum {
     MERCURY_CMD_GET_WORKING_TIME = 0x15,	/* Read the total working time of battery and device */
 		MERCURY_CMD_SET_TIMEDATE = 0x16,	/* Set the internal time */
 } mercury_cmd_t;
+
+typedef enum {
+		ALL_YEAR = 0x0F,
+		
+		ALL_DAYS = 0x0F,
+		WEEKDAYS = 0x0E,
+		WEEKENDS = 0x0D,
+		HOLIDAYS = 0x0C,
+} mercury_scheduler_t;
 
 static char str_dow[8][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Hol" };
 
@@ -157,14 +169,45 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		uint8_t tariff = 0xFF;
 		uint8_t min[8] = { 0xFF };
 		uint8_t min_tmp = 0xFF;
+		uint8_t day = 0;
+		uint8_t month = 0;
+		uint8_t date = 0;
 		memset(tariff_hour, 0xFF, sizeof(tariff_hour));
 		memset(min, 0xFF, sizeof(min));
 
 		param += strlen("set schedule "); // skip command
-		uint8_t month = strtol(param, &param, 10);
-		param += strlen(" ");    						// Skip space
-		uint8_t dow = strtol(param, &param, 10);
-		uint8_t date = (uint8_t)((month << 4) + (dow << 0));
+		
+		if(strstr(param, "year ") == param) {
+			param += strlen("year ");				// Skip command
+			month = (uint8_t)ALL_YEAR;
+		}
+		else if (strstr(param, "month ") == param) {
+			param += strlen("month ");				// Skip command
+			month = strtol(param, &param, 10);
+			param += strlen(" ");    						// Skip space
+		}
+	
+		if(strstr(param, "day ") == param) {
+			param += strlen("day ");				// Skip command
+			day = strtol(param, &param, 10);
+		}
+		else if(strstr(param, "all") == param) {
+			param += strlen("all");				// Skip command
+			day = (uint8_t)ALL_DAYS;
+		}
+		else if(strstr(param, "weekdays") == param) {
+			param += strlen("weekdays");				// Skip command			
+			day = (uint8_t)WEEKDAYS;
+		}
+		else if(strstr(param, "weekends") == param) {
+			param += strlen("weekends");				// Skip command			
+			day = (uint8_t)WEEKENDS;
+		}
+		else if(strstr(param, "holidays") == param) {
+			param += strlen("holidays");				// Skip command			
+			day = (uint8_t)HOLIDAYS;
+		}
+			
 		param += strlen(" ");    						// Skip space
 		uint8_t checkpoint = strtol(param, &param, 10);
 
@@ -183,6 +226,8 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		param += strlen(" ");    						// Skip space	
 		destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
+		
+		date = (uint8_t)((month << 4) + (day << 0));
 		
 		uint8_t num_char;
 		num_char = snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_SET_SCHEDULE, destination);
@@ -190,79 +235,6 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 			num_char += snprintf(out + num_char, bufsize - num_char, "%02x%02x", tariff_hour[i], min[i]);
 		}
 		snprintf(out + num_char, bufsize - num_char, "%02x", date);
-	}
-	else if (strstr(param, "set year ") == param) { 
-		uint8_t i = 0;
-		uint8_t tariff_hour[8] = { 0xFF };
-		uint8_t hour_tmp = 0xFF;
-		uint8_t tariff = 0xFF;
-		uint8_t min[8] = { 0xFF };
-		uint8_t min_tmp = 0xFF;
-		memset(tariff_hour, 0xFF, sizeof(tariff_hour));
-		memset(min, 0xFF, sizeof(min));
-
-		param += strlen("set year "); // skip command
-		uint8_t checkpoint = strtol(param, &param, 10);
-
-		for(i = 0; i < checkpoint; i++) {
-			param += strlen(" ");    						// Skip space
-			tariff = strtol(param, &param, 10);
-			tariff--;
-			param += strlen(" ");    						// Skip space
-			hour_tmp = strtol(param, &param, 10);
-			tariff_hour[i] = (uint8_t)((tariff << 6) + ( ((((hour_tmp >> 4) & 0x3) * 10) + (hour_tmp & 0x0F)) << 0));
-			param += strlen(" ");    						// Skip space
-			min_tmp = strtol(param, &param, 10);
-			min[i] = (uint8_t)((((min_tmp >> 4) & 0x3) * 10) + (min_tmp & 0x0F));
-		}
-	
-		param += strlen(" ");    						// Skip space	
-		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
-		
-		uint8_t num_char;
-		num_char = snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_SET_SCHED_YEAR, destination);
-		for(i = 0; i < sizeof(tariff_hour); i++) {
-			num_char += snprintf(out + num_char, bufsize - num_char, "%02x%02x", tariff_hour[i], min[i]);
-		}
-	}
-	else if (strstr(param, "set day ") == param) { 
-		uint8_t i = 0;
-		uint8_t tariff_hour[8] = { 0xFF };
-		uint8_t hour_tmp = 0xFF;
-		uint8_t tariff = 0xFF;
-		uint8_t min[8] = { 0xFF };
-		uint8_t min_tmp = 0xFF;
-		memset(tariff_hour, 0xFF, sizeof(tariff_hour));
-		memset(min, 0xFF, sizeof(min));
-
-		param += strlen("set day "); // skip command		
-		uint8_t day = strtol(param, &param, 10);
-		param += strlen(" ");    						// Skip space
-		uint8_t checkpoint = strtol(param, &param, 10);
-
-		for(i = 0; i < checkpoint; i++) {
-			param += strlen(" ");    						// Skip space
-			tariff = strtol(param, &param, 10);
-			tariff--;
-			param += strlen(" ");    						// Skip space
-			hour_tmp = strtol(param, &param, 10);
-			tariff_hour[i] = (uint8_t)((tariff << 6) + ( ((((hour_tmp >> 4) & 0x3) * 10) + (hour_tmp & 0x0F)) << 0));
-			param += strlen(" ");    						// Skip space
-			min_tmp = strtol(param, &param, 10);
-			min[i] = (uint8_t)((((min_tmp >> 4) & 0x3) * 10) + (min_tmp & 0x0F));
-		}
-	
-		param += strlen(" ");    						// Skip space	
-		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
-		
-		uint8_t num_char;
-		num_char = snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_SET_SCHED_DAY, destination);
-		for(i = 0; i < sizeof(tariff_hour); i++) {
-			num_char += snprintf(out + num_char, bufsize - num_char, "%02x%02x", tariff_hour[i], min[i]);
-		}
-		snprintf(out + num_char, bufsize - num_char, "%02x", day);
 	}
 	else if (strstr(param, "add ") == param) { 
 		param += strlen("add ");    // Skip command
