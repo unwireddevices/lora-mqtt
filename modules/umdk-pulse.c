@@ -54,8 +54,6 @@ typedef enum {
     UMDK_PULSE_REPLY_TAMPER,
 } umdk_pulse_reply_t;
 
-#define UMDK_PULSE_HIST_HOURS 4
-
 void umdk_pulse_command(char *param, char *out, int bufsize)
 {
     if (strstr(param, "period ") == param) {
