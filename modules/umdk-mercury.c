@@ -41,6 +41,8 @@ typedef enum {
 		MERCURY_CMD_RESET = 0xFF,		/* Clear database */
     MERCURY_CMD_ADD_ADDR = 0xFE,		/* Add address  in database */
 		MERCURY_CMD_REMOVE_ADDR = 0xFD,		/* Remove address from database */
+		
+		MERCURY_CMD_SET_TABLE_HOLIDAYS = 0xF1, 	/* Set the full table of holidays */
 
 		MERCURY_CMD_PROPRIETARY_COMMAND = 0xF0,		/* Less this value single command of mercury */
 
@@ -108,6 +110,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		param += strlen("set number tariffs ");    // Skip command
 		uint8_t tarif = strtol(param, &param, 10);
 		tarif--;
+		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_SET_NUM_TARIFFS, destination, tarif);
@@ -198,7 +201,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		uint32_to_le(&destination);
 	
 		uint8_t num_char;
-		num_char = snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_SET_HOLIDAYS, destination, number);
+		num_char = snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_SET_TABLE_HOLIDAYS, destination);
 		
 		for(i = 0; i < sizeof(day); i++) {
 			num_char += snprintf(out + num_char, bufsize - num_char, "%02d%02d", day[i], month[i]);
