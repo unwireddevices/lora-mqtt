@@ -259,16 +259,6 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
 		char buf[100];
 		
-		if (moddatalen == 1) {
-			if (moddata[0] == 1) {
-				add_value_pair(mqtt_msg, "Msg", "Ok");
-			} 
-			else {
-				add_value_pair(mqtt_msg, "Msg", "Error");
-			}
-			return true;
-		}
-		
 		char buf_addr[20];
 		uint32_t *address = (uint32_t *)(&moddata[0]);
 		uint32_to_le(address);
@@ -279,9 +269,11 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     if (moddatalen == 5) {
         if (moddata[4] == 1) {
             add_value_pair(mqtt_msg, "Msg", "Ok");
-        } else {
+        } else if(moddata[4] == 0){
             add_value_pair(mqtt_msg, "Msg", "Error");
-        }
+        } else if(moddata[4] == 2){
+            add_value_pair(mqtt_msg, "Msg", "No response");					
+				}
         return true;
     }
 		
@@ -345,7 +337,7 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		case MERCURY_CMD_GET_SCHEDULE: {
 			
 			char tariff[5] = { };
-			for(i = 0; i < moddatalen; i++) {
+			for(i = 0; i < (moddatalen - 5); i++) {
 				snprintf(tariff, sizeof(tariff), "T%02d", moddata[3*i + 5] + 1);		
 				snprintf(buf, sizeof(buf), "%02d:%02d",  moddata[3*i + 6],  moddata[3*i + 7]);
 				add_value_pair(mqtt_msg, tariff, buf);			
