@@ -42,12 +42,6 @@ typedef enum {
     MERCURY_CMD_ADD_ADDR = 0xFE,		/* Add address  in database */
 		MERCURY_CMD_REMOVE_ADDR = 0xFD,		/* Remove address from database */
 
-		MERCURY_CMD_SET_SCHED_HOLIDAY = 0xF5,
-		MERCURY_CMD_SET_SCHED_WEEKDAY = 0xF4,
-		MERCURY_CMD_SET_SCHED_WEEKEND = 0xF3,
-		MERCURY_CMD_SET_SCHED_DAY = 0xF2,
-		MERCURY_CMD_SET_SCHED_YEAR = 0xF1,
-				
 		MERCURY_CMD_PROPRIETARY_COMMAND = 0xF0,		/* Less this value single command of mercury */
 
     MERCURY_CMD_GET_ADDR = 0x00,		/* Read the address */
