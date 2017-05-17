@@ -138,12 +138,14 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 			snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_TOTAL_VALUE, destination);			
 		}
 		else {
-		snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_GET_VALUE, destination, month);			
+			month--;
+			snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_GET_VALUE, destination, month);			
 		}
 	}
 	else if (strstr(param, "get schedule ") == param) { 
 		param += strlen("get schedule "); // skip command
 		uint8_t month = strtol(param, &param, 10);
+		month--;
 		param += strlen(" ");    						// Skip space
 		uint8_t dow = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
@@ -229,6 +231,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		else if (strstr(param, "month ") == param) {
 			param += strlen("month ");				// Skip command
 			month = strtol(param, &param, 10);
+			month--;
 			param += strlen(" ");    						// Skip space
 		}
 	

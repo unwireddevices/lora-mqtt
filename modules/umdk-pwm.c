@@ -45,13 +45,13 @@ void umdk_pwm_command(char *param, char *out, int bufsize) {
 		if(strstr(param, "freq ") == param) {
 					param += strlen("freq ");				// Skip command
 					uint32_t freq = strtol(param, &param, 10);
-					freq = freq & 0x000FFFFF;
-					uint32_to_le(&freq);
 					param += strlen(" ");    						// Skip space
 			
 					if(strstr(param, "dev ") == param) {
 						param += strlen("dev ");				// Skip command
 						uint8_t dev = strtol(param, &param, 10);
+						dev--;
+						param += strlen(" ");    						// Skip space				
 						
 						uint8_t mask;
 						if(strstr(param, "on ") == param) {
@@ -66,13 +66,18 @@ void umdk_pwm_command(char *param, char *out, int bufsize) {
 						if(strstr(param, "ch ") == param) {	
 							param += strlen("ch ");				// Skip command					
 							uint8_t channel = strtol(param, &param, 10); 
+							channel--;
 							param += strlen(" ");    						// Skip space
 							
 							if(strstr(param, "duty ") == param) {							
 								param += strlen("duty ");				// Skip command		
 								uint8_t duty = strtol(param, &param, 10); 				
-
-								snprintf(out, bufsize, "%01x%05x%02x%01x%01x%02x", cmd, freq, dev, mask, channel, duty);								
+								
+								freq = freq & 0x000FFFFF;	
+								uint32_t cmd_freq_dev = (cmd << 28) + (freq << 8) + (dev << 0);
+								uint8_t mask_ch = (mask << 4) + (channel << 0);
+								
+								snprintf(out, bufsize, "%08x%02x%02x", cmd_freq_dev, mask_ch, duty);								
 							}
 						}	
 					}
