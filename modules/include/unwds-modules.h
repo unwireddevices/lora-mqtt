@@ -55,6 +55,7 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_config_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_mhz19_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_ibutton_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_pwm_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 
 void umdk_counter_command(char *param, char *out, int bufsize);
 void umdk_pulse_command(char *param, char *out, int bufsize);
@@ -72,6 +73,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize);
 void umdk_config_command(char *param, char *out, int bufsize);
 void umdk_mhz19_command(char *param, char *out, int bufsize);
 void umdk_ibutton_command(char *param, char *out, int bufsize);
+void umdk_pwm_command(char *param, char *out, int bufsize);
 
 static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_GPIO_MODULE_ID,    .name = "gpio",    .cmd = &umdk_gpio_command,       .reply = &umdk_gpio_reply     },
@@ -87,7 +89,7 @@ static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_ADC_MODULE_ID,     .name = "adc",     .cmd = &umdk_adc_command,        .reply = &umdk_adc_reply      },
     { .id = UNWDS_LPS331_MODULE_ID,  .name = "lps331",  .cmd = &umdk_lps331_command,     .reply = &umdk_lps331_reply   },
     { .id = UNWDS_RSSIECHO_MODULE_ID,.name = "echo",    .cmd = &umdk_rssiecho_command,   .reply = &umdk_rssiecho_reply },
-    { .id = UNWDS_PWM_MODULE_ID,     .name = "pwm",     .cmd = NULL,                     .reply = NULL                 },
+    { .id = UNWDS_PWM_MODULE_ID,     .name = "pwm",     .cmd = &umdk_pwm_command,        .reply = &umdk_pwm_reply      },
     { .id = UNWDS_OPT3001_MODULE_ID, .name = "opt3001", .cmd = &umdk_opt3001_command,    .reply = &umdk_opt3001_reply  },
     { .id = UNWDS_DALI_MODULE_ID,    .name = "dali",    .cmd = NULL,                     .reply = NULL                 },
     { .id = UNWDS_BME280_MODULE_ID,  .name = "bme280",  .cmd = &umdk_bme280_command,     .reply = &umdk_bme280_reply   },

@@ -41,6 +41,8 @@ typedef enum {
 		MERCURY_CMD_RESET = 0xFF,		/* Clear database */
     MERCURY_CMD_ADD_ADDR = 0xFE,		/* Add address  in database */
 		MERCURY_CMD_REMOVE_ADDR = 0xFD,		/* Remove address from database */
+		
+		MERCURY_CMD_SET_TABLE_HOLIDAYS = 0xF1, 	/* Set the full table of holidays */
 
 		MERCURY_CMD_PROPRIETARY_COMMAND = 0xF0,		/* Less this value single command of mercury */
 
@@ -98,29 +100,52 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_SERIAL, destination);
 	}
-	else if (strstr(param, "get total ") == param) { 
-		param += strlen("get total ");    // Skip command
+	else if (strstr(param, "get number tariffs ") == param) {
+		param += strlen("get number tariffs ");    // Skip command
 		destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
-		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_TOTAL_VALUE, destination);
-	}
-	else if (strstr(param, "get value ") == param) { 
-		param += strlen("get value ");    // Skip command
-		uint8_t month = strtol(param, &param, 10);
+		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_NUM_TARIFFS, destination);
+	}	
+	else if (strstr(param, "set number tariffs ") == param) {
+		param += strlen("set number tariffs ");    // Skip command
+		uint8_t tarif = strtol(param, &param, 10);
+		tarif--;
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
-		snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_GET_VALUE, destination, month);
-	}
-	else if (strstr(param, "get current ") == param) { 
-		param += strlen("get current ");    // Skip command
+		snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_SET_NUM_TARIFFS, destination, tarif);
+	}			
+	else if (strstr(param, "get value ") == param) { 
+		param += strlen("get value ");    // Skip command
+		uint8_t month = 0;
+		if(strstr(param, "total") == param) {
+			param += strlen("total");				// Skip command
+			month = 0xFF;
+		}
+		else if(strstr(param, "current") == param) {
+			param += strlen("current");				// Skip command
+			month = 0x0F;
+		}
+		else if(strstr(param, "month ") == param) {
+			param += strlen("month ");				// Skip command			
+			month = strtol(param, &param, 10);
+		}
+		
+		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
-		snprintf(out, bufsize, "%02x%08x0F", MERCURY_CMD_GET_VALUE, destination);
+		if(month == 0xFF) {
+			snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_TOTAL_VALUE, destination);			
+		}
+		else {
+			month--;
+			snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_GET_VALUE, destination, month);			
+		}
 	}
 	else if (strstr(param, "get schedule ") == param) { 
 		param += strlen("get schedule "); // skip command
 		uint8_t month = strtol(param, &param, 10);
+		month--;
 		param += strlen(" ");    						// Skip space
 		uint8_t dow = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
@@ -155,6 +180,34 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x%02d%02d%02d%02d%02d%02d%02d", 
 														MERCURY_CMD_SET_TIMEDATE, destination, dow, hour, min, sec, day, month, year);
+	}	
+	else if (strstr(param, "set holidays ") == param) { 
+		param += strlen("set holidays "); // skip command
+		
+		uint8_t day[16] = { 0xFF };
+		uint8_t month[16] = { 0xFF };
+		uint8_t i = 0;
+		memset(day, 0xFF, sizeof(day));
+		memset(month, 0xFF, sizeof(month));
+		
+		uint8_t number = strtol(param, &param, 10);
+		for(i = 0; i < number; i++) {
+			param += strlen(" ");    						// Skip space
+			day[i] = strtol(param, &param, 10);
+			param += strlen(" ");    						// Skip space
+			month[i] = strtol(param, &param, 10);
+		}
+	
+		param += strlen(" ");    						// Skip space	
+		destination = strtol(param, &param, 10);
+		uint32_to_le(&destination);
+	
+		uint8_t num_char;
+		num_char = snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_SET_TABLE_HOLIDAYS, destination);
+		
+		for(i = 0; i < sizeof(day); i++) {
+			num_char += snprintf(out + num_char, bufsize - num_char, "%02d%02d", day[i], month[i]);
+		}
 	}
 	else if (strstr(param, "set schedule ") == param) { 
 		uint8_t i = 0;
@@ -178,6 +231,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		else if (strstr(param, "month ") == param) {
 			param += strlen("month ");				// Skip command
 			month = strtol(param, &param, 10);
+			month--;
 			param += strlen(" ");    						// Skip space
 		}
 	
@@ -212,10 +266,9 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 			param += strlen(" ");    						// Skip space
 			hour_tmp = strtol(param, &param, 10);
 			tariff_hour[i] = (uint8_t)((tariff << 6) + ((hour_tmp / 10) << 4) + ((hour_tmp % 10) << 0) );
-			//tariff_hour[i] = (uint8_t)((tariff << 6) + ( ((((hour_tmp >> 4) & 0x3) * 10) + (hour_tmp & 0x0F)) << 0));
 			param += strlen(" ");    						// Skip space
 			min_tmp = strtol(param, &param, 10);
-			min[i] = (uint8_t)(((min_tmp /10) << 4) + ((min_tmp %10) << 0));
+			min[i] = (uint8_t)(((min_tmp / 10) << 4) + ((min_tmp % 10) << 0));
 		}
 	
 		param += strlen(" ");    						// Skip space	
@@ -282,6 +335,15 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			uint32_to_le(serial);      
 			snprintf(buf, sizeof(buf), "%u", *serial);
 			add_value_pair(mqtt_msg, "Serial number", buf);		
+			return true;
+			break;
+		}
+		
+		case MERCURY_CMD_GET_NUM_TARIFFS: {
+			uint8_t number = moddata[5];  
+			number++;			
+			snprintf(buf, sizeof(buf), "%u", number);
+			add_value_pair(mqtt_msg, "Number of tariffs", buf);		
 			return true;
 			break;
 		}
