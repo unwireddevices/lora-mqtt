@@ -60,18 +60,12 @@ bool umdk_config_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     uint8_t reply_type = moddata[0];
     
-    char buf[5];
-    
-    snprintf(buf, 5, "%" PRIu8, reply_type);
-    
     switch (reply_type) {
         case UMDK_CONFIG_REPLY_OK: {
-            add_value_pair(mqtt_msg, "type", buf);
             add_value_pair(mqtt_msg, "msg", "ok");
             break;
         }
         case UMDK_CONFIG_REPLY_ERR: {
-            add_value_pair(mqtt_msg, "type", buf);
             add_value_pair(mqtt_msg, "msg", "error");
             break;
         }
