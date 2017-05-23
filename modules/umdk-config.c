@@ -34,6 +34,7 @@
 #include <string.h>
 
 #include "unwds-modules.h"
+#include "unwds-mqtt.h"
 #include "utils.h"
 
 typedef enum {
@@ -43,16 +44,50 @@ typedef enum {
 
 typedef enum {
 	UMDK_CONFIG_MODULES = 0,
+    UMDK_REBOOT_DEVICE = 1,
+    UMDK_SET_CLASS = 2,
 } umdk_config_action_t;
 
 void umdk_config_command(char *param, char *out, int bufsize) {
     if (strstr(param, "mod ") == param) {
         param += strlen("mod "); // skip command
 
-        uint8_t id = strtol(param, &param, 10);
-        uint8_t onoff = strtol(param, NULL, 10);
-
+        char *name = strtok(param, " ");
+        char *state = strtok(NULL, " ");
+        
+        int id = 0;
+        int onoff = 0;
+        
+        if (!is_number(name)) {
+            id = unwds_modid_by_name(name);
+        } else {
+            id = atoi(name);
+        }
+        
+        if (!is_number(state)) {
+            onoff = unwds_modid_by_name(state);
+            if (strcmp(state, "enable") == 0) {
+                onoff = 1;
+            } else {
+                onoff = 0;
+            }
+        } else {
+            onoff = atoi(state);
+        }
+        
         snprintf(out, bufsize, "%02x%02x%02x", UMDK_CONFIG_MODULES, id, onoff);
+        return;
+    }
+    
+    if (strstr(param, "reboot") == param) {
+        snprintf(out, bufsize, "%02x", UMDK_REBOOT_DEVICE);
+        return;
+    }
+    
+    if (strstr(param, "class ") == param) {
+        param += strlen("class "); // skip command
+        snprintf(out, bufsize, "%02x%02x", UMDK_SET_CLASS, param[0]);
+        return;
     }
 }
 
