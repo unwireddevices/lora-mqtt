@@ -253,3 +253,13 @@ bool convert_from(char *type, char *param, char *out, int bufsize)
     return false;
 }
 
+int unwds_modid_by_name(char *name) {
+    int i = 0;
+    for (i = 0; i < sizeof(unwds_modules_list)/sizeof(unwds_module_desc_t); i++) {
+        if (strcmp(name, unwds_modules_list[i].name) == 0) {
+            return unwds_modules_list[i].id;
+        }
+    }
+    
+    return -1;
+}

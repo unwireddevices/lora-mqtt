@@ -61,4 +61,6 @@ void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status
 
 void add_value_pair(mqtt_msg_t *msg, char const *name, char const *value);
 
+int unwds_modid_by_name(char *name);
+
 #endif
