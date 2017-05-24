@@ -37,22 +37,27 @@
 #include "unwds-modules.h"
 #include "utils.h"
 
+#define MERCURY_MAX_BYTES_IN_RADIO 41
+#define MERCURY_ADDR_DEF 0xFFFFFFFF
+#define UMDK_MERCURY_NUM_DEV 10
+
 typedef enum {
-		MERCURY_CMD_RESET = 0xFF,		/* Clear database */
-    MERCURY_CMD_ADD_ADDR = 0xFE,		/* Add address  in database */
-		MERCURY_CMD_REMOVE_ADDR = 0xFD,		/* Remove address from database */
-		
-		MERCURY_CMD_SET_TABLE_HOLIDAYS = 0xF1, 	/* Set the full table of holidays */
+	MERCURY_CMD_RESET = 0xFF,				/* Clear database */
+    MERCURY_CMD_ADD_ADDR = 0xFE,			/* Add address  in database */
+	MERCURY_CMD_REMOVE_ADDR = 0xFD,			/* Remove address from database */
+	MERCURY_CMD_GET_LIST = 0xFC,			/* Read database of addresses */
+	
+	MERCURY_CMD_SET_TABLE_HOLIDAYS = 0xF1, 	/* Set the full table of holidays */
 
-		MERCURY_CMD_PROPRIETARY_COMMAND = 0xF0,		/* Less this value single command of mercury */
+	MERCURY_CMD_PROPRIETARY_COMMAND = 0xF0,	/* Less this value single command of mercury */
 
-    MERCURY_CMD_GET_ADDR = 0x00,		/* Read the address */
-    MERCURY_CMD_GET_SERIAL = 0x01,		/* Read the serial number */
+    MERCURY_CMD_GET_ADDR = 0x00,			/* Read the address */
+    MERCURY_CMD_GET_SERIAL = 0x01,			/* Read the serial number */
     MERCURY_CMD_SET_NEW_ADDR = 0x02,		/* Set new address */
     MERCURY_CMD_GET_CURR_TARIFF = 0x03,		/* Read the current tariff */
     MERCURY_CMD_GET_LAST_OPEN = 0x04,		/* Read the time of last opening */
     MERCURY_CMD_GET_LAST_CLOSE = 0x05,		/* Read the time of last closing */
-    MERCURY_CMD_GET_U_I_P = 0x06,		/* Read the value of the voltage, current and power */
+    MERCURY_CMD_GET_U_I_P = 0x06,			/* Read the value of the voltage, current and power */
     MERCURY_CMD_GET_TIMEDATE = 0x07,		/* Read the internal time and date */
     MERCURY_CMD_GET_LIMIT_POWER = 0x08,		/* Read the limit of power */
     MERCURY_CMD_GET_CURR_POWER_LOAD = 0x09,	/* Read the current power load */
@@ -61,23 +66,23 @@ typedef enum {
     MERCURY_CMD_GET_LAST_POWER_ON = 0x0C,	/* Read the time of last power on */
     MERCURY_CMD_GET_HOLIDAYS = 0x0D,		/* Read the table of holidays */
     MERCURY_CMD_GET_SCHEDULE = 0x0E,		/* Read the schedule of tariffs */
-    MERCURY_CMD_GET_VALUE = 0x0F,		/* Read the month's value */
+    MERCURY_CMD_GET_VALUE = 0x0F,			/* Read the month's value */
     MERCURY_CMD_GET_NUM_TARIFFS = 0x10,		/* Read the number of tariffs */
     MERCURY_CMD_SET_NUM_TARIFFS = 0x11,		/* Set number of tariffs */
-    MERCURY_CMD_SET_TARIFF = 0x12,		/* Set the tariff */
+    MERCURY_CMD_SET_TARIFF = 0x12,			/* Set the tariff */
     MERCURY_CMD_SET_HOLIDAYS = 0x13,		/* Set the table of holidays */
     MERCURY_CMD_SET_SCHEDULE = 0x14,		/* Set the schedule of tariffs */
     MERCURY_CMD_GET_WORKING_TIME = 0x15,	/* Read the total working time of battery and device */
-		MERCURY_CMD_SET_TIMEDATE = 0x16,	/* Set the internal time */
+	MERCURY_CMD_SET_TIMEDATE = 0x16,		/* Set the internal time */
 } mercury_cmd_t;
 
 typedef enum {
-		ALL_YEAR = 0x0F,
-		
-		ALL_DAYS = 0x0F,
-		WEEKDAYS = 0x0E,
-		WEEKENDS = 0x0D,
-		HOLIDAYS = 0x0C,
+	ALL_YEAR = 0x0F,
+	
+	ALL_DAYS = 0x0F,
+	WEEKDAYS = 0x0E,
+	WEEKENDS = 0x0D,
+	HOLIDAYS = 0x0C,
 } mercury_scheduler_t;
 
 static char str_dow[8][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Hol" };
@@ -286,32 +291,54 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 	}
 	else if (strstr(param, "add ") == param) { 
 		param += strlen("add ");    // Skip command
-		uint8_t number = strtol(param, &param, 10);
-		param += strlen(" ");    						// Skip space
-		uint32_t add_address = strtol(param, &param, 10);
-		uint32_to_le(&add_address);
-		snprintf(out, bufsize, "%02x%02x%08x", MERCURY_CMD_ADD_ADDR, number, add_address);
+		uint32_t addr = strtol(param, &param, 10);
+		uint32_to_le(&addr);
+		snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_ADD_ADDR, addr);
 	}
 	else if (strstr(param, "remove ") == param) { 
 		param += strlen("remove ");    // Skip command
-		uint8_t number = strtol(param, &param, 10);
-		snprintf(out, bufsize, "%02x%02x", MERCURY_CMD_REMOVE_ADDR, number);
+		uint32_t addr = strtol(param, &param, 10);
+		uint32_to_le(&addr);
+		snprintf(out, bufsize, "%02x%02x", MERCURY_CMD_REMOVE_ADDR, addr);
 	}
 	else if (strstr(param, "reset") == param) { 
 		snprintf(out, bufsize, "%02x", MERCURY_CMD_RESET);
+	}
+	else if (strstr(param, "get list") == param) { 
+		snprintf(out, bufsize, "%02x", MERCURY_CMD_GET_LIST);
 	}
 }
 
 bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
-		char buf[100];
+	char buf[150];
+	char buf_addr[20];
+	
+	if((moddatalen == MERCURY_MAX_BYTES_IN_RADIO) && (moddata[0] == MERCURY_CMD_GET_LIST)) {
+		uint8_t i = 0;
+		uint8_t cnt = 0;
+		char number[2];
+		for( i  = 0; i < UMDK_MERCURY_NUM_DEV; i++) {
+			uint32_t *address_dev = (uint32_t *)(&moddata[4*i + 1]);
+			if(*address_dev != MERCURY_ADDR_DEF) {
+				cnt++;
+				uint32_to_le(address_dev);			
+				snprintf(buf_addr, sizeof(buf_addr), "%u", *address_dev);	
+				number[0] = cnt + '0';
+				number[1] = 0;
+				add_value_pair(mqtt_msg, number, buf);		
+			}
+		}
+		if(cnt == 0) {
+			add_value_pair(mqtt_msg, "Msg", "Empty");				
+		}
+		return true;
+	}
 		
-		char buf_addr[20];
-		uint32_t *address = (uint32_t *)(&moddata[0]);
-		uint32_to_le(address);
-		snprintf(buf_addr, sizeof(buf_addr), "%u", *address);	
-		
-		add_value_pair(mqtt_msg, "Address", buf_addr);
+	uint32_t *address = (uint32_t *)(&moddata[0]);
+	uint32_to_le(address);
+	snprintf(buf_addr, sizeof(buf_addr), "%u", *address);	
+	add_value_pair(mqtt_msg, "Address", buf_addr);
 						
     if (moddatalen == 5) {
         if (moddata[4] == 1) {
@@ -320,7 +347,7 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             add_value_pair(mqtt_msg, "Msg", "Error");
         } else if(moddata[4] == 2){
             add_value_pair(mqtt_msg, "Msg", "No response");					
-				}
+		}
         return true;
     }
 		
