@@ -58,22 +58,15 @@ void umdk_ibutton_command(char *param, char *out, int bufsize)
 	}
 	else if (strstr(param, "add ") == param) {
 		param += strlen("add ");    // Skip command
-		uint32_t id_high = strtol(param, &param, 10);
-		uint32_t id_low = strtol(param, &param, 10);
+		uint64_t id = strtoll(param, &param, 16);
 		param += strlen(" ");    						// Skip space
 		uint16_t time = strtol(param, NULL, 10);
-		uint32_to_le(&id_high);
-		uint32_to_le(&id_low);
-		uint16_to_le(&time);
-		snprintf(out, bufsize, "%02x%08x%08x%04x", UMDK_IBUTTON_CMD_ADD_ID, id_high, id_low, time);
+		snprintf(out, bufsize, "%02x%016llx%04x", UMDK_IBUTTON_CMD_ADD_ID, id, time);
 	}
 	else	if (strstr(param, "remove ") == param) {
 		param += strlen("remove ");    // Skip command
-		uint32_t id_high = strtol(param, &param, 10);
-		uint32_t id_low = strtol(param, &param, 10);
-		uint32_to_le(&id_high);
-		uint32_to_le(&id_low);
-		snprintf(out, bufsize, "%02x%08x%08x", UMDK_IBUTTON_CMD_REMOVE_ID, id_high, id_low);
+		uint64_t id = strtoll(param, &param, 16);
+		snprintf(out, bufsize, "%02x%016llx", UMDK_IBUTTON_CMD_REMOVE_ID, id);
 	}
 }
 
@@ -93,27 +86,25 @@ bool umdk_ibutton_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
         return true;
     }
 
-	uint32_t *id_high = ((uint32_t *)&moddata[1]);
-	uint32_t *id_low = ((uint32_t *)&moddata[5]);
-	uint32_to_le(id_high);
-	uint32_to_le(id_low);	
-	snprintf(buf, sizeof(buf), "%08X%08X", *id_high, *id_low);
+	uint64_t *id = ((uint64_t *)&moddata[1]);
+
+	snprintf(buf, sizeof(buf), "%016llX", *id);
 			
 	switch(cmd) {
 		case UMDK_IBUTTON_GRANTED: {        
-			add_value_pair(mqtt_msg, "Access GRANTED Id", buf);		
+			add_value_pair(mqtt_msg, "GRANTED", buf);		
 			return true;
 			break;
 		}
 		
 		case UMDK_IBUTTON_DENIED: {
-			add_value_pair(mqtt_msg, "Access DENIED Id", buf);		
+			add_value_pair(mqtt_msg, "DENIED", buf);		
 			return true;
 			break;
 		}
 
 		case UMDK_IBUTTON_UPDATED: {
-			add_value_pair(mqtt_msg, "Removed by timer access Id", buf);		
+			add_value_pair(mqtt_msg, "Removed by timer", buf);		
 			return true;
 			break;
 		}

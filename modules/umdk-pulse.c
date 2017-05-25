@@ -54,6 +54,8 @@ typedef enum {
     UMDK_PULSE_REPLY_TAMPER,
 } umdk_pulse_reply_t;
 
+#define UMDK_PULSE_NUM_SENS  2
+
 void umdk_pulse_command(char *param, char *out, int bufsize)
 {
     if (strstr(param, "period ") == param) {
@@ -91,12 +93,13 @@ void umdk_pulse_command(char *param, char *out, int bufsize)
         
         uint8_t coeff = strtol(param, &param, 10);
         
-        uint32_t values[4];
+        uint32_t values[UMDK_PULSE_NUM_SENS];
         int i = 0;
-        for (i = 0; i < 4; i++) {
+        for (i = 0; i < UMDK_PULSE_NUM_SENS; i++) {
             values[i] = strtol(param, &param, 10);
+            uint32_to_le(&values[i]);
         }
-        
+        /*
         uint32_t v_compressed[3];
         
         v_compressed[0]  = values[0] << 8;
@@ -116,6 +119,11 @@ void umdk_pulse_command(char *param, char *out, int bufsize)
                     UMDK_PULSE_CMD_SET_INITIAL_VALUES,
                     coeff,
                     v_compressed[0], v_compressed[1], v_compressed[2]);
+        */
+        snprintf(out, bufsize, "%02x%02x%08x%08x",
+                                UMDK_PULSE_CMD_SET_INITIAL_VALUES,
+                                coeff,
+                                values[0], values[1]);
     }
     
     return;

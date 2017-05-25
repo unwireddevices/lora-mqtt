@@ -138,12 +138,14 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 			snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_TOTAL_VALUE, destination);			
 		}
 		else {
-		snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_GET_VALUE, destination, month);			
+			month--;
+			snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_GET_VALUE, destination, month);			
 		}
 	}
 	else if (strstr(param, "get schedule ") == param) { 
 		param += strlen("get schedule "); // skip command
 		uint8_t month = strtol(param, &param, 10);
+		month--;
 		param += strlen(" ");    						// Skip space
 		uint8_t dow = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
@@ -229,6 +231,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		else if (strstr(param, "month ") == param) {
 			param += strlen("month ");				// Skip command
 			month = strtol(param, &param, 10);
+			month--;
 			param += strlen(" ");    						// Skip space
 		}
 	
@@ -337,8 +340,7 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		}
 		
 		case MERCURY_CMD_GET_NUM_TARIFFS: {
-			uint8_t number = moddata[5];  
-			number++;			
+			uint8_t number = moddata[5];  	
 			snprintf(buf, sizeof(buf), "%u", number);
 			add_value_pair(mqtt_msg, "Number of tariffs", buf);		
 			return true;
@@ -355,7 +357,7 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			 		
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
-				snprintf(tariff, sizeof(tariff), "T%02d", i);		
+				snprintf(tariff, sizeof(tariff), "T%02d", i + 1);		
 				snprintf(buf, sizeof(buf), "%u.%u", value[i]/100, value[i]%100);
 				add_value_pair(mqtt_msg, tariff, buf);								
 			}
@@ -376,7 +378,7 @@ bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
-				snprintf(tariff, sizeof(tariff), "T%02d", i);
+				snprintf(tariff, sizeof(tariff), "T%02d", i + 1);
 				snprintf(buf, sizeof(buf), "%u.%u", value[i]/100, value[i]%100);
 				add_value_pair(mqtt_msg, tariff, buf);				
 			}

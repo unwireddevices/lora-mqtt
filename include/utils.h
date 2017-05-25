@@ -49,4 +49,6 @@ void logprint(char *str);
 
 void int_to_float_str(char *buf, int decimal, uint8_t precision);
 
+bool is_number(char* str);
+
 #endif

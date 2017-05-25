@@ -163,33 +163,27 @@ bool umdk_gpio_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
         }
 
         case UMDK_GPIO_REPLY_OK_0: { /*  */
-            add_value_pair(mqtt_msg, "type", "0");
-            add_value_pair(mqtt_msg, "msg", "0");
+            add_value_pair(mqtt_msg, "value", "0");
             break;
         }
         case UMDK_GPIO_REPLY_OK_1: { /*  */
-            add_value_pair(mqtt_msg, "type", "1");
-            add_value_pair(mqtt_msg, "msg", "1");
+            add_value_pair(mqtt_msg, "value", "1");
             break;
         }
         case UMDK_GPIO_REPLY_OK: { /*  */
-            add_value_pair(mqtt_msg, "type", "0");
             add_value_pair(mqtt_msg, "msg", "set ok");
             break;
         }
         case UMDK_GPIO_REPLY_ERR_PIN: { /*  */
-            add_value_pair(mqtt_msg, "type", "3");
             add_value_pair(mqtt_msg, "msg", "invalid pin");
             break;
         }
         case UMDK_GPIO_REPLY_ERR_FORMAT: { /*  */
-            add_value_pair(mqtt_msg, "type", "4");
             add_value_pair(mqtt_msg, "msg", "invalid format");
             break;
         }
         case UMDK_GPIO_REPLY_OK_AINAF: {
-            add_value_pair(mqtt_msg, "type", "0");
-            add_value_pair(mqtt_msg, "msg", "3");
+            add_value_pair(mqtt_msg, "value", "3");
             break;
         }
         default:

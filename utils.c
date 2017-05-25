@@ -133,3 +133,14 @@ void int_to_float_str(char *buf, int decimal, uint8_t precision) {
     
     snprintf(buf, 50, format, abs(decimal/divider), abs(decimal%divider));
 }
+
+bool is_number(char* str) {
+    char *endptr = NULL;
+    strtol(str, &endptr, 0);
+    
+    if ( &str[strlen(str)] == endptr  ) {
+        return true;
+    } else {
+        return false;
+    }
+}
