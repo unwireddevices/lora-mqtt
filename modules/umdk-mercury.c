@@ -37,43 +37,41 @@
 #include "unwds-modules.h"
 #include "utils.h"
 
-#define MERCURY_MAX_BYTES_IN_RADIO 41
 #define MERCURY_ADDR_DEF 0xFFFFFFFF
-#define UMDK_MERCURY_NUM_DEV 10
 
 typedef enum {
-	MERCURY_CMD_RESET = 0xFF,				/* Clear database */
-    MERCURY_CMD_ADD_ADDR = 0xFE,			/* Add address  in database */
-	MERCURY_CMD_REMOVE_ADDR = 0xFD,			/* Remove address from database */
-	MERCURY_CMD_GET_LIST = 0xFC,			/* Read database of addresses */
-	
-	MERCURY_CMD_SET_TABLE_HOLIDAYS = 0xF1, 	/* Set the full table of holidays */
+    MERCURY_CMD_RESET 				= 0xFF,		/* Clear database */
+    MERCURY_CMD_ADD_ADDR 			= 0xFE,		/* Add address  in database */
+    MERCURY_CMD_REMOVE_ADDR 		= 0xFD,		/* Remove address from database */
+	MERCURY_CMD_GET_LIST 			= 0xFC,		/* Send database of addresses */
+    
+    MERCURY_CMD_SET_TABLE_HOLIDAYS 	= 0xF1, 	/* Set the full table of holidays */
+    
+    MERCURY_CMD_PROPRIETARY_COMMAND = 0xF0,		/* Less this value single command of mercury */
 
-	MERCURY_CMD_PROPRIETARY_COMMAND = 0xF0,	/* Less this value single command of mercury */
-
-    MERCURY_CMD_GET_ADDR = 0x00,			/* Read the address */
-    MERCURY_CMD_GET_SERIAL = 0x01,			/* Read the serial number */
-    MERCURY_CMD_SET_NEW_ADDR = 0x02,		/* Set new address */
-    MERCURY_CMD_GET_CURR_TARIFF = 0x03,		/* Read the current tariff */
-    MERCURY_CMD_GET_LAST_OPEN = 0x04,		/* Read the time of last opening */
-    MERCURY_CMD_GET_LAST_CLOSE = 0x05,		/* Read the time of last closing */
-    MERCURY_CMD_GET_U_I_P = 0x06,			/* Read the value of the voltage, current and power */
-    MERCURY_CMD_GET_TIMEDATE = 0x07,		/* Read the internal time and date */
-    MERCURY_CMD_GET_LIMIT_POWER = 0x08,		/* Read the limit of power */
-    MERCURY_CMD_GET_CURR_POWER_LOAD = 0x09,	/* Read the current power load */
-    MERCURY_CMD_GET_TOTAL_VALUE = 0x0A,		/* Read the total values of power after reset */
-    MERCURY_CMD_GET_LAST_POWER_OFF = 0xB,	/* Read the time of last power off */
-    MERCURY_CMD_GET_LAST_POWER_ON = 0x0C,	/* Read the time of last power on */
-    MERCURY_CMD_GET_HOLIDAYS = 0x0D,		/* Read the table of holidays */
-    MERCURY_CMD_GET_SCHEDULE = 0x0E,		/* Read the schedule of tariffs */
-    MERCURY_CMD_GET_VALUE = 0x0F,			/* Read the month's value */
-    MERCURY_CMD_GET_NUM_TARIFFS = 0x10,		/* Read the number of tariffs */
-    MERCURY_CMD_SET_NUM_TARIFFS = 0x11,		/* Set number of tariffs */
-    MERCURY_CMD_SET_TARIFF = 0x12,			/* Set the tariff */
-    MERCURY_CMD_SET_HOLIDAYS = 0x13,		/* Set the table of holidays */
-    MERCURY_CMD_SET_SCHEDULE = 0x14,		/* Set the schedule of tariffs */
-    MERCURY_CMD_GET_WORKING_TIME = 0x15,	/* Read the total working time of battery and device */
-	MERCURY_CMD_SET_TIMEDATE = 0x16,		/* Set the internal time */
+    MERCURY_CMD_GET_ADDR			= 0x00,		/* Read the address */
+    MERCURY_CMD_GET_SERIAL 			= 0x01,		/* Read the serial number */
+    MERCURY_CMD_SET_NEW_ADDR 		= 0x02,		/* Set new address */
+    MERCURY_CMD_GET_CURR_TARIFF 	= 0x03,		/* Read the current tariff */
+    MERCURY_CMD_GET_LAST_OPEN 		= 0x04,		/* Read the time of last opening */
+    MERCURY_CMD_GET_LAST_CLOSE 		= 0x05,		/* Read the time of last closing */
+    MERCURY_CMD_GET_U_I_P 			= 0x06,		/* Read the value of the voltage, current and power */
+    MERCURY_CMD_GET_TIMEDATE 		= 0x07,		/* Read the internal time and date */
+    MERCURY_CMD_GET_LIMIT_POWER 	= 0x08,		/* Read the limit of power */
+    MERCURY_CMD_GET_CURR_POWER_LOAD = 0x09,		/* Read the current power load */
+    MERCURY_CMD_GET_TOTAL_VALUE 	= 0x0A,		/* Read the total values of power after reset */
+    MERCURY_CMD_GET_LAST_POWER_OFF 	= 0x0B,		/* Read the time of last power off */
+    MERCURY_CMD_GET_LAST_POWER_ON 	= 0x0C,		/* Read the time of last power on */
+    MERCURY_CMD_GET_HOLIDAYS 		= 0x0D,		/* Read the table of holidays */
+    MERCURY_CMD_GET_SCHEDULE 		= 0x0E,		/* Read the schedule of tariffs */
+    MERCURY_CMD_GET_VALUE 			= 0x0F,		/* Read the month's value */
+    MERCURY_CMD_GET_NUM_TARIFFS 	= 0x10,		/* Read the number of tariffs */
+    MERCURY_CMD_SET_NUM_TARIFFS 	= 0x11,		/* Set number of tariffs */
+    MERCURY_CMD_SET_TARIFF 			= 0x12,		/* Set the tariff */
+    MERCURY_CMD_SET_HOLIDAYS 		= 0x13,		/* Set the table of holidays */
+    MERCURY_CMD_SET_SCHEDULE 		= 0x14,		/* Set the schedule of tariffs */
+    MERCURY_CMD_GET_WORKING_TIME 	= 0x15,		/* Read the total working time of battery and device */
+    MERCURY_CMD_SET_TIMEDATE		= 0x16,		/* Set the internal time */
 } mercury_cmd_t;
 
 typedef enum {
@@ -84,6 +82,12 @@ typedef enum {
 	WEEKENDS = 0x0D,
 	HOLIDAYS = 0x0C,
 } mercury_scheduler_t;
+
+typedef enum {
+	ERROR_REPLY 		= 0,
+    OK_REPLY 			= 1,
+    NO_RESPONSE_REPLY	= 2,
+} mercury_reply_t;
 
 static char str_dow[8][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Hol" };
 
@@ -311,52 +315,66 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 
 bool umdk_mercury_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
-	char buf[150];
-	char buf_addr[20];
-	
-	if((moddatalen == MERCURY_MAX_BYTES_IN_RADIO) && (moddata[0] == MERCURY_CMD_GET_LIST)) {
-		uint8_t i = 0;
-		uint8_t cnt = 0;
-		char number[2];
-		for( i  = 0; i < UMDK_MERCURY_NUM_DEV; i++) {
-			uint32_t *address_dev = (uint32_t *)(&moddata[4*i + 1]);
-			if(*address_dev != MERCURY_ADDR_DEF) {
-				cnt++;
-				uint32_to_le(address_dev);			
-				snprintf(buf_addr, sizeof(buf_addr), "%u", *address_dev);	
-				number[0] = cnt + '0';
-				number[1] = 0;
-				add_value_pair(mqtt_msg, number, buf);		
-			}
-		}
-		if(cnt == 0) {
-			add_value_pair(mqtt_msg, "Msg", "Empty");				
-		}
-		return true;
-	}
-		
-	uint32_t *address = (uint32_t *)(&moddata[0]);
-	uint32_to_le(address);
-	snprintf(buf_addr, sizeof(buf_addr), "%u", *address);	
-	add_value_pair(mqtt_msg, "Address", buf_addr);
-						
-    if (moddatalen == 5) {
-        if (moddata[4] == 1) {
+	char buf[100];
+	char buf_addr[30];
+
+   if (moddatalen == 1) {
+        if (moddata[0] == OK_REPLY) {
             add_value_pair(mqtt_msg, "Msg", "Ok");
-        } else if(moddata[4] == 0){
+        } else if(moddata[0] == ERROR_REPLY){
             add_value_pair(mqtt_msg, "Msg", "Error");
-        } else if(moddata[4] == 2){
-            add_value_pair(mqtt_msg, "Msg", "No response");					
 		}
         return true;
-    }
-		
-	mercury_cmd_t cmd = moddata[4];	
+    }	
+	
+	mercury_cmd_t cmd = moddata[0];	
+	
+	if(cmd < MERCURY_CMD_PROPRIETARY_COMMAND) {
+		uint32_t *address = (uint32_t *)(&moddata[1]);
+		uint32_to_le(address);
+		snprintf(buf_addr, sizeof(buf_addr), "%u", *address);	
+		add_value_pair(mqtt_msg, "Address", buf_addr);
+							
+		if (moddatalen == 5) {
+			if (moddata[0] == OK_REPLY) {
+				add_value_pair(mqtt_msg, "Msg", "Ok");
+			} else if(moddata[0] == ERROR_REPLY){
+				add_value_pair(mqtt_msg, "Msg", "Error");
+			} else if(moddata[0] == NO_RESPONSE_REPLY){
+				add_value_pair(mqtt_msg, "Msg", "No response");					
+			}
+			return true;
+		}
+	}
   
 	uint8_t i;
 	uint32_t * ptr_value;
 	
 	switch(cmd) {
+		case MERCURY_CMD_GET_LIST: {
+			uint8_t cnt = 0;
+			char number[15];
+			uint8_t num_devices = (moddatalen - 1) / 4;
+			uint32_t *address_dev;
+			
+			for( i  = 0; i < num_devices; i++) {
+				address_dev = (uint32_t *)(&moddata[4*i + 1]);
+				if(*address_dev != MERCURY_ADDR_DEF) {
+					cnt++;
+					uint32_to_le(address_dev);			
+
+					snprintf(number, sizeof(number), "Address %d", cnt);		
+					snprintf(buf_addr, sizeof(buf_addr), "%u", *address_dev);	
+					add_value_pair(mqtt_msg, number, buf_addr);								
+				}
+			}
+			if(cnt == 0) {
+				add_value_pair(mqtt_msg, "Msg", "Empty");				
+				}
+			return true;
+			break;
+		}		
+			
 		case MERCURY_CMD_GET_SERIAL: {
 			uint32_t *serial = (uint32_t *)(&moddata[5]);
 			uint32_to_le(serial);      
