@@ -38,11 +38,11 @@
 #include "utils.h"
 
 typedef enum {
-	UMDK_IBUTTON_OK = 0x01,					/* OK */
-	UMDK_IBUTTON_ERROR = 0x00,			/* ERROR */
-	UMDK_IBUTTON_GRANTED = 0x11,		/* ACCESS GRANTED */
-	UMDK_IBUTTON_DENIED = 0x1F,			/* ACCESS DENIED */
-	UMDK_IBUTTON_UPDATED = 0x20,		/* ID key removed by timer access */
+	UMDK_IBUTTON_OK 		= 0x01,		/* OK */
+	UMDK_IBUTTON_ERROR 		= 0x00,		/* ERROR */
+	UMDK_IBUTTON_GRANTED 	= 0x11,		/* ACCESS GRANTED */
+	UMDK_IBUTTON_DENIED	 	= 0x1F,		/* ACCESS DENIED */
+	UMDK_IBUTTON_UPDATED 	= 0x20,		/* ID key removed by timer access */
 } umdk_ibutton_reply_t;
 
 typedef enum {
@@ -63,7 +63,7 @@ void umdk_ibutton_command(char *param, char *out, int bufsize)
 		uint16_t time = strtol(param, NULL, 10);
 		snprintf(out, bufsize, "%02x%016llx%04x", UMDK_IBUTTON_CMD_ADD_ID, id, time);
 	}
-	else	if (strstr(param, "remove ") == param) {
+	else if (strstr(param, "remove ") == param) {
 		param += strlen("remove ");    // Skip command
 		uint64_t id = strtoll(param, &param, 16);
 		snprintf(out, bufsize, "%02x%016llx", UMDK_IBUTTON_CMD_REMOVE_ID, id);
@@ -74,13 +74,13 @@ bool umdk_ibutton_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
 
-		umdk_ibutton_reply_t cmd = moddata[0];
+	umdk_ibutton_reply_t cmd = moddata[0];
 		
     if (moddatalen == 1) {
         if (cmd == UMDK_IBUTTON_OK) {
             add_value_pair(mqtt_msg, "msg", "OK");
         } 
-				else {
+		else {
             add_value_pair(mqtt_msg, "msg", "ERROR");
         }
         return true;
