@@ -43,44 +43,44 @@ void umdk_pwm_command(char *param, char *out, int bufsize) {
 		uint8_t cmd = 0;
 		
 		if(strstr(param, "freq ") == param) {
-					param += strlen("freq ");				// Skip command
-					uint32_t freq = strtol(param, &param, 10);
+			param += strlen("freq ");				// Skip command
+			uint32_t freq = strtol(param, &param, 10);
+			param += strlen(" ");    						// Skip space
+	
+			if(strstr(param, "dev ") == param) {
+				param += strlen("dev ");				// Skip command
+				uint8_t dev = strtol(param, &param, 10);
+				dev--;
+				param += strlen(" ");    						// Skip space				
+				
+				uint8_t mask;
+				if(strstr(param, "on ") == param) {
+					param += strlen("on ");				// Skip command
+					mask = 1;
+				}
+				else if(strstr(param, "off ") == param) {
+					param += strlen("off ");				// Skip command
+					mask = 0;							
+				}
+				
+				if(strstr(param, "ch ") == param) {	
+					param += strlen("ch ");				// Skip command					
+					uint8_t channel = strtol(param, &param, 10); 
+					channel--;
 					param += strlen(" ");    						// Skip space
-			
-					if(strstr(param, "dev ") == param) {
-						param += strlen("dev ");				// Skip command
-						uint8_t dev = strtol(param, &param, 10);
-						dev--;
-						param += strlen(" ");    						// Skip space				
+					
+					if(strstr(param, "duty ") == param) {							
+						param += strlen("duty ");				// Skip command		
+						uint8_t duty = strtol(param, &param, 10); 				
 						
-						uint8_t mask;
-						if(strstr(param, "on ") == param) {
-							param += strlen("on ");				// Skip command
-							mask = 1;
-						}
-						else if(strstr(param, "off ") == param) {
-							param += strlen("off ");				// Skip command
-							mask = 0;							
-						}
+						freq = freq & 0x000FFFFF;	
+						uint32_t cmd_freq_dev = (cmd << 28) + (freq << 8) + (dev << 0);
+						uint8_t mask_ch = (mask << 4) + (channel << 0);
 						
-						if(strstr(param, "ch ") == param) {	
-							param += strlen("ch ");				// Skip command					
-							uint8_t channel = strtol(param, &param, 10); 
-							channel--;
-							param += strlen(" ");    						// Skip space
-							
-							if(strstr(param, "duty ") == param) {							
-								param += strlen("duty ");				// Skip command		
-								uint8_t duty = strtol(param, &param, 10); 				
-								
-								freq = freq & 0x000FFFFF;	
-								uint32_t cmd_freq_dev = (cmd << 28) + (freq << 8) + (dev << 0);
-								uint8_t mask_ch = (mask << 4) + (channel << 0);
-								
-								snprintf(out, bufsize, "%08x%02x%02x", cmd_freq_dev, mask_ch, duty);								
-							}
-						}	
+						snprintf(out, bufsize, "%08x%02x%02x", cmd_freq_dev, mask_ch, duty);								
 					}
+				}	
+			}
 		}
 	}
 
@@ -89,12 +89,12 @@ void umdk_pwm_command(char *param, char *out, int bufsize) {
 bool umdk_pwm_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
 	if (moddatalen == 1) {
-			if (moddata[0] == 0) {
-					add_value_pair(mqtt_msg, "Msg", "Ok");
-			} else if(moddata[0] == 1){
-					add_value_pair(mqtt_msg, "Msg", "Error");
-			}
-			return true;
+		if (moddata[0] == 0) {
+			add_value_pair(mqtt_msg, "Msg", "Ok");
+		} else if(moddata[0] == 1){
+			add_value_pair(mqtt_msg, "Msg", "Error");
+		}
+		return true;
 	}
 		
 	return true;
