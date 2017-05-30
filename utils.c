@@ -51,7 +51,7 @@ bool hex_to_bytesn(char *hexstr, int len, uint8_t *bytes, bool reverse_order) {
 	/* Move in string by two characters */
 	char *ptr = &(*hexstr);
 	int i = 0;
-	if (reverse_order) {
+	if (!reverse_order) {
 		ptr += len - 2;
 
 		for (; (len >> 1) - i; ptr -= 2) {
@@ -83,12 +83,9 @@ void bytes_to_hex(uint8_t *bytes, size_t num_bytes, char *str, bool reverse_orde
 
 bool is_big_endian(void)
 {
-    union {
-        uint32_t i;
-        char c[4];
-    } bint = {0x01020304};
-
-    return bint.c[0] == 1; 
+    int n = 1;
+    // big endian if true
+    return (*(char *)&n == 0);
 }
 
 void uint32_to_le(uint32_t *num)
