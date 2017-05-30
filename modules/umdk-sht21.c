@@ -69,15 +69,11 @@ bool umdk_sht21_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
         return true;
     }
 
-    int16_t temp = 0;
-    if (is_big_endian()) {
-        temp = (moddata[1] << 8) | moddata[0]; /* We're in big endian there, swap bytes */
-    }
-    else {
-        temp = (moddata[0] << 8) | moddata[1];
-    }
+    int16_t temp = moddata[0] | (moddata[1] << 8);
+    uint16_to_le((uint16_t *)&temp);
 
-    int16_t humid = moddata[2];
+    int16_t humid = moddata[2] | (moddata[3] << 8);
+    uint16_to_le((uint16_t *)&temp);
     
     int_to_float_str(buf, temp, 1);
     add_value_pair(mqtt_msg, "temp", buf);

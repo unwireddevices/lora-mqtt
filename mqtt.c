@@ -448,7 +448,7 @@ static void serve_reply(char *str) {
 
 		case REPLY_IND: {
             puts("[info] Reply type: REPLY_IND");
-
+            
 			char addr[17] = {};
 			memcpy(addr, str, 16);
 			str += 16;
@@ -459,7 +459,7 @@ static void serve_reply(char *str) {
 				logprint(logbuf);
 				return;
 			}
-	
+
 			int16_t rssi;
 			if (!hex_to_bytesn(str, 4, (uint8_t *) &rssi, !is_big_endian())) {
 				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse RSSI from gate reply: %s\n", str);
@@ -481,12 +481,12 @@ static void serve_reply(char *str) {
             str += 2;
 
 			uint8_t bytes[REPLY_LEN] = {};
-			if (!hex_to_bytes(str,  (uint8_t *) &bytes, true)) {
+			if (!hex_to_bytes(str,  (uint8_t *) &bytes, false)) {
 				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse payload bytes gate reply: \"%s\" | len: %zu\n", str, strlen(str));
 				logprint(logbuf);
 				return;
 			}
-
+            
 			int moddatalen = strlen(str + 1) / 2;
 
 			uint8_t modid = bytes[0];

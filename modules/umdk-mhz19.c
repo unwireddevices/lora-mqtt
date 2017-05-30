@@ -100,23 +100,11 @@ bool umdk_mhz19_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             }
         }
     } else {
-        int16_t co2 = 0;
-        
-        if (is_big_endian()) {
-            co2 = (moddata[1] << 8) | moddata[0]; /* We're in big endian there, swap bytes */
-        }
-        else {
-            co2 = (moddata[0] << 8) | moddata[1];
-        }
+        int16_t co2 = moddata[0] | (moddata[1] << 8);
+        uint16_to_le((uint16_t *)&co2);
 
-        int16_t temp = 0;
-        
-        if (is_big_endian()) {
-            temp = (moddata[3] << 8) | moddata[2]; /* We're in big endian there, swap bytes */
-        }
-        else {
-            temp = (moddata[2] << 8) | moddata[3];
-        }
+        int16_t temp = moddata[2] | (moddata[3] << 8);
+        uint16_to_le((uint16_t *)&temp);
         
         uint8_t is_data_valid = moddata[4];
         

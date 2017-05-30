@@ -70,28 +70,12 @@ bool umdk_lps331_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     }
 
     /* Extract temperature */
-    int16_t temperature = 0;
-
-    if (is_big_endian()) {
-        temperature = moddata[0];
-        temperature += (moddata[1] << 8);
-    }
-    else {
-        temperature = moddata[1];
-        temperature += (moddata[0] << 8);
-    }
-
+    int16_t temperature = moddata[0] | (moddata[1] << 8);
+    uint16_to_le((uint16_t *)&temperature);
+    
     /* Extract pressure */
-    uint16_t pressure = 0;
-
-    if (is_big_endian()) {
-        pressure = moddata[2];
-        pressure += (moddata[3] << 8);
-    }
-    else {
-        pressure = moddata[3];
-        pressure += (moddata[2] << 8);
-    }
+    uint16_t pressure = moddata[2] | (moddata[3] << 8);
+    uint16_to_le((uint16_t *)&pressure);
 
     int_to_float_str(buf, temperature, 1);
     add_value_pair(mqtt_msg, "temperature", buf);

@@ -51,7 +51,7 @@ bool hex_to_bytesn(char *hexstr, int len, uint8_t *bytes, bool reverse_order) {
 	/* Move in string by two characters */
 	char *ptr = &(*hexstr);
 	int i = 0;
-	if (!reverse_order) {
+	if (reverse_order) {
 		ptr += len - 2;
 
 		for (; (len >> 1) - i; ptr -= 2) {

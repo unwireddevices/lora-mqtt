@@ -69,12 +69,8 @@ bool umdk_opt3001_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
         return true;
     }
 
-	uint16_t lum = 0;
-	if (is_big_endian()) {
-        lum = (moddata[1] << 8) | moddata[0]; /* We're in big endian there, swap bytes */
-    } else {
-        lum = (moddata[0] << 8) | moddata[1];
-    }
+	uint16_t lum = moddata[0] | (moddata[1] << 8);
+    uint16_to_le(&lum);
 
     snprintf(buf, sizeof(buf), "%d", lum);
     add_value_pair(mqtt_msg, "luminocity", buf);
