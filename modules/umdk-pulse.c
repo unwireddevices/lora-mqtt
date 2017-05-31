@@ -157,23 +157,13 @@ bool umdk_pulse_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             uint8_t channels = (moddata[1] & 0b11) + 1;
             
             /* absolute data compressed to 3 bytes per counter, has to be decoded to regular UINT32 */
-
-            union {
-                uint32_t num;
-                uint8_t  bytes[4];
-            } values[channels];
+            uint32_t values[channels];
             
             int k = 0;
 
             for (i = 0; i < channels; i++) {
-                values[i].num = 0;
-                for (k = 0; k < 3; k++) {
-                    if (is_big_endian()) {
-                        values[i].bytes[3-k] = moddata[2 + i*3 + k];
-                    } else {
-                        values[i].bytes[k+1] = moddata[2 + i*3 + k];
-                    }
-                }
+                values[i] = moddata[2 + i*3] | (moddata[2 + i*3 + 1] << 8) | (moddata[2 + i*3 + 2] << 16);
+                uint32_to_le(&values[i]);
             }
             /* most recent absolute data are in values[i].num now */
                         
@@ -181,11 +171,11 @@ bool umdk_pulse_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             uint32_t history[channels][hours];
             for (i = 0; i < channels; i++) {
                 for (k = 0; k < hours - 1; k++) {
-                    uint16_t *tmp16 = (uint16_t *)&moddata[2 + channels*3 + i*2*(hours - 1) + k*2];
-                    uint16_to_le(tmp16);
-                    history[i][k + 1] = *tmp16;
+                    uint16_t tmp16 = moddata[2 + channels*3 + i*2*(hours - 1) + k*2] | (moddata[2 + channels*3 + i*2*(hours - 1) + k*2] << 8);
+                    uint16_to_le(&tmp16);
+                    history[i][k + 1] = tmp16;
                 }
-                history[i][0] = values[i].num;
+                history[i][0] = values[i];
             }
             
             /* convert delta values to absolute values */
