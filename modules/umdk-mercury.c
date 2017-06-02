@@ -138,6 +138,7 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 		else if(strstr(param, "month ") == param) {
 			param += strlen("month ");				// Skip command			
 			month = strtol(param, &param, 10);
+			month--;
 		}
 		
 		param += strlen(" ");    						// Skip space
@@ -147,7 +148,6 @@ void umdk_mercury_command(char *param, char *out, int bufsize) {
 			snprintf(out, bufsize, "%02x%08x", MERCURY_CMD_GET_TOTAL_VALUE, destination);			
 		}
 		else {
-			month--;
 			snprintf(out, bufsize, "%02x%08x%02x", MERCURY_CMD_GET_VALUE, destination, month);			
 		}
 	}
