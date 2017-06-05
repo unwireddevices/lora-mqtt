@@ -163,7 +163,7 @@ bool umdk_pulse_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 
             for (i = 0; i < channels; i++) {
                 values[i] = moddata[2 + i*3] | (moddata[2 + i*3 + 1] << 8) | (moddata[2 + i*3 + 2] << 16);
-                uint32_to_le(&values[i]);
+                /* uint32_to_le(&values[i]); */
             }
             /* most recent absolute data are in values[i].num now */
                         
@@ -172,7 +172,7 @@ bool umdk_pulse_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             for (i = 0; i < channels; i++) {
                 for (k = 0; k < hours - 1; k++) {
                     uint16_t tmp16 = moddata[2 + channels*3 + i*2*(hours - 1) + k*2] | (moddata[2 + channels*3 + i*2*(hours - 1) + k*2] << 8);
-                    uint16_to_le(&tmp16);
+                    /* uint16_to_le(&tmp16); */
                     history[i][k + 1] = tmp16;
                 }
                 history[i][0] = values[i];

@@ -101,10 +101,10 @@ bool umdk_mhz19_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
         }
     } else {
         int16_t co2 = moddata[0] | (moddata[1] << 8);
-        uint16_to_le((uint16_t *)&co2);
+        /* uint16_to_le((uint16_t *)&co2); */
 
         int16_t temp = moddata[2] | (moddata[3] << 8);
-        uint16_to_le((uint16_t *)&temp);
+        /* uint16_to_le((uint16_t *)&temp); */
         
         uint8_t is_data_valid = moddata[4];
         

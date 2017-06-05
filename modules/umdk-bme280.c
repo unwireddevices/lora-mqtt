@@ -62,13 +62,13 @@ bool umdk_bme280_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     }
 
     int16_t temp = moddata[0] | (moddata[1] << 8);
-    uint16_to_le((uint16_t *)&temp);
+    /* uint16_to_le((uint16_t *)&temp); */
     
     int16_t hum = moddata[2] | (moddata[3] << 8);
-    uint16_to_le((uint16_t *)&hum);
-    
+    /* uint16_to_le((uint16_t *)&hum); */
+
     uint16_t press = moddata[4] | (moddata[5] << 8);
-    uint16_to_le(&press);
+    /* uint16_to_le(&press); */
     
     
     /*

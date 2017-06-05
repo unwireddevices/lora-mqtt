@@ -71,11 +71,11 @@ bool umdk_lps331_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 
     /* Extract temperature */
     int16_t temperature = moddata[0] | (moddata[1] << 8);
-    uint16_to_le((uint16_t *)&temperature);
+    /* uint16_to_le((uint16_t *)&temperature); */
     
     /* Extract pressure */
     uint16_t pressure = moddata[2] | (moddata[3] << 8);
-    uint16_to_le((uint16_t *)&pressure);
+    /* uint16_to_le((uint16_t *)&pressure); */
 
     int_to_float_str(buf, temperature, 1);
     add_value_pair(mqtt_msg, "temperature", buf);

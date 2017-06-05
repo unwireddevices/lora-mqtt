@@ -70,7 +70,7 @@ bool umdk_opt3001_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     }
 
 	uint16_t lum = moddata[0] | (moddata[1] << 8);
-    uint16_to_le(&lum);
+    /* uint16_to_le(&lum); */
 
     snprintf(buf, sizeof(buf), "%d", lum);
     add_value_pair(mqtt_msg, "luminocity", buf);

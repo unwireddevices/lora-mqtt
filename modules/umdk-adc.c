@@ -85,7 +85,7 @@ bool umdk_adc_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     int i;
     for (i = 0; i < 16; i += 2) {
         uint16_t sensor = moddata[i] | (moddata[i+1] << 8);
-        uint16_to_le(&sensor);
+        /* uint16_to_le(&sensor); */
         
         char ch[6] = {};
         snprintf(ch, sizeof(ch), "adc%d", (i / 2) + 1);
