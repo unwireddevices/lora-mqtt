@@ -56,6 +56,7 @@ bool umdk_config_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_mhz19_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_ibutton_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_pwm_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_switch_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 
 void umdk_counter_command(char *param, char *out, int bufsize);
 void umdk_pulse_command(char *param, char *out, int bufsize);
@@ -74,6 +75,7 @@ void umdk_config_command(char *param, char *out, int bufsize);
 void umdk_mhz19_command(char *param, char *out, int bufsize);
 void umdk_ibutton_command(char *param, char *out, int bufsize);
 void umdk_pwm_command(char *param, char *out, int bufsize);
+void umdk_switch_command(char *param, char *out, int bufsize);
 
 static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_GPIO_MODULE_ID,    .name = "gpio",    .cmd = &umdk_gpio_command,       .reply = &umdk_gpio_reply     },
@@ -98,6 +100,7 @@ static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_PULSE_MODULE_ID,   .name = "pulse",   .cmd = &umdk_pulse_command,      .reply = &umdk_pulse_reply    },
     { .id = UNWDS_MHZ19_MODULE_ID,   .name = "mhz19",   .cmd = &umdk_mhz19_command,      .reply = &umdk_mhz19_reply    },
     { .id = UNWDS_IBUTTON_MODULE_ID, .name = "ibutton", .cmd = &umdk_ibutton_command,    .reply = &umdk_ibutton_reply  },
+    { .id = UNWDS_SWITCH_MODULE_ID,  .name = "switch",  .cmd = &umdk_switch_command,     .reply = &umdk_switch_reply   },
 };
 
 bool (*umdk_reply_ptr)(uint8_t*, int, mqtt_msg_t*);
