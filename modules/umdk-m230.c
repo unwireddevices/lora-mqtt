@@ -24,8 +24,8 @@
  * @ingroup
  * @brief
  * @{
- * @file	umdk-mercury.c
- * @brief   umdk-mercury message parser
+ * @file	umdk-m230.c
+ * @brief   umdk-m230 message parser
  * @author   Mikhail Perkov
  * @author  
  */
@@ -56,10 +56,10 @@ typedef enum {
 
 
 typedef enum {
-	ERROR_REPLY 		= 0,
-    OK_REPLY 			= 1,
-    NO_RESPONSE_REPLY	= 2,
-} mercury_reply_t;
+	M230_ERROR_REPLY 		= 0,
+    M230_OK_REPLY 			= 1,
+    M230_NO_RESPONSE_REPLY	= 2,
+} m230_reply_t;
 
 void umdk_m230_command(char *param, char *out, int bufsize) {
 		
@@ -117,11 +117,11 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		add_value_pair(mqtt_msg, "Address", buf_addr);
 							
 		if (moddatalen == 2) {
-			if (moddata[0] == OK_REPLY) {
+			if (moddata[0] == M230_OK_REPLY) {
 				add_value_pair(mqtt_msg, "Msg", "Ok");
-			} else if(moddata[0] == ERROR_REPLY){
+			} else if(moddata[0] == M230_ERROR_REPLY){
 				add_value_pair(mqtt_msg, "Msg", "Error");
-			} else if(moddata[0] == NO_RESPONSE_REPLY){
+			} else if(moddata[0] == M230_NO_RESPONSE_REPLY){
 				add_value_pair(mqtt_msg, "Msg", "No response");					
 			}
 			return true;
