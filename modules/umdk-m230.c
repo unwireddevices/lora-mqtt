@@ -98,7 +98,7 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		param += strlen(" ");    						// Skip space
 		uint8_t destination = strtol(param, &param, 10);
 		
-		snprintf(out, bufsize, "%02x%08x%02x%02x", M230_CMD_GET_VALUE, destination, month, tariff);		
+		snprintf(out, bufsize, "%02x%02x%02x%02x", M230_CMD_GET_VALUE, destination, month, tariff);		
 	}
 }
 
