@@ -105,6 +105,7 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
 	char buf[100];
+    char strbuf[20];
 	char buf_addr[30];
 	
 	m230_cmd_t cmd = moddata[0];	
@@ -142,9 +143,11 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 				value[i] = *ptr_value;
 			}
 
-			snprintf(buf, sizeof(buf), "%u.%u", value[0]/1000, value[0]%1000);
-			add_value_pair(mqtt_msg, "A+", buf);				
-			snprintf(buf, sizeof(buf), "%u.%u", value[1]/1000, value[1]%1000);
+            int_to_float_str(strbuf, value[0], 3);
+			snprintf(buf, sizeof(buf), "%s", strbuf);
+			add_value_pair(mqtt_msg, "A+", buf);
+            int_to_float_str(strbuf, value[1], 3);
+			snprintf(buf, sizeof(buf), "%s", strbuf);
 			add_value_pair(mqtt_msg, "R+", buf);				
 	
 			return true;

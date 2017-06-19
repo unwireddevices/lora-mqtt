@@ -315,6 +315,7 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
 	char buf[100];
+    char strbuf[20];
 	char buf_addr[30];
 
    if (moddatalen == 1) {
@@ -401,11 +402,13 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			 		
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
-				snprintf(tariff, sizeof(tariff), "T%02d", i + 1);		
-				snprintf(buf, sizeof(buf), "%u.%u", value[i]/100, value[i]%100);
+				snprintf(tariff, sizeof(tariff), "T%02d", i + 1);
+                int_to_float_str(strbuf, value[i], 2);
+				snprintf(buf, sizeof(buf), "%s", strbuf);
 				add_value_pair(mqtt_msg, tariff, buf);								
 			}
-			snprintf(buf, sizeof(buf), "%u.%u", value[4]/100, value[4]%100);
+            int_to_float_str(strbuf, value[4], 2);
+			snprintf(buf, sizeof(buf), "%s", strbuf);
 			add_value_pair(mqtt_msg, "Total", buf);		
 			
 			return true;
@@ -423,10 +426,12 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
 				snprintf(tariff, sizeof(tariff), "T%02d", i + 1);
-				snprintf(buf, sizeof(buf), "%u.%u", value[i]/100, value[i]%100);
+                int_to_float_str(strbuf, value[i], 2);
+				snprintf(buf, sizeof(buf), "%s", strbuf);
 				add_value_pair(mqtt_msg, tariff, buf);				
 			}
-			snprintf(buf, sizeof(buf), "%u.%u", value[4]/100, value[4]%100);
+            int_to_float_str(strbuf, value[4], 2);
+			snprintf(buf, sizeof(buf), "%s", strbuf);
 			add_value_pair(mqtt_msg, "Total", buf);		
 	
 			return true;
