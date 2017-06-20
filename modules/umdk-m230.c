@@ -129,19 +129,16 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		}
 		
 	}
-  
-	uint8_t i;
-	uint32_t * ptr_value;
 	
+    int i = 0;
+    
 	switch(cmd) {
 		
 		case M230_CMD_GET_VALUE: {
 			uint32_t value[2] = { 0 };
-			for(i = 0; i < 2; i++) {
-				ptr_value = (uint32_t *)(&moddata[4*i + 2]);
-				uint32_to_le(ptr_value);      
-				value[i] = *ptr_value;
-			}
+            for (i = 0; i<2; i++) {
+                value[i] = moddata[4*i + 2] | moddata[4*i + 3] << 8 | moddata[4*i + 4] << 16 | moddata[4*i + 5] << 24;
+            }
 
             int_to_float_str(strbuf, value[0], 3);
 			snprintf(buf, sizeof(buf), "%s", strbuf);
