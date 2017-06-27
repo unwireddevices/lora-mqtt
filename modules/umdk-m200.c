@@ -44,7 +44,9 @@ typedef enum {
     M200_CMD_ADD_ADDR 			= 0xFE,		/* Add address  in database */
     M200_CMD_REMOVE_ADDR 		= 0xFD,		/* Remove address from database */
 	M200_CMD_GET_LIST 			= 0xFC,		/* Send database of addresses */
-    
+ 
+	M200_CMD_SET_IFACE			= 0xFB,		/* Set interfase => CAN or RS485 */
+ 
     M200_CMD_SET_TABLE_HOLIDAYS 	= 0xF1, 	/* Set the full table of holidays */
     
     M200_CMD_PROPRIETARY_COMMAND = 0xF0,		/* Less this value single command of mercury */
@@ -309,6 +311,18 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 	}
 	else if (strstr(param, "get list") == param) { 
 		snprintf(out, bufsize, "%02x", M200_CMD_GET_LIST);
+	}
+	else if (strstr(param, "iface ") == param) { 
+		param += strlen("iface ");    // Skip command	
+		uint8_t interface;
+		if (strstr(param, "can") == param) { 	
+			interface = 2;
+		}
+		else if (strstr(param, "485") == param) { 	
+			interface = 1;		
+		}
+		
+		snprintf(out, bufsize, "%02x%02x", M200_CMD_SET_IFACE, interface);
 	}
 }
 
