@@ -119,7 +119,7 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 	else if (strstr(param, "set number tariffs ") == param) {
 		param += strlen("set number tariffs ");    // Skip command
 		uint8_t tarif = strtol(param, &param, 10);
-		tarif--;
+		// tarif--;
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
@@ -216,8 +216,14 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		num_char = snprintf(out, bufsize, "%02x%08x", M200_CMD_SET_TABLE_HOLIDAYS, destination);
 		
 		for(i = 0; i < sizeof(day); i++) {
-			num_char += snprintf(out + num_char, bufsize - num_char, "%02d%02d", day[i], month[i]);
+			if(day[i] != 0xFF) {
+				num_char += snprintf(out + num_char, bufsize - num_char, "%02d%02d", day[i], month[i]);
+			}
+			else {
+				num_char += snprintf(out + num_char, bufsize - num_char, "%02x%02x", day[i], month[i]);				
+			}
 		}
+		
 	}
 	else if (strstr(param, "set schedule ") == param) { 
 		uint8_t i = 0;
