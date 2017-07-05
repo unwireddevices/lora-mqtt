@@ -83,12 +83,23 @@ void bytes_to_hex(uint8_t *bytes, size_t num_bytes, char *str, bool reverse_orde
 
 bool is_big_endian(void)
 {
-    union {
-        uint32_t i;
-        char c[4];
-    } bint = {0x01020304};
+    int n = 1;
+    // big endian if true
+    return (*(char *)&n == 0);
+}
 
-    return bint.c[0] == 1; 
+void uint32_to_le(uint32_t *num)
+{
+    if (is_big_endian()) {
+        *num = ((*num >> 24) & 0xff) | ((*num << 8) & 0xff0000) | ((*num >> 8) & 0xff00) | ((*num << 24) & 0xff000000);
+    }
+}
+
+void uint16_to_le(uint16_t *num)
+{
+    if (is_big_endian()) {
+        *num = ((*num >> 8) & 0xff) | ((*num << 8) & 0xff00);
+    }
 }
 
 void logprint(char *str)
@@ -118,4 +129,15 @@ void int_to_float_str(char *buf, int decimal, uint8_t precision) {
     strcat(format, digits);
     
     snprintf(buf, 50, format, abs(decimal/divider), abs(decimal%divider));
+}
+
+bool is_number(char* str) {
+    char *endptr = NULL;
+    strtol(str, &endptr, 0);
+    
+    if ( &str[strlen(str)] == endptr  ) {
+        return true;
+    } else {
+        return false;
+    }
 }

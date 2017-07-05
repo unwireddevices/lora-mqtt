@@ -144,12 +144,26 @@ void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status
         char *endptr = NULL;
         strtof(mqtt_msg[i].value, &endptr);
         
+        int len = strlen(mqtt_msg[i].value);
+        
         /* numbers in JSON do not need to be escaped in quotes */
-        if ( &mqtt_msg[i].value[strlen(mqtt_msg[i].value)] == endptr  ) {
+        if ( &mqtt_msg[i].value[len] == endptr  ) {
             needs_quotes = 0;
         } else {
             needs_quotes = 1;
         }
+        
+        /* sublasses do not need to be escaped */
+        if ((mqtt_msg[i].value[0] == '{') && (mqtt_msg[i].value[len - 1] == '}')) {
+            needs_quotes = 0;
+        }
+        
+        /* arrays do not need to be escaped */
+        if ((mqtt_msg[i].value[0] == '[') && (mqtt_msg[i].value[len - 1] == ']')) {
+            needs_quotes = 0;
+        }
+        
+        /* elements INSIDE sublass or array MUST be escaped manually if needed */
         
         /* leading zeros are not allowed for regular numbers in JSON */
         if ((mqtt_msg[i].value[0] == '0') && (mqtt_msg[i].value[1] != '.') && (mqtt_msg[i].value[1] != 0)) {
@@ -239,3 +253,13 @@ bool convert_from(char *type, char *param, char *out, int bufsize)
     return false;
 }
 
+int unwds_modid_by_name(char *name) {
+    int i = 0;
+    for (i = 0; i < sizeof(unwds_modules_list)/sizeof(unwds_module_desc_t); i++) {
+        if (strcmp(name, unwds_modules_list[i].name) == 0) {
+            return unwds_modules_list[i].id;
+        }
+    }
+    
+    return -1;
+}

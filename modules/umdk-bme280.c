@@ -61,12 +61,18 @@ bool umdk_bme280_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
         return true;
     }
 
-    int16_t temp = 0;
-    int16_t hum = 0;
-    uint16_t press = 0;
+    int16_t temp = moddata[0] | (moddata[1] << 8);
+    /* uint16_to_le((uint16_t *)&temp); */
     
+    int16_t hum = moddata[2] | (moddata[3] << 8);
+    /* uint16_to_le((uint16_t *)&hum); */
+
+    uint16_t press = moddata[4] | (moddata[5] << 8);
+    /* uint16_to_le(&press); */
+    
+    
+    /*
     if (is_big_endian()) {
-        /* We're in big endian here, swap bytes */
         temp = (moddata[1] << 8) | moddata[0];
         hum = (moddata[3] << 8) | moddata[2];
         press = (moddata[5] << 8) | moddata[4];
@@ -76,6 +82,7 @@ bool umdk_bme280_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
         hum = (moddata[2] << 8) | moddata[3];
         press = (moddata[4] << 8) | moddata[5];
     }
+    */
     
     int_to_float_str(buf, temp, 1);
     add_value_pair(mqtt_msg, "temperature", buf);

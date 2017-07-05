@@ -36,7 +36,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <syslog.h>
-
+#include <sys/msg.h>
 #include <sys/queue.h>
 
 #define __STDC_FORMAT_MACROS
@@ -46,10 +46,28 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "1.9.2"
+#define VERSION "2.1.0"
+
+#define MAX_PENDING_NODES 1000
+
+#define RETRY_TIMEOUT_S 35
+#define INVITE_TIMEOUT_S 45
+
+#define NUM_RETRIES 5
+#define NUM_RETRIES_INV 5
+#define NUM_RETRIES_BEFORE_INVITE 2
 
 #define UART_POLLING_INTERVAL 100	// milliseconds
-#define QUEUE_POLLING_INTERVAL 10 	// milliseconds
+#define QUEUE_POLLING_INTERVAL 1 	// milliseconds
+#define REPLY_LEN 1024
+
+int msgqid;
+extern int errno;
+
+struct msg_buf {
+  long mtype;
+  char mtext[REPLY_LEN];
+} msg_rx;
 
 static struct mosquitto *mosq = NULL;
 static int uart = 0;
@@ -59,15 +77,11 @@ static pthread_t reader_thread;
 static pthread_t pending_thread;
 
 static pthread_mutex_t mutex_uart;
-static pthread_mutex_t mutex_queue;
 static pthread_mutex_t mutex_pending;
-static pthread_mutex_t mutex_pong;
 
 static uint8_t mqtt_format;
 
 char logbuf[1024];
-
-#define REPLY_LEN 1024
 
 typedef struct entry {
 	TAILQ_ENTRY(entry) entries;   /* Circular queue. */	
@@ -77,40 +91,27 @@ typedef struct entry {
 TAILQ_HEAD(TAILQ, entry) inputq;
 typedef struct TAILQ fifo_t;
 
-// static fifo_t *inputqp;              /* UART input requests queue */
-
 static bool m_enqueue(fifo_t *l, char *v);
 static bool m_dequeue(fifo_t *l, char *v);
 static bool is_fifo_empty(fifo_t *l);
 
-#define MAX_NODES 128
-
-#define RETRY_TIMEOUT_S 35
-#define INVITE_TIMEOUT_S 45
-
-#define NUM_RETRIES 5
-#define NUM_RETRIES_INV 5
-#define NUM_RETRIES_BEFORE_INVITE 2
-
 /* Pending messages queue pool */
-static bool pending_free[MAX_NODES];
+static bool pending_free[MAX_PENDING_NODES];
 typedef struct {
 	uint64_t nodeid;
-	unsigned short nodeclass;
-
-	bool has_been_invited;
-
-	fifo_t pending_fifo;
-
-	bool can_send;
+    fifo_t pending_fifo;
+    
 	time_t last_msg;
 	time_t last_inv;
-
+    
+	unsigned short nodeclass;
+	bool has_been_invited;
+	bool can_send;
 	unsigned short num_retries;
 	unsigned short num_pending;
 } pending_item_t;
 
-static pending_item_t pending[MAX_NODES];
+static pending_item_t pending[MAX_PENDING_NODES];
 
 /* The devices list is requested for gate needs, so don't post in MQTT it's results */
 static bool list_for_gate = false;
@@ -118,8 +119,10 @@ static bool devlist_needed = false;
 static void devices_list(bool internal);
 
 /* If too many pings was skipped by gate, the connection might be faulty */
+/*
 static int pings_skipped = 0;
 static const int MIN_PINGS_SKIPPED = 10;
+*/
 
 static bool static_devices_list_sent = false;
 
@@ -141,7 +144,7 @@ static char *get_node_class(unsigned short nodeclass) {
 
 static void init_pending(void) {
 	int i;	
-	for (i = 0; i < MAX_NODES; i++) {
+	for (i = 0; i < MAX_PENDING_NODES; i++) {
 		pending_free[i] = true;
 		pending[i].nodeid = 0;
 		pending[i].nodeclass = 0;
@@ -155,7 +158,7 @@ static void init_pending(void) {
 
 static pending_item_t *pending_to_nodeid(uint64_t nodeid) {
 	int i;	
-	for (i = 0; i < MAX_NODES; i++) {
+	for (i = 0; i < MAX_PENDING_NODES; i++) {
 		if (pending_free[i])
 			continue;
 
@@ -192,7 +195,7 @@ static bool add_device(uint64_t nodeid, unsigned short nodeclass, bool was_joine
 	}
 
 	int i;
-	for (i = 0; i < MAX_NODES; i++) {
+	for (i = 0; i < MAX_PENDING_NODES; i++) {
 		/* Free cell found, occupy */
 		if (pending_free[i]) {
 			pending_free[i] = false;
@@ -224,7 +227,7 @@ static bool kick_device(uint64_t nodeid) {
 	pthread_mutex_lock(&mutex_pending);
 
 	int i;
-	for (i = 0; i < MAX_NODES; i++) {
+	for (i = 0; i < MAX_PENDING_NODES; i++) {
 		if (pending_free[i])
 			continue;
 
@@ -360,6 +363,8 @@ static void set_blocking (int fd, int should_block)
 }
 
 static void serve_reply(char *str) {
+    puts("[info] Gate reply received");
+    
 	if (strlen(str) > REPLY_LEN * 2) {
 		puts("[error] Received too long reply from the gate");
 		return;
@@ -367,9 +372,11 @@ static void serve_reply(char *str) {
 
 	gate_reply_type_t reply = (gate_reply_type_t)str[0];
 	str += 1;
+    char *str_orig = str;
 
 	switch (reply) {
 		case REPLY_LIST: {
+            puts("[info] Reply type: REPLY_LIST");
 			/* Read EUI64 */
 			char addr[17] = {};
 			memcpy(addr, str, 16);
@@ -377,7 +384,7 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -389,24 +396,10 @@ static void serve_reply(char *str) {
 
 			uint64_t appid64;
 			if (!hex_to_bytes(appid, (uint8_t *) &appid64, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str - 32);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str_orig);
 				logprint(logbuf);
 				return;
 			}
-
-			/* Read ability mask */
-			/*
-			char ability[17] = {};
-			memcpy(ability, str, 16);
-			str += 16;
-
-			uint64_t abil64;
-			if (!hex_to_bytes(ability, (uint8_t *) &abil64, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str - 48);
-				logprint(logbuf);
-				return;
-			}
-			*/
 
 			/* Read last seen time */
 			char lastseen[5] = {};
@@ -415,7 +408,7 @@ static void serve_reply(char *str) {
 
 			uint16_t lseen;
 			if (!hex_to_bytes(lastseen, (uint8_t *) &lseen, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str - 52);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -427,7 +420,7 @@ static void serve_reply(char *str) {
 
 			uint16_t cl;
 			if (!hex_to_bytes(nodeclass, (uint8_t *) &cl, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str - 52);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse list reply: %s\n", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -454,21 +447,19 @@ static void serve_reply(char *str) {
 		break;
 
 		case REPLY_IND: {
-			pthread_mutex_lock(&mutex_pong);
-			pings_skipped = 0;
-			pthread_mutex_unlock(&mutex_pong);
-
+            puts("[info] Reply type: REPLY_IND");
+            
 			char addr[17] = {};
 			memcpy(addr, str, 16);
 			str += 16;
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse device app. data: %s", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse device app. data: %s", str_orig);
 				logprint(logbuf);
 				return;
 			}
-	
+
 			int16_t rssi;
 			if (!hex_to_bytesn(str, 4, (uint8_t *) &rssi, !is_big_endian())) {
 				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse RSSI from gate reply: %s\n", str);
@@ -495,7 +486,7 @@ static void serve_reply(char *str) {
 				logprint(logbuf);
 				return;
 			}
-
+            
 			int moddatalen = strlen(str + 1) / 2;
 
 			uint8_t modid = bytes[0];
@@ -527,9 +518,7 @@ static void serve_reply(char *str) {
 		break;
 
 		case REPLY_JOIN: {
-			pthread_mutex_lock(&mutex_pong);
-			pings_skipped = 0;
-			pthread_mutex_unlock(&mutex_pong);
+            puts("[info] Reply type: REPLY_JOIN");
 
 			char addr[17] = {};
 			memcpy(addr, str, 16);
@@ -537,7 +526,7 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse join reply: %s", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse join reply: %s", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -579,13 +568,14 @@ static void serve_reply(char *str) {
 		break;
 
 		case REPLY_KICK: {
+            puts("[info] Reply type: REPLY_KICK");
 			char addr[17] = {};
 			memcpy(addr, str, 16);
 			str += 16;
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse kick packet: %s", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse kick packet: %s", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -613,9 +603,7 @@ static void serve_reply(char *str) {
 		break;
 
 		case REPLY_ACK: {
-			pthread_mutex_lock(&mutex_pong);
-			pings_skipped = 0;
-			pthread_mutex_unlock(&mutex_pong);
+            puts("[info] Reply type: REPLY_ACK");
 
 			char addr[17] = {};
 			memcpy(addr, str, 16);
@@ -623,7 +611,7 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse ack: %s", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse ack: %s", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -651,17 +639,8 @@ static void serve_reply(char *str) {
 		}
 		break;
 
-		case REPLY_PONG: {
-			pthread_mutex_lock(&mutex_pong);
-			pings_skipped = 0;
-			pthread_mutex_unlock(&mutex_pong);
-		}
-		break;
-
 		case REPLY_PENDING_REQ: {
-			pthread_mutex_lock(&mutex_pong);
-			pings_skipped = 0;
-			pthread_mutex_unlock(&mutex_pong);
+            puts("[info] Reply type: REPLY_PENDING_REQ");
 
 			char addr[17] = {};
 			memcpy(addr, str, 16);
@@ -669,7 +648,7 @@ static void serve_reply(char *str) {
 
 			uint64_t nodeid;
 			if (!hex_to_bytes(addr, (uint8_t *) &nodeid, !is_big_endian())) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse pending frames request data: %s", str - 16);
+				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse pending frames request data: %s", str_orig);
 				logprint(logbuf);
 				return;
 			}
@@ -689,6 +668,9 @@ static void serve_reply(char *str) {
 			}			
 		}
 		break;
+        default:
+            puts("[error] Reply type: unknown reply type");
+            break;
 	}
 }
 
@@ -725,7 +707,7 @@ static void* pending_worker(void *arg) {
 		pthread_mutex_lock(&mutex_pending);
 
 		int i;	
-		for (i = 0; i < MAX_NODES; i++) {
+		for (i = 0; i < MAX_PENDING_NODES; i++) {
 			if (pending_free[i]) {
                 usleep(1e3 * QUEUE_POLLING_INTERVAL);
 				continue;
@@ -843,38 +825,21 @@ static void* pending_worker(void *arg) {
 		}
 
 		pthread_mutex_unlock(&mutex_pending);
-
-		//usleep(1e3);
 	}
 
 	return 0;
 }
 
-/* Polls publish queue and publishes the messages into MQTT */
+/* Publishes messages into MQTT */
 static void *publisher(void *arg)
-{
+{ 
 	while(1) {
-        usleep(1e3 * QUEUE_POLLING_INTERVAL);
-
-		pthread_mutex_lock(&mutex_queue);
-
-		/* Checks wether queue is empty */
-		if (is_fifo_empty(&inputq)) {
-			pthread_mutex_unlock(&mutex_queue);
-			continue;
-		}
-
-		/* Pick an element from the head */
-		char buf[REPLY_LEN];
-		if (!m_dequeue(&inputq, buf)) {
-			pthread_mutex_unlock(&mutex_queue);		
-			continue;
-		}
-
-		pthread_mutex_unlock(&mutex_queue);
-		serve_reply(buf);
-
-		/* usleep(1e3 * QUEUE_POLLING_INTERVAL); */
+        /* Wait for a message to arrive */
+        if (msgrcv(msgqid, &msg_rx, sizeof(msg_rx.mtext), 0, 0) < 0) {
+            puts("[error] Failed to receive internal message");
+            continue;
+        }
+		serve_reply(msg_rx.mtext);
 	}	
 	
 	return NULL;
@@ -953,15 +918,8 @@ static void *uart_reader(void *arg)
 		char c;
 		int r = 0, i = 0;
 
-		pthread_mutex_lock(&mutex_pong);
-		if (pings_skipped++ >= MIN_PINGS_SKIPPED) {
-			puts("[!!!] No response from LoRa gate! Check the connection!");
-		}
-		pthread_mutex_unlock(&mutex_pong);
-
 		pthread_mutex_lock(&mutex_uart);
 
-		dprintf(uart, "%c\r", CMD_PING);
 		dprintf(uart, "%c\r", CMD_FLUSH);
 
 		while ((r = read(uart, &c, 1)) != 0) {
@@ -973,29 +931,26 @@ static void *uart_reader(void *arg)
 		buf[i] = '\0';
 
 		if (strlen(buf) > 0) {
-			pthread_mutex_lock(&mutex_queue);
-			
-			char *running = strdup(buf), *token;
-			const char *delims = "\n";
-
-			while (strlen(token = strsep(&running, delims))) {
-				char buf[REPLY_LEN] = {};
-				memcpy(buf, token, strlen(token));
-
-				/* Insert reply to the queue */
-				if (!m_enqueue(&inputq, buf)) {
-					if (!running) {
-						free(running);
-					}
-					break;
-				}
-
-				if (running == NULL)
-					break;
-				
-			}
-			
-			pthread_mutex_unlock(&mutex_queue);
+            
+            char *running = strdup(buf), *token;
+            const char *delims = "\n";
+            
+            while (strlen(token = strsep(&running, delims))) {
+                if((strlen(token) + 1 ) > sizeof(msg_rx.mtext)) {
+                    puts("[error] Oversized message, unable to send");
+                    continue;
+                }
+                
+                msg_rx.mtype = 1;
+                memcpy(msg_rx.mtext, token, strlen(token));
+                msg_rx.mtext[strlen(token)] = 0;
+                
+                if (msgsnd(msgqid, &msg_rx, sizeof(msg_rx.mtext), 0) < 0) {
+                    perror( strerror(errno) );
+                    printf("[error] Failed to send internal message");
+                    continue;
+                }
+            }
 		}
 
 		usleep(1e3 * UART_POLLING_INTERVAL);
@@ -1226,14 +1181,12 @@ void usage(void) {
 
 int main(int argc, char *argv[])
 {
-//	int i;
 	const char *host = "localhost";
 	int port = 1883;
 	int keepalive = 60;
     
     mqtt_qos = 1;
     mqtt_retain = false;
-//	bool clean_session = true;
 
 	openlog("lora-mqtt", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_DAEMON);
 
@@ -1303,12 +1256,13 @@ int main(int argc, char *argv[])
         write(pidfile, pidval, strlen(pidval));
     }
 	
-	/* wait for 60 seconds */
-	/*
-	if (daemonize) {
-		usleep(60*1e6);
-	}
-	*/
+    
+    /* Create message queue */
+    msgqid = msgget(IPC_PRIVATE, IPC_CREAT);
+    if (msgqid < 0) {
+        puts("Failed to create message queue");
+        exit(EXIT_FAILURE);
+    }
 	
 	FILE* config = NULL;
     char* token;
@@ -1368,10 +1322,10 @@ int main(int argc, char *argv[])
                             retain = strtok(NULL, "\t =\n\r");
                             if (!strcmp(retain, "true")) {
                                 mqtt_sepio = true;
-                                puts("MQTT separate in/out topcis enabled");
+                                puts("MQTT separate in/out topics enabled");
                             } else {
                                 mqtt_sepio = false;
-                                puts("MQTT separate in/out topcis disabled");
+                                puts("MQTT separate in/out topics disabled");
                             }
                         }
                     }
@@ -1390,17 +1344,13 @@ int main(int argc, char *argv[])
 	printf("Using serial port device: %s\n", serialport);
 	
 	pthread_mutex_init(&mutex_uart, NULL);
-	pthread_mutex_init(&mutex_queue, NULL);
 	pthread_mutex_init(&mutex_pending, NULL);
-	pthread_mutex_init(&mutex_pong, NULL);
 
 	/* Request a devices list on a first launch */
 	devlist_needed = true;
 
 	init_pending();
-
-	TAILQ_INIT(&inputq);
-
+    
 	uart = open(serialport, O_RDWR | O_NOCTTY | O_SYNC);
 	if (uart < 0)
 	{

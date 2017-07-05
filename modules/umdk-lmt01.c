@@ -72,14 +72,9 @@ bool umdk_lmt01_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 
     int i;
     for (i = 0; i < 8; i += 2) {
-        int16_t sensor = 0;
-        if (is_big_endian()) {
-            sensor = (moddata[i + 1] << 8) | moddata[i]; /* We're in big endian there, swap bytes */
-        }
-        else {
-            sensor = (moddata[i] << 8) | moddata[i + 1];
-        }
-
+        int16_t sensor = moddata[i] | (moddata[i+1] << 8);
+        /* uint16_to_le((uint16_t *)&sensor); */
+        
         char ch[3] = {};
         snprintf(ch, sizeof(ch), "s%d", (i / 2) + 1);
 

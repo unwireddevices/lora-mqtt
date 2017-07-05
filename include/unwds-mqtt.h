@@ -26,17 +26,10 @@
 #include <stdint.h>
 #include <mosquitto.h>
 
-#define MQTT_MSG_MAX_NUM 20
+#define MQTT_MSG_MAX_NUM 50
 #define MQTT_SUBSCRIBE_TO "devices/lora/#"
 #define MQTT_PUBLISH_TO "devices/lora/"
-#define MQTT_MAX_MSG_SIZE 1024
-
-typedef enum {
-	UNWDS_GPIO_GET = 0,
-	UNWDS_GPIO_SET_0 = 1,
-	UNWDS_GPIO_SET_1 = 2,
-	UNWDS_GPIO_TOGGLE = 3,
-} unwds_gpio_action_t;
+#define MQTT_MAX_MSG_SIZE 2048
 
 typedef enum {
     UNWDS_MQTT_REGULAR = 0,
@@ -45,7 +38,7 @@ typedef enum {
 
 typedef struct {
     char name[40];
-    char value[40];
+    char value[100];
 } mqtt_msg_t;
 
 typedef struct {
@@ -67,5 +60,7 @@ void publish_mqtt_message(struct mosquitto *mosq, const char *addr, const char *
 void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status_t status, const char *addr);
 
 void add_value_pair(mqtt_msg_t *msg, char const *name, char const *value);
+
+int unwds_modid_by_name(char *name);
 
 #endif
