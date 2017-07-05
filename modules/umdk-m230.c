@@ -43,6 +43,8 @@ typedef enum {
     M230_CMD_ADD_ADDR 			= 0xFE,		/* Add address  in database */
     M230_CMD_REMOVE_ADDR 		= 0xFD,		/* Remove address from database */
 	M230_CMD_GET_LIST 			= 0xFC,		/* Send database of addresses */
+
+	M230_CMD_SET_IFACE			= 0xFB,		/* Set interfase => CAN or RS485 */
     
     M230_CMD_PROPRIETARY_COMMAND = 0xF0,	/* Less this value single command of mercury */
 
@@ -118,6 +120,18 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		uint8_t tmp = 0x00;
 		snprintf(out, bufsize, "%02x%08x%02x", M230_CMD_GET_TIMEDATE, destination, tmp);
 	}	
+	else if (strstr(param, "iface ") == param) { 
+		param += strlen("iface ");    // Skip command	
+		uint8_t interface;
+		if (strstr(param, "can") == param) { 	
+			interface = 2;
+		}
+		else if (strstr(param, "485") == param) { 	
+			interface = 1;		
+		}
+		
+		snprintf(out, bufsize, "%02x%02x", M230_CMD_SET_IFACE, interface);
+	}
 }
 
 bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
