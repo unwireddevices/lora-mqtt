@@ -46,11 +46,10 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "2.1.0"
+#define VERSION "2.1.1"
 
 #define MAX_PENDING_NODES 1000
 
-#define RETRY_TIMEOUT_S 35
 #define INVITE_TIMEOUT_S 45
 
 #define NUM_RETRIES 5
@@ -80,6 +79,7 @@ static pthread_mutex_t mutex_uart;
 static pthread_mutex_t mutex_pending;
 
 static uint8_t mqtt_format;
+static int tx_delay;
 
 char logbuf[1024];
 
@@ -769,7 +769,7 @@ static void* pending_worker(void *arg) {
 				continue;
 			}
 
-			if (current - e->last_msg > RETRY_TIMEOUT_S) {
+			if (current - e->last_msg > tx_delay) {
 				if (e->num_retries > NUM_RETRIES) {
 					snprintf(logbuf, sizeof(logbuf), "[fail] Unable to send message to 0x%" PRIx64 " after %u attempts, giving up\n", 
 						      e->nodeid, NUM_RETRIES);
@@ -1194,6 +1194,7 @@ int main(int argc, char *argv[])
 	logprint(logbuf);
 	
     mqtt_format = UNWDS_MQTT_REGULAR;
+    tx_delay = 10;
     
 	bool daemonize = 0;
 //	bool retain = 0;
@@ -1327,6 +1328,12 @@ int main(int argc, char *argv[])
                                 mqtt_sepio = false;
                                 puts("MQTT separate in/out topics disabled");
                             }
+                        }
+                        if (!strcmp(tokem, "tx_delay")) {
+                            char td;
+                            td = strtok(NULL, "\t =\n\r");
+                            sscanf(td, "%d", &tx_delay);
+                            printf("TX delay: %d\n seconds", tx_delay);
                         }
                     }
                 }
