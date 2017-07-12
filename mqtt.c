@@ -1329,11 +1329,11 @@ int main(int argc, char *argv[])
                                 puts("MQTT separate in/out topics disabled");
                             }
                         }
-                        if (!strcmp(tokem, "tx_delay")) {
-                            char td;
+                        if (!strcmp(token, "tx_delay")) {
+                            char *td;
                             td = strtok(NULL, "\t =\n\r");
                             sscanf(td, "%d", &tx_delay);
-                            printf("TX delay: %d\n seconds", tx_delay);
+                            printf("LoRa TX queue delay: %d seconds\n", tx_delay);
                         }
                     }
                 }
