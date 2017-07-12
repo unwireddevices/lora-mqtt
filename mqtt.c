@@ -54,7 +54,6 @@
 
 #define NUM_RETRIES 5
 #define NUM_RETRIES_INV 5
-#define NUM_RETRIES_BEFORE_INVITE 2
 
 #define UART_POLLING_INTERVAL 100	// milliseconds
 #define QUEUE_POLLING_INTERVAL 1 	// milliseconds
@@ -80,6 +79,7 @@ static pthread_mutex_t mutex_pending;
 
 static uint8_t mqtt_format;
 static int tx_delay;
+static int tx_maxretr;
 
 char logbuf[1024];
 
@@ -182,6 +182,8 @@ static bool add_device(uint64_t nodeid, unsigned short nodeclass, bool was_joine
 			snprintf(logbuf, sizeof(logbuf), "[+] Device successfully invited");
 			logprint(logbuf);
 
+            /* tx_delay pause before sending any messages to the invited device */
+            e->last_msg = time(NULL);
 			e->has_been_invited = false;
 		}
 
@@ -801,7 +803,7 @@ static void* pending_worker(void *arg) {
 					continue;
 
 				snprintf(logbuf, sizeof(logbuf), "[pending] [%d/%d] Sending message to 0x%" PRIx64 ": %s\n", 
-					e->num_retries + 1, (e->num_retries < NUM_RETRIES_BEFORE_INVITE) ? NUM_RETRIES_BEFORE_INVITE : NUM_RETRIES,
+					e->num_retries + 1, (e->num_retries < tx_maxretr) ? tx_maxretr : NUM_RETRIES,
 					e->nodeid, buf);
 				logprint(logbuf);
 
@@ -812,8 +814,8 @@ static void* pending_worker(void *arg) {
 				dprintf(uart, "%s\r", buf);
 				pthread_mutex_unlock(&mutex_uart);
 
-				/* Send invitation after NUM_RETRIES_BEFORE_INVITE retransmissions */
-				if (e->nodeclass == LS_ED_CLASS_C && e->num_retries == NUM_RETRIES_BEFORE_INVITE) {
+				/* Send invitation after tx_maxretr retransmissions */
+				if (e->nodeclass == LS_ED_CLASS_C && e->num_retries == tx_maxretr) {
 					e->num_retries = 1;
 					e->last_inv = current;
 					e->has_been_invited = true;
@@ -1195,6 +1197,7 @@ int main(int argc, char *argv[])
 	
     mqtt_format = UNWDS_MQTT_REGULAR;
     tx_delay = 10;
+    tx_maxretr = 3;
     
 	bool daemonize = 0;
 //	bool retain = 0;
@@ -1334,6 +1337,12 @@ int main(int argc, char *argv[])
                             td = strtok(NULL, "\t =\n\r");
                             sscanf(td, "%d", &tx_delay);
                             printf("LoRa TX queue delay: %d seconds\n", tx_delay);
+                        }
+                        if (!strcmp(token, "tx_maxretr")) {
+                            char *td;
+                            td = strtok(NULL, "\t =\n\r");
+                            sscanf(td, "%d", &tx_maxretr);
+                            printf("LoRa TX maximum retries: %d\n", tx_maxretr);
                         }
                     }
                 }
