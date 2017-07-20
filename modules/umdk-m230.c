@@ -63,10 +63,12 @@ typedef enum {
 	M230_ERROR_REPLY 		= 0,
     M230_OK_REPLY 			= 1,
     M230_NO_RESPONSE_REPLY	= 2,
+	M230_ERROR_NOT_FOUND	= 3,
+	M230_ERROR_OFFLINE		= 4,
 } m230_reply_t;
 
 static char season[2][7] = { "Summer", "Winter" };
-static char str_dow[8][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Hol" };
+static char dow[8][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Hol" };
 
 void umdk_m230_command(char *param, char *out, int bufsize) {
 		
@@ -112,13 +114,13 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		param += strlen("get timedate ");    // Skip command
 		destination = strtol(param, &param, 10);
 		uint8_t tmp = 0x00;
-		snprintf(out, bufsize, "%02x%08x%02x", M230_CMD_GET_TIMEDATE, destination, tmp);
+		snprintf(out, bufsize, "%02x%02x%02x", M230_CMD_GET_TIMEDATE, destination, tmp);
 	}	
 	else if (strstr(param, "get serial ") == param) {
 		param += strlen("get serial ");    // Skip command
 		destination = strtol(param, &param, 10);
 		uint8_t tmp = 0x00;
-		snprintf(out, bufsize, "%02x%08x%02x", M230_CMD_GET_TIMEDATE, destination, tmp);
+		snprintf(out, bufsize, "%02x%02x%02x", M230_CMD_GET_SERIAL, destination, tmp);
 	}	
 	else if (strstr(param, "iface ") == param) { 
 		param += strlen("iface ");    // Skip command	
@@ -139,6 +141,23 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	char buf[100];
     char strbuf[20];
 	char buf_addr[30];
+	uint8_t ii;
+    puts("[m230] RX:  ");
+    for(ii = 0; ii < moddatalen; ii++) {
+        printf(" %02X ", moddata[ii]);
+    }
+   puts("\n");
+	
+	
+   if (moddatalen == 1) {
+		if (moddata[0] == M230_OK_REPLY) {
+			add_value_pair(mqtt_msg, "Msg", "Ok");
+		} 
+		else if(moddata[0] == M230_ERROR_REPLY){
+			add_value_pair(mqtt_msg, "Msg", "Error");
+		}
+		return true;
+	}	
 	
 	m230_cmd_t cmd = moddata[0];	
 	
@@ -156,6 +175,10 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 				add_value_pair(mqtt_msg, "Msg", "Error");
 			} else if(moddata[0] == M230_NO_RESPONSE_REPLY){
 				add_value_pair(mqtt_msg, "Msg", "No response");					
+			} else if(moddata[0] == M230_ERROR_NOT_FOUND){
+				add_value_pair(mqtt_msg, "Msg", "Device Not found");					
+			} else if(moddata[0] == M230_ERROR_OFFLINE){
+				add_value_pair(mqtt_msg, "Msg", "OFFLINE");					
 			}
 			return true;
 		}
@@ -163,7 +186,7 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	}
 	
     int i = 0;
-    
+	
 	switch(cmd) {
 		
 		case M230_CMD_GET_VALUE: {
@@ -212,7 +235,7 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 				time[i] = moddata[i + 2];
 			}
 
-			add_value_pair(mqtt_msg, "Day", season[time[3]]);
+			add_value_pair(mqtt_msg, "Day", dow[time[3]]);
 			
 			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[2], time[1], time[0]);	
 			add_value_pair(mqtt_msg, "Time", time_buf);
@@ -220,7 +243,7 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);	
 			add_value_pair(mqtt_msg, "Date", time_buf);			
 			
-			add_value_pair(mqtt_msg, "Season", str_dow[time[7]]);			
+			add_value_pair(mqtt_msg, "Season", season[time[7]]);			
 			
 			return true;
 			break;
