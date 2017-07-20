@@ -71,7 +71,8 @@ bool umdk_lmt01_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     }
 
     int i;
-    for (i = 0; i < 8; i += 2) {
+    int num_sensor = moddatalen/2;
+    for (i = 0; i < (moddatalen * 2); i += 2) {
         int16_t sensor = moddata[i] | (moddata[i+1] << 8);
         /* uint16_to_le((uint16_t *)&sensor); */
         
