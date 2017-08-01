@@ -56,6 +56,8 @@ typedef enum {
 	M230_CMD_GET_TIMEDATE		= 0x04,		/* Read the internal time and date */
 	M230_CMD_GET_SERIAL			= 0x05,		/* Read serial number of the device */
 	M230_CMD_SET_TIMEDATE		= 0x06,		/* Set the internal time and date */
+	M230_CMD_SET_POWERLOAD		= 0x07,		/* Set on/off control of powerload */
+	M230_CMD_GET_POWERLOAD		= 0x08,		/* Read mode of control of powerload */	
 } m230_cmd_t;
 
 
@@ -122,6 +124,60 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		uint8_t tmp = 0x00;
 		snprintf(out, bufsize, "%02x%02x%02x", M230_CMD_GET_SERIAL, destination, tmp);
 	}	
+	else if (strstr(param, "set timedate ") == param) {
+		param += strlen("set timedate ");    // Skip command
+	
+		uint8_t hour = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		uint8_t min = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		uint8_t sec = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		
+		uint8_t dow = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space		
+		
+		
+		uint8_t day = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		uint8_t month = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		uint8_t year = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		
+		uint8_t season = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		
+		destination = strtol(param, &param, 10);
+		uint8_t tmp = 0x0C;
+		
+		snprintf(out, bufsize, "%02x%02x%02x%02d%02d%02d%02d%02d%02d%02d%02d", 
+								M230_CMD_SET_TIMEDATE, destination, tmp, sec, min, hour, dow, day, month, year, season);		
+		
+	}		
+	else if (strstr(param, "set powerload ") == param) {
+		param += strlen("set powerload ");    // Skip command
+		uint8_t powerload;
+		if (strstr(param, "on") == param) { 
+			param += strlen("on");    // Skip command
+			powerload = 0;
+		}
+		else if (strstr(param, "off") == param) { 	
+			param += strlen("off");    // Skip command
+			powerload = 1;	
+		}
+		
+		param += strlen(" ");    						// Skip space
+		destination = strtol(param, &param, 10);
+		uint8_t tmp = 0x31;
+		snprintf(out, bufsize, "%02x%02x%02x%02x", M230_CMD_SET_POWERLOAD, destination, tmp, powerload);
+	}	
+	else if (strstr(param, "get powerload ") == param) {
+		param += strlen("get powerload ");    // Skip command
+		destination = strtol(param, &param, 10);
+		uint8_t tmp = 0x18;
+		snprintf(out, bufsize, "%02x%02x%02x", M230_CMD_GET_POWERLOAD, destination, tmp);
+	}		
 	else if (strstr(param, "iface ") == param) { 
 		param += strlen("iface ");    // Skip command	
 		uint8_t interface;
@@ -258,6 +314,20 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			
 			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", moddata[6], moddata[7], moddata[8]);	
 			add_value_pair(mqtt_msg, "Release date", time_buf);		
+			
+			return true;
+			break;
+		}
+		
+		case M230_CMD_GET_POWERLOAD : {
+			uint8_t powerload_on_off = moddata[3] & 0x02;
+			
+			if(powerload_on_off == 1) {
+				add_value_pair(mqtt_msg, "Control", "Off");
+			}
+			else if(powerload_on_off == 0) {
+				add_value_pair(mqtt_msg, "Control", "On");				
+			}
 			
 			return true;
 			break;
