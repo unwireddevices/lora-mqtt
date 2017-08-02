@@ -61,13 +61,31 @@ typedef enum {
 } m230_cmd_t;
 
 
+// typedef enum {
+	// M230_ERROR_REPLY 		= 0,
+    // M230_OK_REPLY 			= 1,
+    // M230_NO_RESPONSE_REPLY	= 2,
+	// M230_ERROR_NOT_FOUND	= 3,
+	// M230_ERROR_OFFLINE		= 4,
+// } m230_reply_t;
+
 typedef enum {
-	M230_ERROR_REPLY 		= 0,
-    M230_OK_REPLY 			= 1,
-    M230_NO_RESPONSE_REPLY	= 2,
-	M230_ERROR_NOT_FOUND	= 3,
-	M230_ERROR_OFFLINE		= 4,
+	M230_ERROR_REPLY 		= 0xF0,
+    M230_OK_REPLY 			= 0xF1,
+    M230_NO_RESPONSE_REPLY 	= 0xF2,
+	
+	M230_ERROR_NOT_FOUND	= 0xF3,
+	M230_ERROR_OFFLINE		= 0xF4,
 } m230_reply_t;
+
+typedef enum {
+	M230_OK 			= 0x00,
+	M230_WRONG_CMD 		= 0x01,
+    M230_INTERNAL_ERROR = 0x02,
+	M230_ACCESS_ERROR 	= 0x03,
+	M230_TIME_CORRECTED	= 0x04,
+	M230_OFFLINE 		= 0x05,
+} m230_status_byte_t;
 
 static char season[2][7] = { "Summer", "Winter" };
 static char dow[8][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Hol" };
@@ -217,7 +235,7 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	
 	m230_cmd_t cmd = moddata[0];	
 	
-	if(cmd < M230_CMD_PROPRIETARY_COMMAND) {
+	// if(cmd < M230_CMD_PROPRIETARY_COMMAND) {
 		
 		uint8_t address = moddata[1];
 
@@ -235,11 +253,23 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 				add_value_pair(mqtt_msg, "Msg", "Device Not found");					
 			} else if(moddata[0] == M230_ERROR_OFFLINE){
 				add_value_pair(mqtt_msg, "Msg", "OFFLINE");					
-			}
+			} else if(moddata[0] == M230_WRONG_CMD){
+				add_value_pair(mqtt_msg, "Msg", "Invalid command or parameter");							
+			} else if(moddata[0] == M230_INTERNAL_ERROR){
+				add_value_pair(mqtt_msg, "Msg", "Internal error");							
+			} else if(moddata[0] == M230_ACCESS_ERROR){
+				add_value_pair(mqtt_msg, "Msg", "Access error");					
+			} else if(moddata[0] == M230_TIME_CORRECTED){
+				add_value_pair(mqtt_msg, "Msg", "Time already corrected");								
+			} else if(moddata[0] == M230_OFFLINE){
+				add_value_pair(mqtt_msg, "Msg", "Offline");					
+			} else if(moddata[0] == M230_OK){
+				add_value_pair(mqtt_msg, "Msg", "OK");					
+			}			
 			return true;
 		}
 		
-	}
+	// }
 	
     int i = 0;
 	
