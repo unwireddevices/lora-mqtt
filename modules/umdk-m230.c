@@ -56,18 +56,32 @@ typedef enum {
 	M230_CMD_GET_TIMEDATE		= 0x04,		/* Read the internal time and date */
 	M230_CMD_GET_SERIAL			= 0x05,		/* Read serial number of the device */
 	M230_CMD_SET_TIMEDATE		= 0x06,		/* Set the internal time and date */
-	M230_CMD_SET_POWERLOAD		= 0x07,		/* Set on/off control of powerload */
-	M230_CMD_GET_POWERLOAD		= 0x08,		/* Read mode of control of powerload */	
+	M230_CMD_SET_LOAD		= 0x07,		/* Set on/off control of powerload */
+	M230_CMD_GET_LOAD		= 0x08,		/* Read mode of control of powerload */	
+	M230_CMD_SET_SCHEDULE		= 0x09,		/* Set the schedule of tariffs */
+	M230_CMD_SET_LIMIT_POWER	= 0x0A,		/* Set the value of the active power limit */
+	M230_CMD_SET_MODE_LIMIT_POWER	= 0x0B,	/* Set on/off the active power limit */
+	M230_CMD_SET_LIMIT_ENERGY	= 0x0C,		/* Set the value of the active energy limit */
+	M230_CMD_SET_MODE_LIMIT_ENERGY	= 0x0D,	/* Set on/off the active energy limit */
+	M230_CMD_SET_MODE_TARIFF	= 0x0E,		/* Set mode of tariffs */	
+	M230_CMD_GET_MODE_TARIFF	= 0x0F,		/* Get mode of tariffs */	
+	M230_CMD_GET_ERROR_STATUS	= 0x10,		/* Get status of errors */	
+	M230_CMD_GET_VERSION	= 0x11,		/* Read the version of device */		
+	M230_CMD_SET_MODE_PULSE_OUT	= 0x12,		/* Changing the pulse output mode */	
+	M230_CMD_GET_SOFTWARE	= 0x13,			/* Read the version software of device */	
+	M230_CMD_GET_SCHEDULE	= 0x14,			/* Read the schedule of tariffs */
+	M230_CMD_GET_INFO	= 0x15,			/* Read the info of device */
+	M230_CMD_GET_HOLIDAYS	= 0x16,			/* Read holidays */
+	M230_CMD_GET_STATUS_LONG_CMD	= 0x17,			/* Read status of the long-time operations */
 } m230_cmd_t;
 
-
-// typedef enum {
-	// M230_ERROR_REPLY 		= 0,
-    // M230_OK_REPLY 			= 1,
-    // M230_NO_RESPONSE_REPLY	= 2,
-	// M230_ERROR_NOT_FOUND	= 3,
-	// M230_ERROR_OFFLINE		= 4,
-// } m230_reply_t;
+typedef enum {
+	M230_ALL_YEAR = 0x0FFF,
+	M230_ALL_DAYS = 0xFF,
+	M230_WEEKDAYS = 0x1F,
+	M230_WEEKENDS = 0x60,
+	M230_HOLIDAYS = 0x80,
+} m230_scheduler_t;
 
 typedef enum {
 	M230_ERROR_REPLY 		= 0xF0,
@@ -130,6 +144,12 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		
 		snprintf(out, bufsize, "%02x%02x%02x%02x", M230_CMD_GET_VALUE, destination, month, tariff);		
 	}
+	else if (strstr(param, "get long_time ") == param) {
+		param += strlen("get long_time ");    // Skip command
+		destination = strtol(param, &param, 10);
+		uint8_t tmp = 0x24;
+		snprintf(out, bufsize, "%02x%02x%02x", M230_CMD_GET_STATUS_LONG_CMD, destination, tmp);
+	}	
 	else if (strstr(param, "get timedate ") == param) {
 		param += strlen("get timedate ");    // Skip command
 		destination = strtol(param, &param, 10);
@@ -141,6 +161,30 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		destination = strtol(param, &param, 10);
 		uint8_t tmp = 0x00;
 		snprintf(out, bufsize, "%02x%02x%02x", M230_CMD_GET_SERIAL, destination, tmp);
+	}	
+	else if (strstr(param, "get soft ") == param) {
+		param += strlen("get soft ");    // Skip command
+		destination = strtol(param, &param, 10);
+		uint8_t tmp = 0x03;
+		snprintf(out, bufsize, "%02x%02x%02x", M230_CMD_GET_SOFTWARE, destination, tmp);
+	}	
+	else if (strstr(param, "get error ") == param) {
+		param += strlen("get error ");    // Skip command
+		destination = strtol(param, &param, 10);
+		uint8_t tmp = 0x0A;
+		snprintf(out, bufsize, "%02x%02x%02x", M230_CMD_GET_ERROR_STATUS, destination, tmp);
+	}	
+	else if (strstr(param, "get info ") == param) {
+		param += strlen("get info ");    // Skip command
+		destination = strtol(param, &param, 10);
+		uint8_t tmp = 0x01;
+		snprintf(out, bufsize, "%02x%02x%02x", M230_CMD_GET_INFO, destination, tmp);
+	}	
+	else if (strstr(param, "get version ") == param) {
+		param += strlen("get version ");    // Skip command
+		destination = strtol(param, &param, 10);
+		uint8_t tmp = 0x12;
+		snprintf(out, bufsize, "%02x%02x%02x", M230_CMD_GET_VERSION, destination, tmp);
 	}	
 	else if (strstr(param, "set timedate ") == param) {
 		param += strlen("set timedate ");    // Skip command
@@ -172,9 +216,27 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		snprintf(out, bufsize, "%02x%02x%02x%02d%02d%02d%02d%02d%02d%02d%02d", 
 								M230_CMD_SET_TIMEDATE, destination, tmp, sec, min, hour, dow, day, month, year, season);		
 		
-	}		
-	else if (strstr(param, "set powerload ") == param) {
-		param += strlen("set powerload ");    // Skip command
+	}	
+	else if (strstr(param, "set mode_pulse ") == param) {
+		param += strlen("set mode_pulse ");    // Skip command
+		uint8_t mode;
+		if (strstr(param, "load") == param) { 
+			param += strlen("load");    // Skip command
+			mode = 1;
+		}
+		else if (strstr(param, "telemetry") == param) { 	
+			param += strlen("telemetry");    // Skip command
+			mode = 0;	
+		}
+		
+		param += strlen(" ");    						// Skip space
+		destination = strtol(param, &param, 10);
+		
+		uint8_t tmp = 0x30;
+		snprintf(out, bufsize, "%02x%02x%02x%02x", M230_CMD_SET_MODE_PULSE_OUT, destination, tmp, mode);
+	}			
+	else if (strstr(param, "set load ") == param) {
+		param += strlen("set load ");    // Skip command
 		uint8_t powerload;
 		if (strstr(param, "on") == param) { 
 			param += strlen("on");    // Skip command
@@ -188,14 +250,211 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
 		uint8_t tmp = 0x31;
-		snprintf(out, bufsize, "%02x%02x%02x%02x", M230_CMD_SET_POWERLOAD, destination, tmp, powerload);
+		snprintf(out, bufsize, "%02x%02x%02x%02x", M230_CMD_SET_LOAD, destination, tmp, powerload);
 	}	
-	else if (strstr(param, "get powerload ") == param) {
-		param += strlen("get powerload ");    // Skip command
+	else if (strstr(param, "get load ") == param) {
+		param += strlen("get load ");    // Skip command
 		destination = strtol(param, &param, 10);
 		uint8_t tmp = 0x18;
-		snprintf(out, bufsize, "%02x%02x%02x", M230_CMD_GET_POWERLOAD, destination, tmp);
+		snprintf(out, bufsize, "%02x%02x%02x", M230_CMD_GET_LOAD, destination, tmp);
 	}		
+	else if (strstr(param, "set limit_power ") == param) {
+		param += strlen("set limit_power ");    // Skip command
+		uint32_t limit = 0;
+		limit = strtol(param, &param, 10);
+		limit = limit & 0x00FFFFFF;
+		
+		param += strlen(" ");    						// Skip space
+		destination = strtol(param, &param, 10);
+		
+		uint8_t tmp = 0x2C;
+		snprintf(out, bufsize, "%02x%02x%02x%06x", M230_CMD_SET_LIMIT_POWER, destination, tmp, limit);
+	}		
+	else if (strstr(param, "set mode_limit_power ") == param) {
+		param += strlen("set mode_limit_power ");    // Skip command
+		uint8_t mode;
+		if (strstr(param, "on") == param) { 
+			param += strlen("on");    // Skip command
+			mode = 1;
+		}
+		else if (strstr(param, "off") == param) { 	
+			param += strlen("off");    // Skip command
+			mode = 0;	
+		}
+		
+		param += strlen(" ");    						// Skip space
+		destination = strtol(param, &param, 10);
+		
+		uint8_t tmp = 0x2D;
+		snprintf(out, bufsize, "%02x%02x%02x%02x", M230_CMD_SET_MODE_LIMIT_POWER, destination, tmp, mode);
+	}		
+	else if (strstr(param, "set limit_energy ") == param) {
+		param += strlen("set limit_energy ");    // Skip command
+		uint8_t tariff = 0;
+		tariff = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		uint32_t limit = 0;
+		limit = strtol(param, &param, 10);
+		
+		param += strlen(" ");    						// Skip space
+		destination = strtol(param, &param, 10);
+		
+		uint8_t tmp = 0x2E;
+		snprintf(out, bufsize, "%02x%02x%02x%02x%08x", M230_CMD_SET_LIMIT_ENERGY, destination, tmp, tariff, limit);
+	}	
+	else if (strstr(param, "set mode_limit_energy ") == param) {
+		param += strlen("set mode_limit_energy ");    // Skip command
+		uint8_t mode;
+		if (strstr(param, "on") == param) { 
+			param += strlen("on");    // Skip command
+			mode = 1;
+		}
+		else if (strstr(param, "off") == param) { 	
+			param += strlen("off");    // Skip command
+			mode = 0;	
+		}
+		
+		param += strlen(" ");    						// Skip space
+		destination = strtol(param, &param, 10);
+		
+		uint8_t tmp = 0x2F;
+		snprintf(out, bufsize, "%02x%02x%02x%02x", M230_CMD_SET_MODE_LIMIT_ENERGY, destination, tmp, mode);
+	}			
+	else if (strstr(param, "set mode_tariff ") == param) {
+		param += strlen("set mode_tariff ");    // Skip command
+		uint8_t mode;
+		if (strstr(param, "one") == param) { 
+			param += strlen("one");    // Skip command
+			mode = 1;
+		}
+		else if (strstr(param, "multi") == param) { 	
+			param += strlen("multi");    // Skip command
+			mode = 0;	
+		}
+		
+		param += strlen(" ");    						// Skip space
+		destination = strtol(param, &param, 10);
+		
+		uint8_t tmp = 0x2A;
+		snprintf(out, bufsize, "%02x%02x%02x%02x", M230_CMD_SET_MODE_TARIFF, destination, tmp, mode);
+	}	
+	else if (strstr(param, "get mode_tariff ") == param) {
+		param += strlen("get mode_tariff ");    // Skip command
+		
+		destination = strtol(param, &param, 10);
+		
+		uint8_t tmp = 0x17;
+		snprintf(out, bufsize, "%02x%02x%02x", M230_CMD_GET_MODE_TARIFF, destination, tmp);
+	}		
+	else if (strstr(param, "get holidays ") == param) {
+		param += strlen("get holidays ");    // Skip command
+		uint8_t month = 0;
+		
+		month = strtol(param, &param, 10);
+		
+		param += strlen(" ");    						// Skip space				
+		destination = strtol(param, &param, 10);
+		uint8_t tmp = 0x23;
+		snprintf(out, bufsize, "%02x%02x%02x%02x", M230_CMD_GET_HOLIDAYS, destination, tmp, month);
+	}		
+	else if (strstr(param, "get schedule ") == param) {
+		param += strlen("get schedule ");    // Skip command
+		// uint8_t half = 0;
+		uint16_t month = 0;
+		uint8_t day = 0;
+		
+		month = strtol(param, &param, 10);
+		month--;
+		month = 1 << month;
+		// month  |= half;
+		param += strlen(" ");    						// Skip space		
+		day = strtol(param, &param, 10);
+		day--;
+		day = 1 << day;
+		param += strlen(" ");    						// Skip space		
+		
+		destination = strtol(param, &param, 10);
+		uint8_t tmp = 0x22;
+		uint16_to_le(&month);
+		snprintf(out, bufsize, "%02x%02x%02x%04x%02x", M230_CMD_GET_SCHEDULE, destination, tmp, month, day);
+	}		
+	else if (strstr(param, "set schedule ") == param) { 
+		uint8_t i = 0;
+		uint16_t point_schedule[8] = { 0x0038 };
+		uint8_t hour_tmp;
+		uint8_t tariff;
+		uint8_t min_tmp;
+		uint8_t day = 0;
+		uint16_t month = 0;
+		
+		for(i = 0; i < 8; i++) {
+			point_schedule[i] = 0x0038;
+		}
+
+		param += strlen("set schedule "); // skip command
+		
+		if(strstr(param, "year ") == param) {
+			param += strlen("year ");				// Skip command
+			month = (uint16_t)M230_ALL_YEAR;
+		}
+		else if (strstr(param, "month ") == param) {
+			param += strlen("month ");				// Skip command
+			month = strtol(param, &param, 10);
+			param += strlen(" ");    						// Skip space
+			month--;
+			month = 1 << month;
+		}
+	
+		if(strstr(param, "day ") == param) {
+			param += strlen("day ");				// Skip command
+			day = strtol(param, &param, 10);
+			day--;
+			day = 1 << day;
+		}
+		else if(strstr(param, "all") == param) {
+			param += strlen("all");				// Skip command
+			day = (uint8_t)M230_ALL_DAYS;
+		}
+		else if(strstr(param, "weekdays") == param) {
+			param += strlen("weekdays");				// Skip command			
+			day = (uint8_t)M230_WEEKDAYS;
+		}
+		else if(strstr(param, "weekends") == param) {
+			param += strlen("weekends");				// Skip command			
+			day = (uint8_t)M230_WEEKENDS;
+		}
+		else if(strstr(param, "holidays") == param) {
+			param += strlen("holidays");				// Skip command			
+			day = (uint8_t)M230_HOLIDAYS;
+		}
+			
+		param += strlen(" ");    						// Skip space
+		uint8_t checkpoint = strtol(param, &param, 10);
+
+		for(i = 0; i < checkpoint; i++) {
+			param += strlen(" ");    						// Skip space
+			tariff = strtol(param, &param, 10);
+			param += strlen(" ");    						// Skip space
+			hour_tmp = strtol(param, &param, 10);
+			param += strlen(" ");    						// Skip space
+			min_tmp = strtol(param, &param, 10);
+			
+			point_schedule[i] = ((min_tmp << 8) + (tariff << 5) + (hour_tmp << 0)) & 0x1FFF;
+			uint16_to_le(&point_schedule[i]);
+		}
+	
+		param += strlen(" ");    						// Skip space	
+		destination = strtol(param, &param, 10);
+		
+		uint8_t tmp = 0x1D;
+		
+		uint8_t num_char;
+		uint16_to_le(&month);
+		num_char = snprintf(out, bufsize, "%02x%02x%02x%04x%02x", M230_CMD_SET_SCHEDULE, destination, tmp, month, day);
+		for(i = 0; i < 8; i++) {
+			num_char += snprintf(out + num_char, bufsize - num_char, "%04x", point_schedule[i]);
+		}
+	}	
 	else if (strstr(param, "iface ") == param) { 
 		param += strlen("iface ");    // Skip command	
 		uint8_t interface;
@@ -349,18 +608,138 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			break;
 		}
 		
-		case M230_CMD_GET_POWERLOAD : {
-			uint8_t powerload_on_off = moddata[3] & 0x02;
+		case M230_CMD_GET_LOAD: {
+			uint8_t mode_load = moddata[2] & 0x01;
+			uint8_t mode_limit_energy = (moddata[2] >> 2) & 0x01;
+			uint8_t mode_limit_power = (moddata[2] >> 1) & 0x01;
+			
+			uint8_t powerload_on_off = (moddata[3] >> 1) & 0x01;;
+			
+			if(mode_limit_energy == 1) {
+				add_value_pair(mqtt_msg, "Control of limit energy", "Allowed");
+			}
+			else if(mode_limit_energy == 0) {
+				add_value_pair(mqtt_msg, "Control of limit energy", "Not Allowed");				
+			}		
+
+			if(mode_limit_power == 1) {
+				add_value_pair(mqtt_msg, "Control of limit power", "Allowed");
+			}
+			else if(mode_limit_power == 0) {
+				add_value_pair(mqtt_msg, "Control of limit power", "Not Allowed");				
+			}						
+			
+			if(mode_load == 1) {
+				add_value_pair(mqtt_msg, "Mode of pulse output", "Load");
+			}
+			else if(mode_load == 0) {
+				add_value_pair(mqtt_msg, "Mode of pulse output", "Telemetry");				
+			}			
 			
 			if(powerload_on_off == 1) {
-				add_value_pair(mqtt_msg, "Control", "Off");
+				add_value_pair(mqtt_msg, "Control load", "Off");
 			}
 			else if(powerload_on_off == 0) {
-				add_value_pair(mqtt_msg, "Control", "On");				
+				add_value_pair(mqtt_msg, "Control load", "On");				
+			}
+			
+			
+			return true;
+			break;	
+		}
+		
+		case M230_CMD_GET_MODE_TARIFF: {
+			uint8_t current_tariff = (moddata[3] & 0x0E) >> 1;
+			uint8_t mode_tariff =  moddata[3] & 0x01;
+			
+			if(mode_tariff == 0) {
+				add_value_pair(mqtt_msg, "Mode", "Multi-tariff");
+			}
+			else if(mode_tariff == 1) {
+				add_value_pair(mqtt_msg, "Mode", "One-tariff");				
+			}
+						
+			snprintf(buf_addr, sizeof(buf_addr), "T%02d", current_tariff + 1);	
+			add_value_pair(mqtt_msg, "Current tariff", buf_addr);		
+
+			return true;
+			break;			
+		}
+		
+		case M230_CMD_GET_ERROR_STATUS: {
+			uint8_t i, j = 0;
+			uint8_t error = 0;
+			uint8_t status = 0;
+	
+			for(i = 0; i < 6; i++) {
+				status = moddata[i + 2];
+				for(j = 0; j < 8; j++) {
+					error = (status >> j) & 1;
+					if(error == 1) {
+						snprintf(buf_addr, sizeof(buf_addr), "E-%02d", 8*i + j + 1);	
+						add_value_pair(mqtt_msg, "Error", buf_addr);												
+					}
+				}
 			}
 			
 			return true;
 			break;
+		}
+		
+		case M230_CMD_GET_VERSION: {
+			
+			return true;
+			break;			
+		}
+		
+		case M230_CMD_GET_SOFTWARE: {
+			
+			snprintf(buf, sizeof(buf), "%02d.%02d.%02d", moddata[i + 2], moddata[i + 3], moddata[i + 4]);	
+			add_value_pair(mqtt_msg, "Software version", buf);
+			
+			return true;
+			break;			
+		}
+		
+		case M230_CMD_GET_SCHEDULE: {
+			
+			uint8_t tariff = 0;
+			uint8_t hour = 0;
+			uint8_t min = 0;
+			uint8_t i = 0;
+			char tariff_str[5] = { };
+
+			for(i = 0; i < 8; i++) {
+				min = moddata[2*i + 2] & 0x1F;
+				tariff = (moddata[2*i + 3] >> 5) & 0x07;
+				hour = moddata[2*i + 3] & 0x1F;
+				
+				snprintf(tariff_str, sizeof(tariff_str), "T%02d", tariff);
+				snprintf(buf, sizeof(buf), "%02d:%02d",  hour, min);
+				add_value_pair(mqtt_msg, tariff_str, buf);
+			}
+			
+			return true;
+			break;						
+		}
+		
+		case M230_CMD_GET_INFO: {
+			
+			
+			return true;
+			break;						
+		}
+		
+		case M230_CMD_GET_HOLIDAYS: {
+			
+			return true;
+			break;						
+		}
+		
+		case M230_CMD_GET_STATUS_LONG_CMD: {
+			
+			return true;
+			break;					
 		}
 				
 		default:
