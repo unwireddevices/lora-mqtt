@@ -258,20 +258,22 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		uint8_t tmp = 0x18;
 		snprintf(out, bufsize, "%02x%02x%02x", M230_CMD_GET_LOAD, destination, tmp);
 	}		
-	else if (strstr(param, "set limit_power ") == param) {
-		param += strlen("set limit_power ");    // Skip command
+	else if (strstr(param, "set power_limit ") == param) {
+		param += strlen("set power_limit ");    // Skip command
 		uint32_t limit = 0;
 		limit = strtol(param, &param, 10);
 		limit = limit & 0x00FFFFFF;
-		
+		uint8_t limit_8 = (uint8_t)(limit >> 16);
+		uint16_t limit_16 = (uint16_t)(limit & 0xFFFF);
+		// uint32_to_le(&limit);
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
 		
 		uint8_t tmp = 0x2C;
-		snprintf(out, bufsize, "%02x%02x%02x%06x", M230_CMD_SET_LIMIT_POWER, destination, tmp, limit);
+		snprintf(out, bufsize, "%02x%02x%02x%02x%04x", M230_CMD_SET_LIMIT_POWER, destination, tmp, limit_8, limit_16);
 	}		
-	else if (strstr(param, "set mode_limit_power ") == param) {
-		param += strlen("set mode_limit_power ");    // Skip command
+	else if (strstr(param, "set mode_power_limit ") == param) {
+		param += strlen("set mode_power_limit ");    // Skip command
 		uint8_t mode;
 		if (strstr(param, "on") == param) { 
 			param += strlen("on");    // Skip command
@@ -288,22 +290,23 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		uint8_t tmp = 0x2D;
 		snprintf(out, bufsize, "%02x%02x%02x%02x", M230_CMD_SET_MODE_LIMIT_POWER, destination, tmp, mode);
 	}		
-	else if (strstr(param, "set limit_energy ") == param) {
-		param += strlen("set limit_energy ");    // Skip command
+	else if (strstr(param, "set energy_limit ") == param) {
+		param += strlen("set energy_limit ");    // Skip command
 		uint8_t tariff = 0;
 		tariff = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
 		uint32_t limit = 0;
 		limit = strtol(param, &param, 10);
-		
+		uint32_to_le(&limit);		
+
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
 		
 		uint8_t tmp = 0x2E;
 		snprintf(out, bufsize, "%02x%02x%02x%02x%08x", M230_CMD_SET_LIMIT_ENERGY, destination, tmp, tariff, limit);
 	}	
-	else if (strstr(param, "set mode_limit_energy ") == param) {
-		param += strlen("set mode_limit_energy ");    // Skip command
+	else if (strstr(param, "set mode_energy_limit ") == param) {
+		param += strlen("set mode_energy_limit ");    // Skip command
 		uint8_t mode;
 		if (strstr(param, "on") == param) { 
 			param += strlen("on");    // Skip command
@@ -375,7 +378,7 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		
 		destination = strtol(param, &param, 10);
 		uint8_t tmp = 0x22;
-		uint16_to_le(&month);
+		// uint16_to_le(&month);
 		snprintf(out, bufsize, "%02x%02x%02x%04x%02x", M230_CMD_GET_SCHEDULE, destination, tmp, month, day);
 	}		
 	else if (strstr(param, "set schedule ") == param) { 
@@ -474,12 +477,14 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	char buf[100];
     char strbuf[20];
 	char buf_addr[30];
-	uint8_t ii;
-    puts("[m230] RX:  ");
-    for(ii = 0; ii < moddatalen; ii++) {
-        printf(" %02X ", moddata[ii]);
-    }
-   puts("\n");
+	
+	
+	// uint8_t ii;
+    // puts("[m230] RX:  ");
+    // for(ii = 0; ii < moddatalen; ii++) {
+        // printf(" %02X ", moddata[ii]);
+    // }
+   // puts("\n");
 	
 	
    if (moddatalen == 1) {
@@ -519,7 +524,7 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			} else if(moddata[0] == M230_ACCESS_ERROR){
 				add_value_pair(mqtt_msg, "Msg", "Access error");					
 			} else if(moddata[0] == M230_TIME_CORRECTED){
-				add_value_pair(mqtt_msg, "Msg", "Time already corrected");								
+				add_value_pair(mqtt_msg, "Msg", "Time has already been corrected");								
 			} else if(moddata[0] == M230_OFFLINE){
 				add_value_pair(mqtt_msg, "Msg", "Offline");					
 			} else if(moddata[0] == M230_OK){
@@ -616,31 +621,31 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			uint8_t powerload_on_off = (moddata[3] >> 1) & 0x01;;
 			
 			if(mode_limit_energy == 1) {
-				add_value_pair(mqtt_msg, "Control of limit energy", "Allowed");
+				add_value_pair(mqtt_msg, "Energy limit control", "Allowed");
 			}
 			else if(mode_limit_energy == 0) {
-				add_value_pair(mqtt_msg, "Control of limit energy", "Not Allowed");				
+				add_value_pair(mqtt_msg, "Energy limit control", "Not Allowed");				
 			}		
 
 			if(mode_limit_power == 1) {
-				add_value_pair(mqtt_msg, "Control of limit power", "Allowed");
+				add_value_pair(mqtt_msg, "Power limit control", "Allowed");
 			}
 			else if(mode_limit_power == 0) {
-				add_value_pair(mqtt_msg, "Control of limit power", "Not Allowed");				
+				add_value_pair(mqtt_msg, "Power limit control", "Not Allowed");				
 			}						
 			
 			if(mode_load == 1) {
-				add_value_pair(mqtt_msg, "Mode of pulse output", "Load");
+				add_value_pair(mqtt_msg, "Pulse output mode", "Load");
 			}
 			else if(mode_load == 0) {
-				add_value_pair(mqtt_msg, "Mode of pulse output", "Telemetry");				
+				add_value_pair(mqtt_msg, "Pulse output mode", "Telemetry");				
 			}			
 			
 			if(powerload_on_off == 1) {
-				add_value_pair(mqtt_msg, "Control load", "Off");
+				add_value_pair(mqtt_msg, "Load control", "Off");
 			}
 			else if(powerload_on_off == 0) {
-				add_value_pair(mqtt_msg, "Control load", "On");				
+				add_value_pair(mqtt_msg, "Load control", "On");				
 			}
 			
 			
