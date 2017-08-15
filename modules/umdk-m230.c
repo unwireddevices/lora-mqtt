@@ -73,6 +73,8 @@ typedef enum {
 	M230_CMD_GET_INFO	= 0x15,			/* Read the info of device */
 	M230_CMD_GET_HOLIDAYS	= 0x16,			/* Read holidays */
 	M230_CMD_GET_STATUS_LONG_CMD	= 0x17,			/* Read status of the long-time operations */
+	M230_CMD_GET_POWER_LIMIT	= 0x18,			/* Read the power limit */
+	M230_CMD_GET_ENERGY_LIMIT	= 0x19,			/* Read the energy limit */
 } m230_cmd_t;
 
 typedef enum {
@@ -262,10 +264,11 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		param += strlen("set power_limit ");    // Skip command
 		uint32_t limit = 0;
 		limit = strtol(param, &param, 10);
+		limit = limit * 100;
 		limit = limit & 0x00FFFFFF;
 		uint8_t limit_8 = (uint8_t)(limit >> 16);
 		uint16_t limit_16 = (uint16_t)(limit & 0xFFFF);
-		// uint32_to_le(&limit);
+
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
 		
@@ -290,6 +293,14 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		uint8_t tmp = 0x2D;
 		snprintf(out, bufsize, "%02x%02x%02x%02x", M230_CMD_SET_MODE_LIMIT_POWER, destination, tmp, mode);
 	}		
+	else if (strstr(param, "get power_limit ") == param) {
+		param += strlen("get power_limit ");    // Skip command
+		
+		destination = strtol(param, &param, 10);
+		
+		uint8_t tmp = 0x19;
+		snprintf(out, bufsize, "%02x%02x%02x", M230_CMD_GET_POWER_LIMIT, destination, tmp);
+	}		
 	else if (strstr(param, "set energy_limit ") == param) {
 		param += strlen("set energy_limit ");    // Skip command
 		uint8_t tariff = 0;
@@ -297,7 +308,6 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		param += strlen(" ");    						// Skip space
 		uint32_t limit = 0;
 		limit = strtol(param, &param, 10);
-		uint32_to_le(&limit);		
 
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
@@ -323,6 +333,16 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		uint8_t tmp = 0x2F;
 		snprintf(out, bufsize, "%02x%02x%02x%02x", M230_CMD_SET_MODE_LIMIT_ENERGY, destination, tmp, mode);
 	}			
+	else if (strstr(param, "get energy_limit ") == param) {
+		param += strlen("get energy_limit ");    // Skip command
+		uint8_t tariff = 0;
+		tariff = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		destination = strtol(param, &param, 10);
+		
+		uint8_t tmp = 0x1A;
+		snprintf(out, bufsize, "%02x%02x%02x%02x", M230_CMD_GET_ENERGY_LIMIT, destination, tmp, tariff);
+	}		
 	else if (strstr(param, "set mode_tariff ") == param) {
 		param += strlen("set mode_tariff ");    // Skip command
 		uint8_t mode;
@@ -378,7 +398,7 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		
 		destination = strtol(param, &param, 10);
 		uint8_t tmp = 0x22;
-		// uint16_to_le(&month);
+
 		snprintf(out, bufsize, "%02x%02x%02x%04x%02x", M230_CMD_GET_SCHEDULE, destination, tmp, month, day);
 	}		
 	else if (strstr(param, "set schedule ") == param) { 
@@ -443,7 +463,6 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 			min_tmp = strtol(param, &param, 10);
 			
 			point_schedule[i] = ((min_tmp << 8) + (tariff << 5) + (hour_tmp << 0)) & 0x1FFF;
-			uint16_to_le(&point_schedule[i]);
 		}
 	
 		param += strlen(" ");    						// Skip space	
@@ -452,7 +471,6 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		uint8_t tmp = 0x1D;
 		
 		uint8_t num_char;
-		uint16_to_le(&month);
 		num_char = snprintf(out, bufsize, "%02x%02x%02x%04x%02x", M230_CMD_SET_SCHEDULE, destination, tmp, month, day);
 		for(i = 0; i < 8; i++) {
 			num_char += snprintf(out + num_char, bufsize - num_char, "%04x", point_schedule[i]);
@@ -576,8 +594,29 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			break;
 		}		
 		
-		case M230_CMD_GET_TIMEDATE: {
+		case M230_CMD_GET_POWER_LIMIT: {			
+			uint32_t power_limit = ((moddata[2] << 16) + (moddata[4] << 8) + moddata[3]) &  0x00FFFFFF; 
+
+			int_to_float_str(strbuf, power_limit, 2);
+			snprintf(buf, sizeof(buf), "%s", strbuf);
+			add_value_pair(mqtt_msg, "Power limit", buf);
 			
+			return true;
+			break;			
+		}
+		
+		case M230_CMD_GET_ENERGY_LIMIT: {			
+			uint32_t energy_limit = (moddata[3] << 24) + (moddata[2] << 16) + (moddata[5] << 8) + moddata[4]; 
+			
+			int_to_float_str(strbuf, energy_limit, 3);
+			snprintf(buf, sizeof(buf), "%s", strbuf);
+			add_value_pair(mqtt_msg, "Energy limit", buf);
+			
+			return true;
+			break;			
+		}
+		
+		case M230_CMD_GET_TIMEDATE: {			
 			char time_buf[10] = { };
 			uint8_t time[8] = { 0 };
 			
@@ -599,8 +638,7 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			break;
 		}
 		
-		case M230_CMD_GET_SERIAL: {
-			
+		case M230_CMD_GET_SERIAL: {			
 			char time_buf[10] = { };
 			    
 			snprintf(buf, sizeof(buf), "%02d%02d%02d%02d", moddata[2], moddata[3], moddata[4], moddata[5]);
@@ -706,8 +744,7 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			break;			
 		}
 		
-		case M230_CMD_GET_SCHEDULE: {
-			
+		case M230_CMD_GET_SCHEDULE: {		
 			uint8_t tariff = 0;
 			uint8_t hour = 0;
 			uint8_t min = 0;
