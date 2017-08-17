@@ -39,12 +39,12 @@
 
 
 typedef enum {
-    M230_CMD_RESET 				= 0xFF,		/* Clear database */
-    M230_CMD_ADD_ADDR 			= 0xFE,		/* Add address  in database */
-    M230_CMD_REMOVE_ADDR 		= 0xFD,		/* Remove address from database */
-	M230_CMD_GET_LIST 			= 0xFC,		/* Send database of addresses */
+    M230_CMD_RESET 				= 0xFE,		/* Clear database */
+    M230_CMD_ADD_ADDR 			= 0xFD,		/* Add address  in database */
+    M230_CMD_REMOVE_ADDR 		= 0xFC,		/* Remove address from database */
+	M230_CMD_GET_LIST 			= 0xFD,		/* Send database of addresses */
 
-	M230_CMD_SET_IFACE			= 0xFB,		/* Set interfase => CAN or RS485 */
+	M230_CMD_SET_IFACE			= 0xFA,		/* Set interfase => CAN or RS485 */
     
     M230_CMD_PROPRIETARY_COMMAND = 0xF0,	/* Less this value single command of mercury */
 
@@ -92,6 +92,8 @@ typedef enum {
 	
 	M230_ERROR_NOT_FOUND	= 0xF3,
 	M230_ERROR_OFFLINE		= 0xF4,
+	
+	M230_ERROR_CMD			= 0xFF,
 } m230_reply_t;
 
 typedef enum {
@@ -136,6 +138,10 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		else if(strstr(param, "last_day") == param) {
 			param += strlen("last_day");				// Skip command			
 			month = 0x50;
+		}
+		else {
+			snprintf(out, bufsize, "%02x", M230_ERROR_CMD);
+			return;
 		}
 		
 		param += strlen(" ");    						// Skip space
@@ -230,7 +236,11 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 			param += strlen("telemetry");    // Skip command
 			mode = 0;	
 		}
-		
+		else {
+			snprintf(out, bufsize, "%02x", M230_ERROR_CMD);
+			return;
+		}
+	
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
 		
@@ -248,6 +258,10 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 			param += strlen("off");    // Skip command
 			powerload = 1;	
 		}
+		else {
+			snprintf(out, bufsize, "%02x", M230_ERROR_CMD);
+			return;
+		}		
 		
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
@@ -286,6 +300,10 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 			param += strlen("off");    // Skip command
 			mode = 0;	
 		}
+		else {
+			snprintf(out, bufsize, "%02x", M230_ERROR_CMD);
+			return;
+		}		
 		
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
@@ -325,6 +343,10 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		else if (strstr(param, "off") == param) { 	
 			param += strlen("off");    // Skip command
 			mode = 0;	
+		}
+		else {
+			snprintf(out, bufsize, "%02x", M230_ERROR_CMD);
+			return;
 		}
 		
 		param += strlen(" ");    						// Skip space
@@ -427,6 +449,10 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 			month--;
 			month = 1 << month;
 		}
+		else {
+			snprintf(out, bufsize, "%02x", M230_ERROR_CMD);
+			return;
+		}
 	
 		if(strstr(param, "day ") == param) {
 			param += strlen("day ");				// Skip command
@@ -449,6 +475,10 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		else if(strstr(param, "holidays") == param) {
 			param += strlen("holidays");				// Skip command			
 			day = (uint8_t)M230_HOLIDAYS;
+		}
+		else {
+			snprintf(out, bufsize, "%02x", M230_ERROR_CMD);
+			return;
 		}
 			
 		param += strlen(" ");    						// Skip space
@@ -478,7 +508,7 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 	}	
 	else if (strstr(param, "iface ") == param) { 
 		param += strlen("iface ");    // Skip command	
-		uint8_t interface;
+		uint8_t interface = 0;
 		if (strstr(param, "can") == param) { 	
 			interface = 2;
 		}
@@ -487,6 +517,10 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 		}
 		
 		snprintf(out, bufsize, "%02x%02x", M230_CMD_SET_IFACE, interface);
+	}
+	else {
+		snprintf(out, bufsize, "%02x", M230_ERROR_CMD);
+		return;
 	}
 }
 
@@ -511,6 +545,9 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		} 
 		else if(moddata[0] == M230_ERROR_REPLY){
 			add_value_pair(mqtt_msg, "Msg", "Error");
+		}
+		else if(moddata[0] == M230_ERROR_CMD){
+			add_value_pair(mqtt_msg, "Msg", "Invalid command");
 		}
 		return true;
 	}	
@@ -542,16 +579,16 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			} else if(moddata[0] == M230_ACCESS_ERROR){
 				add_value_pair(mqtt_msg, "Msg", "Access error");					
 			} else if(moddata[0] == M230_TIME_CORRECTED){
-				add_value_pair(mqtt_msg, "Msg", "Time has already been corrected");								
+				add_value_pair(mqtt_msg, "Msg", "Time has already been corrected");
 			} else if(moddata[0] == M230_OFFLINE){
 				add_value_pair(mqtt_msg, "Msg", "Offline");					
 			} else if(moddata[0] == M230_OK){
 				add_value_pair(mqtt_msg, "Msg", "OK");					
 			}			
 			return true;
-		}
+		// }
 		
-	// }
+	}
 	
     int i = 0;
 	
@@ -559,8 +596,11 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		
 		case M230_CMD_GET_VALUE: {
 			uint32_t value[4] = { 0 };
+						
+			memset(value, 0xFF, sizeof(value));	
+						
             for (i = 0; i < 4; i++) {
-                value[i] = moddata[4*i + 2] | moddata[4*i + 3] << 8 | moddata[4*i + 4] << 16 | moddata[4*i + 5] << 24;
+				value[i] = (moddata[4*i + 3] << 24) + (moddata[4*i + 2] << 16) + (moddata[4*i + 5] << 8)  + (moddata[4*i + 4] << 0);
             }
 
 
@@ -619,10 +659,11 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		case M230_CMD_GET_TIMEDATE: {			
 			char time_buf[10] = { };
 			uint8_t time[8] = { 0 };
-			
-			for(i = 0; i < 8; i++) {
-				time[i] = moddata[i + 2];
-			}
+
+            for(i = 0; i < (moddatalen - 2); i++) {
+                time[i] = (moddata[i + 2] >> 4) * 10;
+                time[i] += (moddata[i + 2] & 0x0F) * 1;
+            }
 
 			add_value_pair(mqtt_msg, "Day", dow[time[3]]);
 			
@@ -736,8 +777,19 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		}
 		
 		case M230_CMD_GET_SOFTWARE: {
+						
+			uint8_t soft[3] = { 0 };
+		
+			soft[0] = ( moddata[2]  >> 4 ) * 10;
+			soft[0] += ( moddata[2] & 0x0F ) * 1;
 			
-			snprintf(buf, sizeof(buf), "%02d.%02d.%02d", moddata[i + 2], moddata[i + 3], moddata[i + 4]);	
+			soft[1] = ( moddata[3] >> 4 ) * 10;
+			soft[1] += ( moddata[3] & 0x0F ) * 1;
+			
+			soft[2] = ( moddata[4] >> 4 ) * 10;
+			soft[2] += ( moddata[4] & 0x0F ) * 1;
+			
+			snprintf(buf, sizeof(buf), "%02d.%02d.%02d", soft[0], soft[1],soft[2]);	
 			add_value_pair(mqtt_msg, "Software version", buf);
 			
 			return true;
