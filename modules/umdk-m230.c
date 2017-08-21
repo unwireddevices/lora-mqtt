@@ -106,7 +106,7 @@ typedef enum {
 } m230_status_byte_t;
 
 static char season[2][7] = { "Summer", "Winter" };
-static char dow[8][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Hol" };
+static char dow[8][4] = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Hol" };
 
 void umdk_m230_command(char *param, char *out, int bufsize) {
 		
@@ -665,6 +665,7 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
                 time[i] += (moddata[i + 2] & 0x0F) * 1;
             }
 
+			time[3]--;
 			add_value_pair(mqtt_msg, "Day", dow[time[3]]);
 			
 			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[2], time[1], time[0]);	
