@@ -36,8 +36,37 @@
 #include "unwds-modules.h"
 #include "utils.h"
 
+typedef enum {
+    UMDK_COUNTER_CMD_SET_PERIOD = 0,
+    UMDK_COUNTER_CMD_POLL = 1,
+    UMDK_COUNTER_CMD_RESET = 2,
+} umdk_counter_cmd_t;
+
+typedef enum {
+    UMDK_COUNTER_REPLY_OK = 0,
+    UMDK_COUNTER_REPLY_UNKNOWN_COMMAND = 1,
+    UMDK_COUNTER_REPLY_INV_PARAMETER = 2,
+} umdk_counter_reply_t;
+
 void umdk_counter_command(char *param, char *out, int bufsize)
 {
+    if (strstr(param, "period ") == param) {
+        param += strlen("period "); // skip command
+
+        uint8_t period = strtol(param, &param, 10);
+        printf("[mqtt-counter] Set period: %" PRIu8 " hrs\n", period);
+
+        snprintf(out, bufsize, "%02x%02x", UMDK_COUNTER_CMD_SET_PERIOD, period);
+    }
+    
+    if (strstr(param, "reset") == param) {
+        snprintf(out, bufsize, "%02x", UMDK_COUNTER_CMD_RESET);
+    }
+    
+    if (strstr(param, "get") == param) {
+        snprintf(out, bufsize, "%02x", UMDK_COUNTER_CMD_POLL);
+    }
+  
     return;
 }
 
@@ -47,10 +76,16 @@ bool umdk_counter_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     char buf[100];
 
     if (moddatalen == 1) {
-        if (moddata[0] == 0) {
-            add_value_pair(mqtt_msg, "msg", "ok");
-        } else {
-            add_value_pair(mqtt_msg, "msg", "error");
+        switch (moddata[0]) {
+            case UMDK_COUNTER_REPLY_OK:
+                add_value_pair(mqtt_msg, "msg", "ok");
+                break;
+            case UMDK_COUNTER_REPLY_UNKNOWN_COMMAND:
+                add_value_pair(mqtt_msg, "msg", "invalid command");
+                break;
+            case UMDK_COUNTER_REPLY_INV_PARAMETER:
+                add_value_pair(mqtt_msg, "msg", "invalid parameter");
+                break;
         }
         return true;
     }
@@ -77,7 +112,7 @@ bool umdk_counter_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     values[1] = ((num[0] & 0xFF) << 16) | (num[1] >> 16);
     values[2] = ((num[1] & 0xFFFF) << 8) | (num[2] >> 24);
     values[3] = num[2] & 0xFFFFFF;
-
+    
     for (i = 0; i < 4; i++) {   
         snprintf(ch, sizeof(ch), "v%d", i);
         snprintf(buf, sizeof(buf), "%u", values[i]);

@@ -70,11 +70,14 @@ void umdk_uart_command(char *param, char *out, int bufsize) {
         
         /* convert string to hex */
         uint8_t k;
+        char tmpbuf[5];
         for (k = 0; k < strlen(param); k++) {
-            snprintf(out + 4 + 2*k, 3, "%02x", param[k]);
+            snprintf(tmpbuf, 5, "%02x", param[k]);
+            strcat(out, tmpbuf);
+            //snprintf(out + 4 + 2*k, 3, "%02x", param[k]);
         }
         
-        printf("UART mode: %s, Command: %s\n", param, out);
+        printf("UART mode: %s\n", param);
     }
     else {
         return;
