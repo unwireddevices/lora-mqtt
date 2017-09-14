@@ -668,7 +668,7 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	}
 	
     int i = 0;
-	
+
 	switch(cmd) {
 		
 		case M230_CMD_GET_VALUE: {
@@ -758,7 +758,8 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		}
 		
 		case M230_CMD_GET_SERIAL: {			
-			char time_buf[10] = { };
+
+        char time_buf[10] = { };
 			    
 			snprintf(buf, sizeof(buf), "%02d%02d%02d%02d", moddata[2], moddata[3], moddata[4], moddata[5]);
 			add_value_pair(mqtt_msg, "Serial number", buf);		

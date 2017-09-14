@@ -933,7 +933,6 @@ static void *uart_reader(void *arg)
 		buf[i] = '\0';
 
 		if (strlen(buf) > 0) {
-            
             printf("Some data received: %d bytes\n", strlen(buf));
             
             char *running = strdup(buf), *token;
