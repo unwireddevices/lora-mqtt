@@ -46,7 +46,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "2.1.1"
+#define VERSION "2.1.2"
 
 #define MAX_PENDING_NODES 1000
 
@@ -934,6 +934,8 @@ static void *uart_reader(void *arg)
 
 		if (strlen(buf) > 0) {
             
+            printf("Some data received: %d bytes\n", strlen(buf));
+            
             char *running = strdup(buf), *token;
             const char *delims = "\n";
             
@@ -943,9 +945,13 @@ static void *uart_reader(void *arg)
                     continue;
                 }
                 
+                puts("Creating internal message");
+                
                 msg_rx.mtype = 1;
                 memcpy(msg_rx.mtext, token, strlen(token));
                 msg_rx.mtext[strlen(token)] = 0;
+                
+                puts("Sending internal message");
                 
                 if (msgsnd(msgqid, &msg_rx, sizeof(msg_rx.mtext), 0) < 0) {
                     perror( strerror(errno) );
