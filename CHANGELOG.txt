@@ -1,3 +1,11 @@
+28.09.2017
+* Release 2.2.0
+* MQTT commands to alter gate module settings
+
+17.09.2017
+* Release 2.1.2
+* UMDK-M200 and UMDK-M230 improvements
+
 11.07.2017
 * Release 2.1.1
 * Support for setting TX delay in config file
