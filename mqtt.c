@@ -46,7 +46,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "2.1.2"
+#define VERSION "2.2.0"
 
 #define MAX_PENDING_NODES 1000
 
@@ -933,6 +933,7 @@ static void *uart_reader(void *arg)
 		buf[i] = '\0';
 
 		if (strlen(buf) > 0) {
+            
             printf("Some data received: %d bytes\n", strlen(buf));
             
             char *running = strdup(buf), *token;
@@ -1099,8 +1100,62 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 		puts("[mqtt] Devices list requested");
 		devices_list(false);
 	}
+    
+    /* commands to change gate settings */
+    if (memcmp(topics[2], "gate", 4) == 0) {
+        puts("[mqtt] Gate settings command");
+        char command = 0;
+        char *payload = (char *)message->payload;
+        
+        if (memcmp(topics[3], "reboot", 6) == 0) {
+            command = CMD_REBOOT;
+        }
+        if (memcmp(topics[3], "channel", 6) == 0) {
+            command = CMD_SET_CHANNEL;
+            if (strstr(payload, "set") == payload) {
+                payload += strlen("set ");
+            }
+        }
+        if (memcmp(topics[3], "region", 6) == 0) {
+            command = CMD_SET_REGION;
+            if (strstr(payload, "set") == payload) {
+                payload += strlen("set ");
+            }
+        }
+        if (memcmp(topics[3], "datarate", 6) == 0) {
+            command = CMD_SET_DATARATE;
+            if (strstr(payload, "set") == payload) {
+                payload += strlen("set ");
+            }
+        }
+        if (memcmp(topics[3], "joinkey", 6) == 0) {
+            command = CMD_SET_JOINKEY;
+            if (strstr(payload, "set") == payload) {
+                payload += strlen("set ");
+            }
+        }
+        if (memcmp(topics[3], "reboot", 6) == 0) {
+            command = CMD_REBOOT;
+            payload = NULL;
+        }
+        if (memcmp(topics[3], "update", 6) == 0) {
+            command = CMD_FW_UPDATE;
+            payload = NULL;
+        }
+        
+        if (command == 0) {
+            puts("[error] Unknown gate command\n");
+            return;
+        }
+        
+        if (!payload) {
+            dprintf(uart, "%c\r", command);
+        } else {
+            dprintf(uart, "%c%s\r", command, payload);
+        }
+    }
 
-	if (topic_count > 3) {
+	if (topic_count > 4) {
 		/* Convert address */
 		char *addr = topics[2];
 		uint64_t nodeid = 0;

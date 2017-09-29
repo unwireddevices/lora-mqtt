@@ -40,40 +40,40 @@
 #define M200_ADDR_DEF 0xFFFFFFFF
 
 typedef enum {
-    M200_CMD_RESET 				= 0xFF,		/* Clear database */
-    M200_CMD_ADD_ADDR 			= 0xFE,		/* Add address  in database */
-    M200_CMD_REMOVE_ADDR 		= 0xFD,		/* Remove address from database */
-	M200_CMD_GET_LIST 			= 0xFC,		/* Send database of addresses */
+    M200_CMD_RESET 				 = 0xFF,		/* Clear database */
+    M200_CMD_ADD_ADDR 			 = 0xFE,		/* Add address  in database */
+    M200_CMD_REMOVE_ADDR 		 = 0xFD,		/* Remove address from database */
+	M200_CMD_GET_LIST 			 = 0xFC,		/* Send database of addresses */
  
-	M200_CMD_SET_IFACE			= 0xFB,		/* Set interfase => CAN or RS485 */
+	M200_CMD_SET_IFACE			 = 0xFB,		/* Set interfase => CAN or RS485 */
  
-    M200_CMD_SET_TABLE_HOLIDAYS 	= 0xF1, 	/* Set the full table of holidays */
+    M200_CMD_SET_TABLE_HOLIDAYS  = 0xF1, 	/* Set the full table of holidays */
     
     M200_CMD_PROPRIETARY_COMMAND = 0xF0,		/* Less this value single command of mercury */
 
-    M200_CMD_GET_ADDR			= 0x00,		/* Read the address */
+    M200_CMD_GET_ADDR				= 0x00,		/* Read the address */
     M200_CMD_GET_SERIAL 			= 0x01,		/* Read the serial number */
-    M200_CMD_SET_NEW_ADDR 		= 0x02,		/* Set new address */
-    M200_CMD_GET_CURR_TARIFF 	= 0x03,		/* Read the current tariff */
-    M200_CMD_GET_LAST_OPEN 		= 0x04,		/* Read the time of last opening */
+    M200_CMD_SET_NEW_ADDR 			= 0x02,		/* Set new address */
+    M200_CMD_GET_CURR_TARIFF 		= 0x03,		/* Read the current tariff */
+    M200_CMD_GET_LAST_OPEN 			= 0x04,		/* Read the time of last opening */
     M200_CMD_GET_LAST_CLOSE 		= 0x05,		/* Read the time of last closing */
-    M200_CMD_GET_U_I_P 			= 0x06,		/* Read the value of the voltage, current and power */
-    M200_CMD_GET_TIMEDATE 		= 0x07,		/* Read the internal time and date */
-    M200_CMD_GET_LIMIT_POWER 	= 0x08,		/* Read the limit of power */
-    M200_CMD_GET_CURR_POWER_LOAD = 0x09,		/* Read the current power load */
-    M200_CMD_GET_TOTAL_VALUE 	= 0x0A,		/* Read the total values of power after reset */
+    M200_CMD_GET_U_I_P 				= 0x06,		/* Read the value of the voltage, current and power */
+    M200_CMD_GET_TIMEDATE 			= 0x07,		/* Read the internal time and date */
+    M200_CMD_GET_LIMIT_POWER 		= 0x08,		/* Read the limit of power */
+    M200_CMD_GET_CURR_POWER_LOAD 	= 0x09,		/* Read the current power load */
+    M200_CMD_GET_TOTAL_VALUE 		= 0x0A,		/* Read the total values of power after reset */
     M200_CMD_GET_LAST_POWER_OFF 	= 0x0B,		/* Read the time of last power off */
-    M200_CMD_GET_LAST_POWER_ON 	= 0x0C,		/* Read the time of last power on */
-    M200_CMD_GET_HOLIDAYS 		= 0x0D,		/* Read the table of holidays */
-    M200_CMD_GET_SCHEDULE 		= 0x0E,		/* Read the schedule of tariffs */
-    M200_CMD_GET_VALUE 			= 0x0F,		/* Read the month's value */
-    M200_CMD_GET_NUM_TARIFFS 	= 0x10,		/* Read the number of tariffs */
-    M200_CMD_SET_NUM_TARIFFS 	= 0x11,		/* Set number of tariffs */
+    M200_CMD_GET_LAST_POWER_ON 		= 0x0C,		/* Read the time of last power on */
+    M200_CMD_GET_HOLIDAYS 			= 0x0D,		/* Read the table of holidays */
+    M200_CMD_GET_SCHEDULE 			= 0x0E,		/* Read the schedule of tariffs */
+    M200_CMD_GET_VALUE 				= 0x0F,		/* Read the month's value */
+    M200_CMD_GET_NUM_TARIFFS 		= 0x10,		/* Read the number of tariffs */
+    M200_CMD_SET_NUM_TARIFFS 		= 0x11,		/* Set number of tariffs */
     M200_CMD_SET_TARIFF 			= 0x12,		/* Set the tariff */
-    M200_CMD_SET_HOLIDAYS 		= 0x13,		/* Set the table of holidays */
-    M200_CMD_SET_SCHEDULE 		= 0x14,		/* Set the schedule of tariffs */
-    M200_CMD_GET_WORKING_TIME 	= 0x15,		/* Read the total working time of battery and device */
-    M200_CMD_SET_TIMEDATE		= 0x16,		/* Set the internal time */
+    M200_CMD_SET_HOLIDAYS 			= 0x13,		/* Set the table of holidays */
+    M200_CMD_SET_SCHEDULE 			= 0x14,		/* Set the schedule of tariffs */
+    M200_CMD_GET_WORKING_TIME 		= 0x15,		/* Read the total working time of battery and device */
+    M200_CMD_SET_TIMEDATE			= 0x16,		/* Set the internal time */
 } m200_cmd_t;
 
 typedef enum {
@@ -85,9 +85,10 @@ typedef enum {
 } m200_scheduler_t;
 
 typedef enum {
-	ERROR_REPLY 		= 0,
-    OK_REPLY 			= 1,
-    NO_RESPONSE_REPLY	= 2,
+	M200_ERROR_REPLY 		= 0,
+    M200_OK_REPLY 			= 1,
+    M200_NO_RESPONSE_REPLY 	= 2,
+	M200_INVALID_CMD_REPLY 	= 0xFF,
 } m200_reply_t;
 
 static char str_dow[8][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Hol" };
@@ -124,6 +125,18 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		destination = strtol(param, &param, 10);
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x%02x", M200_CMD_SET_NUM_TARIFFS, destination, tarif);
+	}
+	else if (strstr(param, "get power_limit ") == param) {
+		param += strlen("get power_limit ");    // Skip command
+		destination = strtol(param, &param, 10);
+		uint32_to_le(&destination);
+		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_LIMIT_POWER, destination);
+	}	
+	else if (strstr(param, "get power_current ") == param) {
+		param += strlen("get power_current ");    // Skip command
+		destination = strtol(param, &param, 10);
+		uint32_to_le(&destination);
+		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_CURR_POWER_LOAD, destination);
 	}			
 	else if (strstr(param, "get value ") == param) { 
 		param += strlen("get value ");    // Skip command
@@ -140,6 +153,10 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 			param += strlen("month ");				// Skip command			
 			month = strtol(param, &param, 10);
 			month--;
+		}
+		else {
+			snprintf(out, bufsize, "%02x", M200_INVALID_CMD_REPLY);
+			return;
 		}
 		
 		param += strlen(" ");    						// Skip space
@@ -164,6 +181,34 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x%02x", M200_CMD_GET_SCHEDULE, destination, date);
 	}
+	else if (strstr(param, "get time ") == param) {
+		param += strlen("get time ");    // Skip command
+		uint8_t cmd = 0;
+		if(strstr(param, "switch_on ") == param) {
+			param += strlen("switch_on ");				// Skip command
+			cmd = (uint8_t)M200_CMD_GET_LAST_POWER_ON;
+		}
+		else if(strstr(param, "switch_off ") == param) {
+			param += strlen("switch_off ");				// Skip command
+			cmd = (uint8_t)M200_CMD_GET_LAST_POWER_OFF;
+		}
+		else if(strstr(param, "open ") == param) {
+			param += strlen("open ");				// Skip command
+			cmd = (uint8_t)M200_CMD_GET_LAST_OPEN;
+		}
+		else if(strstr(param, "close ") == param) {
+			param += strlen("close ");				// Skip command
+			cmd = (uint8_t)M200_CMD_GET_LAST_CLOSE;
+		}
+		else {
+			snprintf(out, bufsize, "%02x", M200_INVALID_CMD_REPLY);
+			return;
+		}
+		
+		destination = strtol(param, &param, 10);
+		uint32_to_le(&destination);
+		snprintf(out, bufsize, "%02x%08x", cmd, destination);
+	}	
 	else if (strstr(param, "get timedate ") == param) { 
 		param += strlen("get timedate ");    // Skip command
 		destination = strtol(param, &param, 10);
@@ -190,6 +235,18 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		uint32_to_le(&destination);
 		snprintf(out, bufsize, "%02x%08x%02d%02d%02d%02d%02d%02d%02d", 
 														M200_CMD_SET_TIMEDATE, destination, dow, hour, min, sec, day, month, year);
+	}	
+	else if (strstr(param, "get worktime ") == param) { 
+		param += strlen("get worktime ");    // Skip command
+		destination = strtol(param, &param, 10);
+		uint32_to_le(&destination);
+		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_WORKING_TIME, destination);
+	}	
+	else if (strstr(param, "get uip ") == param) { 
+		param += strlen("get uip ");    // Skip command
+		destination = strtol(param, &param, 10);
+		uint32_to_le(&destination);
+		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_U_I_P, destination);
 	}	
 	else if (strstr(param, "set holidays ") == param) { 
 		param += strlen("set holidays "); // skip command
@@ -250,6 +307,10 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 			month--;
 			param += strlen(" ");    						// Skip space
 		}
+		else {
+			snprintf(out, bufsize, "%02x", M200_INVALID_CMD_REPLY);
+			return;
+		}
 	
 		if(strstr(param, "day ") == param) {
 			param += strlen("day ");				// Skip command
@@ -270,6 +331,10 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		else if(strstr(param, "holidays") == param) {
 			param += strlen("holidays");				// Skip command			
 			day = (uint8_t)M200_HOLIDAYS;
+		}
+		else {
+			snprintf(out, bufsize, "%02x", M200_INVALID_CMD_REPLY);
+			return;
 		}
 			
 		param += strlen(" ");    						// Skip space
@@ -330,6 +395,10 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		
 		snprintf(out, bufsize, "%02x%02x", M200_CMD_SET_IFACE, interface);
 	}
+	else {
+		snprintf(out, bufsize, "%02x", M200_INVALID_CMD_REPLY);
+		return;
+	}
 }
 
 bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
@@ -337,12 +406,24 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	char buf[100];
     char strbuf[20];
 	char buf_addr[30];
+	
+	// uint8_t ii;
+    // printf("[m230] RX data:  ");
+    // for(ii = 0; ii < moddatalen; ii++) {
+        // printf(" %02X ", moddata[ii]);
+    // }
+   // puts("\n");
+	
+	
 
    if (moddatalen == 1) {
-        if (moddata[0] == OK_REPLY) {
+        if (moddata[0] == M200_OK_REPLY) {
             add_value_pair(mqtt_msg, "Msg", "Ok");
-        } else if(moddata[0] == ERROR_REPLY){
+        } else if(moddata[0] == M200_ERROR_REPLY){
             add_value_pair(mqtt_msg, "Msg", "Error");
+		}
+		else if(moddata[0] == M200_INVALID_CMD_REPLY){
+			add_value_pair(mqtt_msg, "Msg", "Invalid command");
 		}
         return true;
     }	
@@ -356,11 +437,11 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		add_value_pair(mqtt_msg, "Address", buf_addr);
 							
 		if (moddatalen == 5) {
-			if (moddata[0] == OK_REPLY) {
+			if (moddata[0] == M200_OK_REPLY) {
 				add_value_pair(mqtt_msg, "Msg", "Ok");
-			} else if(moddata[0] == ERROR_REPLY){
+			} else if(moddata[0] == M200_ERROR_REPLY){
 				add_value_pair(mqtt_msg, "Msg", "Error");
-			} else if(moddata[0] == NO_RESPONSE_REPLY){
+			} else if(moddata[0] == M200_NO_RESPONSE_REPLY){
 				add_value_pair(mqtt_msg, "Msg", "No response");					
 			}
 			return true;
@@ -411,7 +492,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			return true;
 			break;
 		}
-		
+			
 		case M200_CMD_GET_TOTAL_VALUE: {
 			uint32_t value[5] = { 0 };
 			for(i = 0; i < 5; i++) {
@@ -491,6 +572,187 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			
 			return true;
 			break;
+		}		
+		
+		case M200_CMD_GET_LAST_POWER_OFF: {
+			
+			char time_buf[10] = { };
+			uint8_t time[7] = { 0 };
+			
+			for(i = 0; i < 7; i++) {
+				time[i] = moddata[i + 5];
+			}
+
+			add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
+			
+			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);	
+			add_value_pair(mqtt_msg, "Time", time_buf);
+			
+			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);	
+			add_value_pair(mqtt_msg, "Date", time_buf);
+			
+			return true;
+			break;
+		}				
+		
+		case M200_CMD_GET_LAST_POWER_ON: {
+			
+			char time_buf[10] = { };
+			uint8_t time[7] = { 0 };
+			
+			for(i = 0; i < 7; i++) {
+				time[i] = moddata[i + 5];
+			}
+
+			add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
+			
+			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);	
+			add_value_pair(mqtt_msg, "Time", time_buf);
+			
+			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);	
+			add_value_pair(mqtt_msg, "Date", time_buf);
+			
+			return true;
+			break;
+		}				
+		
+		case M200_CMD_GET_LAST_OPEN: {
+			
+			char time_buf[10] = { };
+			uint8_t time[7] = { 0 };
+			
+			for(i = 0; i < 7; i++) {
+				time[i] = moddata[i + 5];
+			}
+
+			add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
+			
+			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);	
+			add_value_pair(mqtt_msg, "Time", time_buf);
+			
+			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);	
+			add_value_pair(mqtt_msg, "Date", time_buf);
+			
+			return true;
+			break;
+		}				
+	
+		case M200_CMD_GET_LAST_CLOSE: {
+			
+			char time_buf[10] = { };
+			uint8_t time[7] = { 0 };
+			
+			for(i = 0; i < 7; i++) {
+				time[i] = moddata[i + 5];
+			}
+
+			add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
+			
+			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);	
+			add_value_pair(mqtt_msg, "Time", time_buf);
+			
+			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);	
+			add_value_pair(mqtt_msg, "Date", time_buf);
+			
+			return true;
+			break;
+		}				
+		
+		case M200_CMD_GET_WORKING_TIME: {
+            uint32_t tl = 0, tlb = 0;
+   
+            /* Working time under voltage */
+            tl =  ( moddata[5] >> 4) * 100000;
+            tl += ( moddata[5] & 0x0F) * 10000;
+            tl += ( moddata[6] >> 4) * 1000;
+            tl += ( moddata[6] & 0x0F) * 100;
+            tl += ( moddata[7] >> 4) * 10;
+            tl += ( moddata[7] & 0x0F) * 1;
+            tl = tl & 0x00FFFFFF;
+            /* Working time without voltage(battery) */
+            tlb =  ( moddata[8] >> 4) * 100000;
+            tlb += ( moddata[8] & 0x0F) * 10000;
+            tlb += ( moddata[9] >> 4) * 1000;
+            tlb += ( moddata[9] & 0x0F) * 100;
+            tlb += ( moddata[10] >> 4) * 10;
+            tlb += ( moddata[10] & 0x0F) * 1;
+            tlb = tlb & 0x00FFFFFF;
+ 
+			snprintf(buf, sizeof(buf), "%u", tl);	
+			add_value_pair(mqtt_msg, "Working time under voltage", buf);
+			
+			snprintf(buf, sizeof(buf), "%u", tlb);	
+			add_value_pair(mqtt_msg, "Working time without voltage", buf);
+			
+			return true;
+			break;			
+		}
+		
+		case M200_CMD_GET_U_I_P: {
+            uint16_t voltage = 0;
+            uint16_t current = 0;
+            uint32_t power = 0;
+
+            voltage =  ( moddata[5] >> 4) * 1000;
+            voltage += ( moddata[5] & 0x0F) * 100;
+            voltage += ( moddata[6] >> 4) * 10;
+            voltage += ( moddata[6] & 0x0F) * 1;
+			int_to_float_str(strbuf, voltage, 1);
+			snprintf(buf, sizeof(buf), "%s", strbuf);
+			add_value_pair(mqtt_msg, "Voltage", buf);
+			
+            current =  ( moddata[7] >> 4) * 1000;
+            current += ( moddata[7] & 0x0F) * 100;
+            current += ( moddata[8] >> 4) * 10;
+            current += ( moddata[8] & 0x0F) * 1;
+			int_to_float_str(strbuf, current, 2);
+			snprintf(buf, sizeof(buf), "%s", strbuf);
+			add_value_pair(mqtt_msg, "Current", buf);
+
+            power =  ( moddata[9] >> 4) * 100000;
+            power += ( moddata[9] & 0x0F) * 10000;
+            power += ( moddata[10] >> 4) * 1000;
+            power += ( moddata[10] & 0x0F) * 100;
+            power += ( moddata[11] >> 4) * 10;
+            power += ( moddata[11] & 0x0F) * 1;
+            power = power & 0x00FFFFFF;
+
+			snprintf(buf, sizeof(buf), "%u", power);	
+			add_value_pair(mqtt_msg, "Power", buf);
+			
+			return true;
+			break;						
+		}
+		
+		case M200_CMD_GET_CURR_POWER_LOAD: {
+            uint16_t power = 0;
+                    
+			power =  ( moddata[5] >> 4) * 1000;
+            power += ( moddata[5] & 0x0F) * 100;
+            power += ( moddata[6] >> 4) * 10;
+            power += ( moddata[6] & 0x0F) * 1;
+			
+			int_to_float_str(strbuf, power, 2);
+			snprintf(buf, sizeof(buf), "%s", strbuf);
+			add_value_pair(mqtt_msg, "Current power", buf);
+			
+			return true;
+			break;				
+		}
+		
+		case M200_CMD_GET_LIMIT_POWER: {
+            uint16_t power = 0;
+                    
+			power =  ( moddata[5] >> 4) * 1000;
+            power += ( moddata[5] & 0x0F) * 100;
+            power += ( moddata[6] >> 4) * 10;
+            power += ( moddata[6] & 0x0F) * 1;
+			
+			int_to_float_str(strbuf, power, 2);
+			snprintf(buf, sizeof(buf), "%s", strbuf);
+			add_value_pair(mqtt_msg, "Power limit", buf);
+			return true;
+			break;				
 		}		
 		
 		default:
