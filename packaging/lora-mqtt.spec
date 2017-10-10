@@ -30,3 +30,6 @@ make all
 
 %install
 make install
+
+%files
+%defattr(-,root,root,-)
