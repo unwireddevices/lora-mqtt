@@ -6,10 +6,10 @@
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -31,7 +31,7 @@
 #include <time.h>
 
 #include <errno.h>
-#include <fcntl.h> 
+#include <fcntl.h>
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
@@ -84,7 +84,7 @@ static int tx_maxretr;
 char logbuf[1024];
 
 typedef struct entry {
-	TAILQ_ENTRY(entry) entries;   /* Circular queue. */	
+	TAILQ_ENTRY(entry) entries;   /* Circular queue. */
 	char buf[REPLY_LEN];
 } cq_entry_t;
 
@@ -100,10 +100,10 @@ static bool pending_free[MAX_PENDING_NODES];
 typedef struct {
 	uint64_t nodeid;
     fifo_t pending_fifo;
-    
+
 	time_t last_msg;
 	time_t last_inv;
-    
+
 	unsigned short nodeclass;
 	bool has_been_invited;
 	bool can_send;
@@ -143,7 +143,7 @@ static char *get_node_class(unsigned short nodeclass) {
 }
 
 static void init_pending(void) {
-	int i;	
+	int i;
 	for (i = 0; i < MAX_PENDING_NODES; i++) {
 		pending_free[i] = true;
 		pending[i].nodeid = 0;
@@ -157,7 +157,7 @@ static void init_pending(void) {
 }
 
 static pending_item_t *pending_to_nodeid(uint64_t nodeid) {
-	int i;	
+	int i;
 	for (i = 0; i < MAX_PENDING_NODES; i++) {
 		if (pending_free[i])
 			continue;
@@ -165,7 +165,7 @@ static pending_item_t *pending_to_nodeid(uint64_t nodeid) {
 		if (pending[i].nodeid == nodeid) {
 			return &pending[i];
 		}
-	}	
+	}
 
 	return NULL;
 }
@@ -245,7 +245,7 @@ static bool kick_device(uint64_t nodeid) {
 		pthread_mutex_unlock(&mutex_pending);
 
 		return true;
-	}	
+	}
 
 	pthread_mutex_unlock(&mutex_pending);
 
@@ -264,11 +264,11 @@ static bool m_enqueue(fifo_t *l, char *v)
 
 	return false;
 }
- 
+
 static bool m_dequeue(fifo_t *l, char *v)
 {
 	cq_entry_t *e = l->tqh_first;
-	
+
 	if (e != NULL) {
 		if (v != NULL)
 			memcpy(v, e->buf, strlen(e->buf)+1);
@@ -285,7 +285,7 @@ static bool m_dequeue(fifo_t *l, char *v)
 static bool m_peek(fifo_t *l, char *v)
 {
 	cq_entry_t *e = l->tqh_first;
-	
+
 	if (e != NULL) {
 		if (v != NULL)
 			memcpy(v, e->buf, strlen(e->buf)+1);
@@ -295,12 +295,12 @@ static bool m_peek(fifo_t *l, char *v)
 		return true;
 	}
 
-	return false;	
+	return false;
 }
 
 static bool is_fifo_empty(fifo_t *l)
 {
-	if (l->tqh_first == NULL) 
+	if (l->tqh_first == NULL)
 		return true;
 
 	return false;
@@ -366,7 +366,7 @@ static void set_blocking (int fd, int should_block)
 
 static void serve_reply(char *str) {
     puts("[info] Gate reply received");
-    
+
 	if (strlen(str) > REPLY_LEN * 2) {
 		puts("[error] Received too long reply from the gate");
 		return;
@@ -436,11 +436,11 @@ static void serve_reply(char *str) {
 
 
 			/* The device list was requested by gate, don't post results in MQTT then */
-			if (list_for_gate) 
+			if (list_for_gate)
 				return;
 
 			char *msg = (char *) malloc(MQTT_MAX_MSG_SIZE);
-			snprintf(msg, MQTT_MAX_MSG_SIZE, "{ \"appid64\": \"0x%s\", \"last_seen\": %d, \"nodeclass\": %d }", 
+			snprintf(msg, MQTT_MAX_MSG_SIZE, "{ \"appid64\": \"0x%s\", \"last_seen\": %d, \"nodeclass\": %d }",
 					appid, (unsigned) lseen, (unsigned) cl);
 
             publish_mqtt_message(mosq, addr, "list/", msg, (mqtt_format_t) mqtt_format);
@@ -450,7 +450,7 @@ static void serve_reply(char *str) {
 
 		case REPLY_IND: {
             puts("[info] Reply type: REPLY_IND");
-            
+
 			char addr[17] = {};
 			memcpy(addr, str, 16);
 			str += 16;
@@ -471,14 +471,14 @@ static void serve_reply(char *str) {
 
 			/* Skip RSSI hex */
 			str += 4;
-            
+
             uint8_t status;
             if (!hex_to_bytesn(str, 2, &status, !is_big_endian())) {
 				snprintf(logbuf, sizeof(logbuf), "[error] Unable to parse status from gate reply: %s\n", str);
 				logprint(logbuf);
 				return;
 			}
-            
+
             /* Skip status hex */
             str += 2;
 
@@ -488,7 +488,7 @@ static void serve_reply(char *str) {
 				logprint(logbuf);
 				return;
 			}
-            
+
 			int moddatalen = strlen(str + 1) / 2;
 
 			uint8_t modid = bytes[0];
@@ -496,11 +496,11 @@ static void serve_reply(char *str) {
 
 			char *topic = (char *)malloc(64);
 			char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
-            
+
             mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
             memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
-            
-            mqtt_status_t mqtt_status;           
+
+            mqtt_status_t mqtt_status;
             mqtt_status.rssi = rssi;
             mqtt_status.battery = 2000 + (50*(status & 0x1F));
             mqtt_status.temperature = 20*(status >> 5) - 30;
@@ -510,8 +510,8 @@ static void serve_reply(char *str) {
 				logprint(logbuf);
 				return;
 			}
-            
-            build_mqtt_message(msg, mqtt_msg, mqtt_status, addr);           
+
+            build_mqtt_message(msg, mqtt_msg, mqtt_status, addr);
             publish_mqtt_message(mosq, addr, topic, msg, (mqtt_format_t) mqtt_format);
             free(topic);
             free(msg);
@@ -535,20 +535,20 @@ static void serve_reply(char *str) {
 
 			unsigned short nodeclass = atoi(str);
             char *cl = get_node_class(nodeclass);
-			snprintf(logbuf, sizeof(logbuf), "[join] Joined device with id = 0x%" PRIx64 " and class = %s\n", 
+			snprintf(logbuf, sizeof(logbuf), "[join] Joined device with id = 0x%" PRIx64 " and class = %s\n",
 				     nodeid, cl);
 			logprint(logbuf);
-            
+
             mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
             memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
-            
-            add_value_pair(mqtt_msg, "joined", "1");            
+
+            add_value_pair(mqtt_msg, "joined", "1");
             add_value_pair(mqtt_msg, "class", cl);
 
             mqtt_status_t status = { 0 };
-            
+
             char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
-            build_mqtt_message(msg, mqtt_msg, status, addr);           
+            build_mqtt_message(msg, mqtt_msg, status, addr);
             publish_mqtt_message(mosq, addr, "device", msg, (mqtt_format_t) mqtt_format);
             free(msg);
             free(mqtt_msg);
@@ -561,10 +561,10 @@ static void serve_reply(char *str) {
 				if (e->num_pending) {
 					/* Notify gate about pending messages */
 					pthread_mutex_lock(&mutex_uart);
-					dprintf(uart, "%c%" PRIx64 "%02x\r", CMD_HAS_PENDING, 
+					dprintf(uart, "%c%" PRIx64 "%02x\r", CMD_HAS_PENDING,
 						    nodeid, e->num_pending);
-					pthread_mutex_unlock(&mutex_uart);	
-				}				
+					pthread_mutex_unlock(&mutex_uart);
+				}
 			}
 		}
 		break;
@@ -589,14 +589,14 @@ static void serve_reply(char *str) {
 			if (kick_device(nodeid)) {
 				snprintf(logbuf, sizeof(logbuf), "[kick] Device with id = 0x%" PRIx64 " kicked due to long silence\n", nodeid);
 				logprint(logbuf);
-                
+
                 mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
                 memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
-                add_value_pair(mqtt_msg, "joined", "0");            
+                add_value_pair(mqtt_msg, "joined", "0");
                 mqtt_status_t status = { 0 };
-                
+
                 char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
-                build_mqtt_message(msg, mqtt_msg, status, addr);           
+                build_mqtt_message(msg, mqtt_msg, status, addr);
                 publish_mqtt_message(mosq, addr, "device", msg, (mqtt_format_t) mqtt_format);
                 free(msg);
                 free(mqtt_msg);
@@ -637,7 +637,7 @@ static void serve_reply(char *str) {
 				e->num_pending--;
 
 			e->num_retries = 0;
-			pthread_mutex_unlock(&mutex_pending);			
+			pthread_mutex_unlock(&mutex_pending);
 		}
 		break;
 
@@ -660,14 +660,14 @@ static void serve_reply(char *str) {
 				/* Check if there's pending frames for this class A device */
 				if (e->nodeclass == LS_ED_CLASS_A && e->num_pending > 0) {
 					snprintf(logbuf, sizeof(logbuf), "[pending] Gate requested next pending frame for 0x%" PRIx64 "\n", nodeid);
-					logprint(logbuf);					
+					logprint(logbuf);
 
 					pthread_mutex_lock(&mutex_pending);
 					e->can_send = true;
 					e->last_msg = 0; /* Force immediate sending */
-					pthread_mutex_unlock(&mutex_pending);		
+					pthread_mutex_unlock(&mutex_pending);
 				}
-			}			
+			}
 		}
 		break;
         default:
@@ -676,19 +676,19 @@ static void serve_reply(char *str) {
 	}
 }
 
-static void invite_mote(uint64_t addr) 
+static void invite_mote(uint64_t addr)
 {
 	snprintf(logbuf, sizeof(logbuf), "[inv] Sending invitation to node with address 0x%" PRIx64 "\n", addr);
 	logprint(logbuf);
-    
+
     mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
     memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
     add_value_pair(mqtt_msg, "invited", "1");
     add_value_pair(mqtt_msg, "message", "sending invitation to the node");
     mqtt_status_t status = { 0 };
-    
+
     char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
-    
+
     char hexbuf[40];
     snprintf(hexbuf, sizeof(hexbuf), "%" PRIx64, addr);
     build_mqtt_message(msg, mqtt_msg, status, hexbuf);
@@ -708,7 +708,7 @@ static void* pending_worker(void *arg) {
 	while (1) {
 		pthread_mutex_lock(&mutex_pending);
 
-		int i;	
+		int i;
 		for (i = 0; i < MAX_PENDING_NODES; i++) {
 			if (pending_free[i]) {
                 usleep(1e3 * QUEUE_POLLING_INTERVAL);
@@ -740,9 +740,9 @@ static void* pending_worker(void *arg) {
                     add_value_pair(mqtt_msg, "invited", "0");
                     add_value_pair(mqtt_msg, "message", "failed to invite node");
                     mqtt_status_t status = { 0 };
-                    
+
                     char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
-                    
+
                     char hexbuf[40];
                     snprintf(hexbuf, 40, "%" PRIx64, e->nodeid);
                     build_mqtt_message(msg, mqtt_msg, status, hexbuf);
@@ -752,7 +752,7 @@ static void* pending_worker(void *arg) {
                     free(mqtt_msg);
 
 					e->num_retries = 0;
-					m_dequeue(&e->pending_fifo, NULL);						
+					m_dequeue(&e->pending_fifo, NULL);
 				} else
 				if (current - e->last_inv > e->num_retries * INVITE_TIMEOUT_S) {
 					/* Retry invitation */
@@ -762,7 +762,7 @@ static void* pending_worker(void *arg) {
 					e->last_inv = current;
 
 					if (e->num_retries <= NUM_RETRIES_INV) {
-						snprintf(logbuf, sizeof(logbuf), "[inv] [%d/%d] Next invitation retry after %d seconds\n", 
+						snprintf(logbuf, sizeof(logbuf), "[inv] [%d/%d] Next invitation retry after %d seconds\n",
 										e->num_retries, NUM_RETRIES_INV, e->num_retries * INVITE_TIMEOUT_S);
 						logprint(logbuf);
 					}
@@ -773,16 +773,16 @@ static void* pending_worker(void *arg) {
 
 			if (current - e->last_msg > tx_delay) {
 				if (e->num_retries > NUM_RETRIES) {
-					snprintf(logbuf, sizeof(logbuf), "[fail] Unable to send message to 0x%" PRIx64 " after %u attempts, giving up\n", 
+					snprintf(logbuf, sizeof(logbuf), "[fail] Unable to send message to 0x%" PRIx64 " after %u attempts, giving up\n",
 						      e->nodeid, NUM_RETRIES);
 					logprint(logbuf);
-                    
+
                     mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
                     memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
                     add_value_pair(mqtt_msg, "sent", "0");
                     add_value_pair(mqtt_msg, "message", "failed to send message to the node");
                     mqtt_status_t status = { 0 };
-                    
+
                     char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
                     char hexbuf[40];
                     snprintf(hexbuf, 40, "%" PRIx64, e->nodeid);
@@ -791,7 +791,7 @@ static void* pending_worker(void *arg) {
 
                     free(msg);
                     free(mqtt_msg);
-                    
+
 					e->num_retries = 0;
 					m_dequeue(&e->pending_fifo, NULL);
 
@@ -802,7 +802,7 @@ static void* pending_worker(void *arg) {
 				if (!m_peek(&e->pending_fifo, buf)) /* Peek message from queue but don't remove. Will be removed on acknowledge */
 					continue;
 
-				snprintf(logbuf, sizeof(logbuf), "[pending] [%d/%d] Sending message to 0x%" PRIx64 ": %s\n", 
+				snprintf(logbuf, sizeof(logbuf), "[pending] [%d/%d] Sending message to 0x%" PRIx64 ": %s\n",
 					e->num_retries + 1, (e->num_retries < tx_maxretr) ? tx_maxretr : NUM_RETRIES,
 					e->nodeid, buf);
 				logprint(logbuf);
@@ -822,7 +822,7 @@ static void* pending_worker(void *arg) {
 				}
 
 				e->can_send = false;
-				e->last_msg = current;			
+				e->last_msg = current;
 			}
 		}
 
@@ -834,7 +834,7 @@ static void* pending_worker(void *arg) {
 
 /* Publishes messages into MQTT */
 static void *publisher(void *arg)
-{ 
+{
 	while(1) {
         /* Wait for a message to arrive */
         if (msgrcv(msgqid, &msg_rx, sizeof(msg_rx.mtext), 0, 0) < 0) {
@@ -842,21 +842,21 @@ static void *publisher(void *arg)
             continue;
         }
 		serve_reply(msg_rx.mtext);
-	}	
-	
+	}
+
 	return NULL;
 }
 
 #define STATIC_DEVS_LIST_FILE "/etc/lora-mqtt/static-devs.conf"
 
-/* 
+/*
  * Devices list format:
  *
  * # comment
  * <eui64> <appid64> <network address> <device nonce> <channel>
  *
- * All numbers are in hex with zero padding if required. 
- * Device nonce is a random secret that must be set on the end-device. 
+ * All numbers are in hex with zero padding if required.
+ * Device nonce is a random secret that must be set on the end-device.
  * Channel is usually zero (one channel gate).
  *
  * Example:
@@ -901,12 +901,12 @@ static void send_static_devices_list(void) {
 
 		fclose(list);
 	} else {
-		snprintf(logbuf, sizeof(logbuf), "[gate] No statically personalized devices list found (%s)", STATIC_DEVS_LIST_FILE);	
+		snprintf(logbuf, sizeof(logbuf), "[gate] No statically personalized devices list found (%s)", STATIC_DEVS_LIST_FILE);
 		logprint(logbuf);
 		return;
 	}
 
-	snprintf(logbuf, sizeof(logbuf), "[gate] List of statically personalized devices (%i pcs) sent", num);	
+	snprintf(logbuf, sizeof(logbuf), "[gate] List of statically personalized devices (%i pcs) sent", num);
 	logprint(logbuf);
 }
 
@@ -933,26 +933,26 @@ static void *uart_reader(void *arg)
 		buf[i] = '\0';
 
 		if (strlen(buf) > 0) {
-            
+
             printf("Some data received: %d bytes\n", strlen(buf));
-            
+
             char *running = strdup(buf), *token;
             const char *delims = "\n";
-            
+
             while (strlen(token = strsep(&running, delims))) {
                 if((strlen(token) + 1 ) > sizeof(msg_rx.mtext)) {
                     puts("[error] Oversized message, unable to send");
                     continue;
                 }
-                
+
                 puts("Creating internal message");
-                
+
                 msg_rx.mtype = 1;
                 memcpy(msg_rx.mtext, token, strlen(token));
                 msg_rx.mtext[strlen(token)] = 0;
-                
+
                 puts("Sending internal message");
-                
+
                 if (msgsnd(msgqid, &msg_rx, sizeof(msg_rx.mtext), 0) < 0) {
                     perror( strerror(errno) );
                     printf("[error] Failed to send internal message");
@@ -962,7 +962,7 @@ static void *uart_reader(void *arg)
 		}
 
 		usleep(1e3 * UART_POLLING_INTERVAL);
-		
+
 		/* Request devices list on demand */
 		if (devlist_needed) {
 			puts("[!] Device list requested");
@@ -981,7 +981,7 @@ static void *uart_reader(void *arg)
 	return NULL;
 }
 
-static void devices_list(bool internal) 
+static void devices_list(bool internal)
 {
 	list_for_gate = internal;
 
@@ -990,10 +990,10 @@ static void devices_list(bool internal)
 	pthread_mutex_unlock(&mutex_uart);
 }
 
-static void message_to_mote(uint64_t addr, char *payload) 
+static void message_to_mote(uint64_t addr, char *payload)
 {
-	snprintf(logbuf, sizeof(logbuf), "[gate] Sending individual message to the mote with address \"%" PRIx64 "\": \"%s\"\n", 
-					addr, payload);	
+	snprintf(logbuf, sizeof(logbuf), "[gate] Sending individual message to the mote with address \"%" PRIx64 "\": \"%s\"\n",
+					addr, payload);
 	logprint(logbuf);
 
 	pending_item_t *e = pending_to_nodeid(addr);
@@ -1005,7 +1005,7 @@ static void message_to_mote(uint64_t addr, char *payload)
         add_value_pair(mqtt_msg, "sent", "2");
         add_value_pair(mqtt_msg, "message", "node not in the network");
         mqtt_status_t status = { 0 };
-                    
+
         char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
         char hexbuf[40];
         snprintf(hexbuf, sizeof(hexbuf), "%" PRIx64, addr);
@@ -1014,13 +1014,13 @@ static void message_to_mote(uint64_t addr, char *payload)
 
         free(msg);
         free(mqtt_msg);
-        
+
 		add_device(addr, LS_ED_CLASS_C, false);
 		e = pending_to_nodeid(addr);
 	}
 
 	if (e == NULL) {
-		puts("[error] Unable to add new device. Is devices list overflowed?\n");	
+		puts("[error] Unable to add new device. Is devices list overflowed?\n");
 		return;
 	}
 
@@ -1040,24 +1040,24 @@ static void message_to_mote(uint64_t addr, char *payload)
 		puts("[pending] Message is delayed");
 
 		e->num_pending++;
-		
+
 		/* Notify gate about pending messages */
 		pthread_mutex_lock(&mutex_uart);
 		dprintf(uart, "%c%" PRIx64 "%02x\r", CMD_HAS_PENDING, addr, e->num_pending);
-		pthread_mutex_unlock(&mutex_uart);		
+		pthread_mutex_unlock(&mutex_uart);
 	}
 
 	pthread_mutex_unlock(&mutex_pending);
 }
 
 static void message_broadcast(char *payload) {
-	snprintf(logbuf, sizeof(logbuf), "[gate] Sending broadcast message: \"%s\"\n", payload);	
+	snprintf(logbuf, sizeof(logbuf), "[gate] Sending broadcast message: \"%s\"\n", payload);
 	logprint(logbuf);
 
 	/* Send gate command */
 	pthread_mutex_lock(&mutex_uart);
 	dprintf(uart, "%c%s\r", CMD_BROADCAST, payload);
-	pthread_mutex_unlock(&mutex_uart);	
+	pthread_mutex_unlock(&mutex_uart);
 }
 
 static void my_message_callback(struct mosquitto *m, void *userdata, const struct mosquitto_message *message)
@@ -1087,26 +1087,26 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
 	}
 
 	if (memcmp(topics[0], "devices", 7) != 0) {
-		puts("[mqtt] Got message not from devices topic");	
+		puts("[mqtt] Got message not from devices topic");
 		return;
 	}
 
 	if (memcmp(topics[1], "lora", 4) != 0) {
-		puts("[mqtt] Got message not from devices/lora topic");	
-		return;	
+		puts("[mqtt] Got message not from devices/lora topic");
+		return;
 	}
 
 	if (topic_count == 3 && memcmp(topics[2], "get", 3) == 0) {
 		puts("[mqtt] Devices list requested");
 		devices_list(false);
 	}
-    
+
     /* commands to change gate settings */
     if (memcmp(topics[2], "gate", 4) == 0) {
         puts("[mqtt] Gate settings command");
         char command = 0;
         char *payload = (char *)message->payload;
-        
+
         if (memcmp(topics[3], "reboot", 6) == 0) {
             command = CMD_REBOOT;
         }
@@ -1142,12 +1142,12 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
             command = CMD_FW_UPDATE;
             payload = NULL;
         }
-        
+
         if (command == 0) {
             puts("[error] Unknown gate command\n");
             return;
         }
-        
+
         if (!payload) {
             dprintf(uart, "%c\r", command);
         } else {
@@ -1181,7 +1181,7 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
         } else {
             type = topics[3];
         }
-		
+
 		char buf[REPLY_LEN] = { 0 };
 		if (!convert_from(type, (char *)message->payload, buf, REPLY_LEN)) {
 			snprintf(logbuf, sizeof(logbuf), "[error] Convert failed. Unable to parse mqtt message: devices/lora/%s : %s, %s\n", addr, type, (char*) message->payload);
@@ -1246,7 +1246,7 @@ int main(int argc, char *argv[])
 	const char *host = "localhost";
 	int port = 1883;
 	int keepalive = 60;
-    
+
     mqtt_qos = 1;
     mqtt_retain = false;
 
@@ -1254,16 +1254,16 @@ int main(int argc, char *argv[])
 
 	snprintf(logbuf, sizeof(logbuf), "=== MQTT-LoRa gate (version: %s) ===\n", VERSION);
 	logprint(logbuf);
-	
+
     mqtt_format = UNWDS_MQTT_REGULAR;
     tx_delay = 10;
     tx_maxretr = 3;
-    
+
 	bool daemonize = 0;
 //	bool retain = 0;
 	char serialport[100];
 	bool ignoreconfig = 0;
-	
+
 	int c;
 	while ((c = getopt (argc, argv, "ihdrpt:")) != -1)
     switch (c) {
@@ -1295,21 +1295,21 @@ int main(int argc, char *argv[])
 			usage();
 			return -1;
     }
-	
+
 	// fork to background if needed and create pid file
-    int pidfile = 0;
+    int pidfile = 0, write_status = 0;
     if (daemonize)
     {
 		snprintf(logbuf, sizeof(logbuf), "Attempting to run in the background\n");
 		logprint(logbuf);
-		
+
         if (daemon(0, 0))
         {
             snprintf(logbuf, sizeof(logbuf), "Error forking to background\n");
 			logprint(logbuf);
             exit(EXIT_FAILURE);
         }
-        
+
         char pidval[10];
         pidfile = open("/var/run/mqtt-lora.pid", O_CREAT | O_RDWR, 0666);
         if (lockf(pidfile, F_TLOCK, 0) == -1)
@@ -1317,20 +1317,20 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
         snprintf(pidval, sizeof(pidval), "%d\n", getpid());
-        write(pidfile, pidval, strlen(pidval));
+        write_status = write(pidfile, pidval, strlen(pidval));
     }
-	
-    
+
+
     /* Create message queue */
     msgqid = msgget(IPC_PRIVATE, IPC_CREAT);
     if (msgqid < 0) {
         puts("Failed to create message queue");
         exit(EXIT_FAILURE);
     }
-	
+
 	FILE* config = NULL;
     char* token;
-	
+
 	if (!ignoreconfig)
         {
             config = fopen( "/etc/lora-mqtt/mqtt.conf", "r" );
@@ -1418,7 +1418,7 @@ int main(int argc, char *argv[])
         }
 
 	printf("Using serial port device: %s\n", serialport);
-	
+
 	pthread_mutex_init(&mutex_uart, NULL);
 	pthread_mutex_init(&mutex_pending, NULL);
 
@@ -1426,7 +1426,7 @@ int main(int argc, char *argv[])
 	devlist_needed = true;
 
 	init_pending();
-    
+
 	uart = open(serialport, O_RDWR | O_NOCTTY | O_SYNC);
 	if (uart < 0)
 	{
@@ -1435,7 +1435,7 @@ int main(int argc, char *argv[])
 		usage();
 		return 1;
 	}
-	
+
 	set_interface_attribs(uart, B115200, 0);  // set speed to 115,200 bps, 8n1 (no parity)
 	set_blocking(uart, 0);                	 // set no blocking
 
@@ -1464,7 +1464,7 @@ int main(int argc, char *argv[])
 		logprint(logbuf);
 		return 1;
 	}
-	
+
 	mosquitto_connect_callback_set(mosq, my_connect_callback);
 	mosquitto_message_callback_set(mosq, my_message_callback);
 	mosquitto_subscribe_callback_set(mosq, my_subscribe_callback);
@@ -1482,16 +1482,16 @@ int main(int argc, char *argv[])
 
 	mosquitto_destroy(mosq);
 	mosquitto_lib_cleanup();
-	
+
 	if (pidfile)
     {
         lockf(pidfile, F_ULOCK, 0);
         close(pidfile);
         remove("/var/run/mqtt-lora.pid");
     }
-	
+
 	syslog(LOG_INFO, "lora-mqtt service stopped");
     closelog();
-	
+
 	return 0;
 }
