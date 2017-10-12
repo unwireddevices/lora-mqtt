@@ -1317,7 +1317,10 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
         snprintf(pidval, sizeof(pidval), "%d\n", getpid());
-        write_status = write(pidfile, pidval, strlen(pidval));
+        if (write(pidfile, pidval, strlen(pidval)) < 0)
+        {
+            exit(EXIT_FAILURE);
+        }
     }
 
 
