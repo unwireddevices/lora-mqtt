@@ -33,4 +33,4 @@ install -D -m 644 lora-mqtt ${buildroot}${_bindir}/lora-mqtt
 
 %files
 %defattr(-,root,root,-)
-${_bindir}/lora-mqtt
+${_bindir}/lora-mqtts
