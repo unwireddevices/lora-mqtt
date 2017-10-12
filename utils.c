@@ -6,10 +6,10 @@
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -20,12 +20,12 @@
 */
 
 /**
- * @defgroup    
- * @ingroup     
- * @brief       
+ * @defgroup
+ * @ingroup
+ * @brief
  * @{
  * @file
- * @brief       
+ * @brief
  * @author      Evgeniy Ponomarev
  */
 
@@ -102,7 +102,7 @@ void uint16_to_le(uint16_t *num)
     }
 }
 
-void logprint(char *str)
+void logprint(const char *str)
 {
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);
@@ -110,31 +110,31 @@ void logprint(char *str)
 	syslog(LOG_INFO, str);
 }
 
-void int_to_float_str(char *buf, int decimal, uint8_t precision) {  
+void int_to_float_str(char *buf, int decimal, uint8_t precision) {
     int i = 0;
     int divider = 1;
     char format[10] = { };
     char digits[3];
-    
+
     if (decimal < 0) {
         strcat(format, "-");
     }
     strcat(format, "%d.%0");
-    
+
     for (i = 0; i<precision; i++) {
         divider *= 10;
     }
 
     snprintf(digits, 3, "%dd", i);
     strcat(format, digits);
-    
+
     snprintf(buf, 50, format, abs(decimal/divider), abs(decimal%divider));
 }
 
 bool is_number(char* str) {
     char *endptr = NULL;
     strtol(str, &endptr, 0);
-    
+
     if ( &str[strlen(str)] == endptr  ) {
         return true;
     } else {
