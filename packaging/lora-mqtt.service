@@ -1,0 +1,16 @@
+[Unit]
+Description=LoRa-MQTT translator aemon
+ConditionPathExists=/etc/lora-mqtt/mqtt.conf
+After=network.target mosquitto.service
+Requires=network.target mosquitto.service
+
+[Service]
+RemainAfterExit=no
+StartLimitInterval=0
+User=root
+PIDFile=/var/run/mqtt-lora.pid
+ExecStart=/usr/bin/mqtt -d
+ExecStop=/bin/kill $MAINPID
+
+[Install]
+WantedBy=multi-user.target
