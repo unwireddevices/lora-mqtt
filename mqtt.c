@@ -1297,7 +1297,7 @@ int main(int argc, char *argv[])
     }
 
 	// fork to background if needed and create pid file
-    int pidfile = 0, write_status = 0;
+    int pidfile = 0;
     if (daemonize)
     {
 		snprintf(logbuf, sizeof(logbuf), "Attempting to run in the background\n");
