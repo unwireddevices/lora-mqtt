@@ -102,7 +102,7 @@ void uint16_to_le(uint16_t *num)
     }
 }
 
-void logprint(const char *str)
+void logprint(char *str)
 {
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);
