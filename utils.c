@@ -107,9 +107,7 @@ void logprint(char *str)
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);
 	printf("[%02d:%02d:%02d]%s\n", tm.tm_hour, tm.tm_min, tm.tm_sec, str);
-    if (str) {
-        syslog(LOG_INFO, str);
-    }
+	syslog(LOG_INFO, "%s", str);
 }
 
 void int_to_float_str(char *buf, int decimal, uint8_t precision) {
