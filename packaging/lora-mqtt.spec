@@ -7,8 +7,7 @@ License:        GPL-2.0
 Group:          Network & Connectivity/Other
 
 Source0:        %{name}-%{version}.tar.gz
-Source1001:     dist/openwrt/files/mqtt.conf
-#Source1002:     lora-mqtt.service
+Source1001:     lora-mqtt.service
 
 BuildRequires:  mosquitto-devel
 BuildRequires:  libopenssl-devel
@@ -32,7 +31,8 @@ make all
 
 %install
 install -D -m 644 bin/mqtt  %{buildroot}%{_bindir}/lora-mqtt
-install -D -m 644 %{S:1001} %{buildroot}/etc/lora-mqtt/mqtt.conf
+install -D -m 644 %{S:1001} %{buildroot}%{_unitdir}/%{name}.service
+install -D -m 644 dist/openwrt/files/mqtt.conf %{buildroot}/etc/lora-mqtt/mqtt.conf
 
 %files
 %defattr(-,root,root,-)
