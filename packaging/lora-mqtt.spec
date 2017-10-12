@@ -29,7 +29,8 @@ and network layer and high-level protocols and applications
 make all
 
 %install
-make install
+install -D -m 644 lora-mqtt ${buildroot}${_bindir}/lora-mqtt
 
 %files
 %defattr(-,root,root,-)
+${_bindir}/lora-mqtt
