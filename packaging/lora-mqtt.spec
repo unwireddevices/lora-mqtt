@@ -36,6 +36,6 @@ install -D -m 644 dist/openwrt/files/mqtt.conf %{buildroot}/etc/lora-mqtt/mqtt.c
 
 %files
 %defattr(-,root,root,-)
-%config(noreplace) %attr(-,root,%{name}) /etc/lora-mqtt/mqtt.conf
+%config(noreplace) %attr(-,root,root) /etc/lora-mqtt/mqtt.conf
 %{_bindir}/lora-mqtt
 %{_unitdir}/%{name}.service
