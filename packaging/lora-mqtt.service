@@ -10,7 +10,7 @@ StartLimitInterval=0
 User=root
 PIDFile=/var/run/mqtt-lora.pid
 ExecStart=/usr/bin/mqtt -d
-ExecStop=/bin/kill $MAINPID
+ExecStop=/bin/kill -TERM $MAINPID
 
 [Install]
 WantedBy=multi-user.target
