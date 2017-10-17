@@ -1,5 +1,5 @@
 [Unit]
-Description=LoRa-MQTT translator aemon
+Description=LoRa-MQTT translator daemon
 ConditionPathExists=/etc/lora-mqtt/mqtt.conf
 After=network.target mosquitto.service
 Requires=network.target mosquitto.service
