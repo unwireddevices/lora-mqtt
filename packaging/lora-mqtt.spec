@@ -1,5 +1,6 @@
 Name:           lora-mqtt
 Version:        2.2.0
+Release:        0
 Summary:        Translator between LoRa application layer and MQTT broker
 URL:            https://github.com/unwireddevices/lora-mqtt
 License:        GPL-2.0
