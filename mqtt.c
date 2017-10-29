@@ -366,11 +366,13 @@ static void set_blocking (int fd, int should_block)
 
 static void serve_reply(char *str) {
     puts("[info] Gate reply received");
-    
+
+    /*
 	if (strlen(str) > REPLY_LEN * 2) {
 		puts("[error] Received too long reply from the gate");
 		return;
 	}
+    */
 
 	gate_reply_type_t reply = (gate_reply_type_t)str[0];
 	str += 1;
@@ -934,7 +936,7 @@ static void *uart_reader(void *arg)
 
 		if (strlen(buf) > 0) {
             
-            printf("Some data received: %d bytes\n", strlen(buf));
+            printf("Some data received: %d bytes\n", (int)strlen(buf));
             
             char *running = strdup(buf), *token;
             const char *delims = "\n";
