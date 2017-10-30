@@ -26,7 +26,6 @@
  * @{
  * @file	umdk-adxl345.c
  * @brief   umdk-adxl345 message parser
- * @author  Eugeny Ponomarev [ep@unwds.com]
  * @author  Oleg Artamonov [oleg@unwds.com]
  */
 
@@ -37,13 +36,22 @@
 #include "unwds-modules.h"
 #include "utils.h"
 
+bool umdk_adxl345_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
+{
+    uint8_t state = moddata[0];
+
+    if (moddatalen != 1) {
+        return false;
+    }
+
+    if (state == 1) {
+        add_value_pair(mqtt_msg, "state", "opened");
+    }
+    
+    return true;
+}
+
 void umdk_adxl345_command(char *param, char *out, int bufsize) {
     return;
 }
 
-bool umdk_adxl345_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
-{
-    add_value_pair(mqtt_msg, "manhole", "opened");
-    
-    return true;
-}

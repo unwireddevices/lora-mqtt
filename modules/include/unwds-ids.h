@@ -60,6 +60,7 @@ typedef enum {
     UNWDS_IBUTTON_MODULE_ID = 52,
     UNWDS_SWITCH_MODULE_ID = 53,
     UNWDS_M230_MODULE_ID = 54,	
+	UNWDS_IEC61107_MODULE_ID = 55,
     /* Customer 100 to 125*/
     UNWDS_CUSTOMER_MODULE_ID = 100,
     /* System module 126 */

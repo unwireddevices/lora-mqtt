@@ -19,8 +19,6 @@
  * SOFTWARE.
 */
 
-#define _BSD_SOURCE
-
 #include "unwds-mqtt.h"
 #include "mqtt.h"
 

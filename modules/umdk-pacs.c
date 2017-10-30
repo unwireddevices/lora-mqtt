@@ -61,12 +61,12 @@ void umdk_ibutton_command(char *param, char *out, int bufsize)
 		uint64_t id = strtoll(param, &param, 16);
 		param += strlen(" ");    						// Skip space
 		uint16_t time = strtol(param, NULL, 10);
-		snprintf(out, bufsize, "%02x%016" PRIx64 "%04x", UMDK_IBUTTON_CMD_ADD_ID, id, time);
+		snprintf(out, bufsize, "%02x%016llx%04x", UMDK_IBUTTON_CMD_ADD_ID, id, time);
 	}
 	else if (strstr(param, "remove ") == param) {
 		param += strlen("remove ");    // Skip command
 		uint64_t id = strtoll(param, &param, 16);
-		snprintf(out, bufsize, "%02x%016" PRIx64, UMDK_IBUTTON_CMD_REMOVE_ID, id);
+		snprintf(out, bufsize, "%02x%016llx", UMDK_IBUTTON_CMD_REMOVE_ID, id);
 	}
 }
 
@@ -88,7 +88,7 @@ bool umdk_ibutton_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 
 	uint64_t *id = ((uint64_t *)&moddata[1]);
 
-	snprintf(buf, sizeof(buf), "%016" PRIx64 "", *id);
+	snprintf(buf, sizeof(buf), "%016llX", *id);
 			
 	switch(cmd) {
 		case UMDK_IBUTTON_GRANTED: {        
