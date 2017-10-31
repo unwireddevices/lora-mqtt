@@ -24,8 +24,8 @@
  * @ingroup
  * @brief
  * @{
- * @file	umdk-ibutton.c
- * @brief   umdk-ibutton message parser
+ * @file	umdk-pacs.c
+ * @brief   umdk-pacs message parser
  * @author   Mikhail Perkov
  * @author  
  */
@@ -38,46 +38,46 @@
 #include "utils.h"
 
 typedef enum {
-	UMDK_IBUTTON_OK 		= 0x01,		/* OK */
-	UMDK_IBUTTON_ERROR 		= 0x00,		/* ERROR */
-	UMDK_IBUTTON_GRANTED 	= 0x11,		/* ACCESS GRANTED */
-	UMDK_IBUTTON_DENIED	 	= 0x1F,		/* ACCESS DENIED */
-	UMDK_IBUTTON_UPDATED 	= 0x20,		/* ID key removed by timer access */
-} umdk_ibutton_reply_t;
+	UMDK_PACS_OK 		= 0x01,		/* OK */
+	UMDK_PACS_ERROR 		= 0x00,		/* ERROR */
+	UMDK_PACS_GRANTED 	= 0x11,		/* ACCESS GRANTED */
+	UMDK_PACS_DENIED	 	= 0x1F,		/* ACCESS DENIED */
+	UMDK_PACS_UPDATED 	= 0x20,		/* ID key removed by timer access */
+} umdk_pacs_reply_t;
 
 typedef enum {
-	UMDK_IBUTTON_CMD_RESET_LIST = 0x00,
-	UMDK_IBUTTON_CMD_ADD_ID = 0x01,
-	UMDK_IBUTTON_CMD_REMOVE_ID = 0x02,
-}umdk_ibutton_cmd_t;
+	UMDK_PACS_CMD_RESET_LIST = 0x00,
+	UMDK_PACS_CMD_ADD_ID = 0x01,
+	UMDK_PACS_CMD_REMOVE_ID = 0x02,
+}umdk_pacs_cmd_t;
 
-void umdk_ibutton_command(char *param, char *out, int bufsize)
+void umdk_pacs_command(char *param, char *out, int bufsize)
  {
 	if (strstr(param, "reset") == param) {
-		snprintf(out, bufsize, "%02x", UMDK_IBUTTON_CMD_RESET_LIST);
+		snprintf(out, bufsize, "%02x", UMDK_PACS_CMD_RESET_LIST);
 	}
 	else if (strstr(param, "add ") == param) {
 		param += strlen("add ");    // Skip command
 		uint64_t id = strtoll(param, &param, 16);
 		param += strlen(" ");    						// Skip space
 		uint16_t time = strtol(param, NULL, 10);
-		snprintf(out, bufsize, "%02x%016llx%04x", UMDK_IBUTTON_CMD_ADD_ID, id, time);
+		snprintf(out, bufsize, "%02x%016llx%04x", UMDK_PACS_CMD_ADD_ID, id, time);
 	}
 	else if (strstr(param, "remove ") == param) {
 		param += strlen("remove ");    // Skip command
 		uint64_t id = strtoll(param, &param, 16);
-		snprintf(out, bufsize, "%02x%016llx", UMDK_IBUTTON_CMD_REMOVE_ID, id);
+		snprintf(out, bufsize, "%02x%016llx", UMDK_PACS_CMD_REMOVE_ID, id);
 	}
 }
 
-bool umdk_ibutton_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
+bool umdk_pacs_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
 
-	umdk_ibutton_reply_t cmd = moddata[0];
+	umdk_pacs_reply_t cmd = moddata[0];
 		
     if (moddatalen == 1) {
-        if (cmd == UMDK_IBUTTON_OK) {
+        if (cmd == UMDK_PACS_OK) {
             add_value_pair(mqtt_msg, "msg", "OK");
         } 
 		else {
@@ -91,19 +91,19 @@ bool umdk_ibutton_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	snprintf(buf, sizeof(buf), "%016llX", *id);
 			
 	switch(cmd) {
-		case UMDK_IBUTTON_GRANTED: {        
+		case UMDK_PACS_GRANTED: {        
 			add_value_pair(mqtt_msg, "GRANTED", buf);		
 			return true;
 			break;
 		}
 		
-		case UMDK_IBUTTON_DENIED: {
+		case UMDK_PACS_DENIED: {
 			add_value_pair(mqtt_msg, "DENIED", buf);		
 			return true;
 			break;
 		}
 
-		case UMDK_IBUTTON_UPDATED: {
+		case UMDK_PACS_UPDATED: {
 			add_value_pair(mqtt_msg, "Removed by timer", buf);		
 			return true;
 			break;

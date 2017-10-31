@@ -60,6 +60,7 @@ bool umdk_switch_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_adxl345_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_pacs_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 
 void umdk_counter_command(char *param, char *out, int bufsize);
 void umdk_pulse_command(char *param, char *out, int bufsize);
@@ -82,6 +83,7 @@ void umdk_switch_command(char *param, char *out, int bufsize);
 void umdk_m230_command(char *param, char *out, int bufsize);
 void umdk_adxl345_command(char *param, char *out, int bufsize);
 void umdk_iec61107_command(char *param, char *out, int bufsize);
+void umdk_pacs_command(char *param, char *out, int bufsize);
 
 static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_GPIO_MODULE_ID,    .name = "gpio",    .cmd = &umdk_gpio_command,       .reply = &umdk_gpio_reply     },
@@ -107,9 +109,11 @@ static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_MHZ19_MODULE_ID,   .name = "mhz19",   .cmd = &umdk_mhz19_command,      .reply = &umdk_mhz19_reply    },
     { .id = UNWDS_IBUTTON_MODULE_ID, .name = "ibutton", .cmd = &umdk_ibutton_command,    .reply = &umdk_ibutton_reply  },
     { .id = UNWDS_SWITCH_MODULE_ID,  .name = "switch",  .cmd = &umdk_switch_command,     .reply = &umdk_switch_reply   },
-    { .id = UNWDS_M230_MODULE_ID, 	 .name = "m230",  	.cmd = &umdk_m230_command,     	 .reply = &umdk_m230_reply   },
-    { .id = UNWDS_ADXL345_MODULE_ID, .name = "adxl345",	.cmd = &umdk_adxl345_command,  	 .reply = &umdk_adxl345_reply   },
-    { .id = UNWDS_IEC61107_MODULE_ID,.name = "iec61107",.cmd = &umdk_iec61107_command,   .reply = &umdk_iec61107_reply   },
+    { .id = UNWDS_M230_MODULE_ID, 	 .name = "m230",  	.cmd = &umdk_m230_command,     	 .reply = &umdk_m230_reply     },
+    { .id = UNWDS_ADXL345_MODULE_ID, .name = "adxl345",	.cmd = &umdk_adxl345_command,  	 .reply = &umdk_adxl345_reply  },
+    { .id = UNWDS_IEC61107_MODULE_ID,.name = "iec61107",.cmd = &umdk_iec61107_command,   .reply = &umdk_iec61107_reply },
+    { .id = UNWDS_HD44780_MODULE_ID, .name = "hd44780",	.cmd = NULL,   	                 .reply = NULL                 },
+    { .id = UNWDS_PACS_MODULE_ID,    .name = "pacs",	.cmd = &umdk_pacs_command,       .reply = &umdk_pacs_reply     },
 };
 
 bool (*umdk_reply_ptr)(uint8_t*, int, mqtt_msg_t*);

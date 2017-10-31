@@ -418,12 +418,12 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 
    if (moddatalen == 1) {
         if (moddata[0] == M200_OK_REPLY) {
-            add_value_pair(mqtt_msg, "Msg", "Ok");
+            add_value_pair(mqtt_msg, "msg", "ok");
         } else if(moddata[0] == M200_ERROR_REPLY){
-            add_value_pair(mqtt_msg, "Msg", "Error");
+            add_value_pair(mqtt_msg, "msg", "error");
 		}
 		else if(moddata[0] == M200_INVALID_CMD_REPLY){
-			add_value_pair(mqtt_msg, "Msg", "Invalid command");
+			add_value_pair(mqtt_msg, "msg", "invalid command");
 		}
         return true;
     }	
@@ -438,11 +438,11 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 							
 		if (moddatalen == 5) {
 			if (moddata[0] == M200_OK_REPLY) {
-				add_value_pair(mqtt_msg, "Msg", "Ok");
+				add_value_pair(mqtt_msg, "msg", "ok");
 			} else if(moddata[0] == M200_ERROR_REPLY){
-				add_value_pair(mqtt_msg, "Msg", "Error");
+				add_value_pair(mqtt_msg, "msg", "error");
 			} else if(moddata[0] == M200_NO_RESPONSE_REPLY){
-				add_value_pair(mqtt_msg, "Msg", "No response");					
+				add_value_pair(mqtt_msg, "msg", "no response");					
 			}
 			return true;
 		}
@@ -470,7 +470,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 				}
 			}
 			if(cnt == 0) {
-				add_value_pair(mqtt_msg, "Msg", "Empty");				
+				add_value_pair(mqtt_msg, "msg", "empty");				
 				}
 			return true;
 			break;
@@ -488,7 +488,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		case M200_CMD_GET_NUM_TARIFFS: {
 			uint8_t number = moddata[5];  	
 			snprintf(buf, sizeof(buf), "%u", number);
-			add_value_pair(mqtt_msg, "Number of tariffs", buf);		
+			add_value_pair(mqtt_msg, "Tariffs", buf);		
 			return true;
 			break;
 		}
