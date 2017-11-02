@@ -85,13 +85,17 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 		printf("Length: [ %d ]\n", length);
 
 		uint16_t num_char;		
-		num_char = snprintf(out, bufsize, "%02x", 0x01);
+		num_char = snprintf(out, bufsize, "%02x%02x", 0x01, length);
 		uint8_t i = 0;
 		for(i = 0; i < length; i++) {
 			symb_nex = *param_ptr;
 			num_char += snprintf(out + num_char, bufsize - num_char, "%02x", symb_nex);			
 			param_ptr++;
 		}
+		
+		num_char += snprintf(out + num_char, bufsize - num_char, "%02x", 0x28);	
+		num_char += snprintf(out + num_char, bufsize - num_char, "%02x", 0x29);	
+		
 	}
 	else {
 		snprintf(out, bufsize, "%02x", UMDK_IEC61107_INVALID_CMD_REPLY);
@@ -107,12 +111,12 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	
    if (moddatalen == 1) {
         if (moddata[0] == UMDK_IEC61107_OK_REPLY) {
-            add_value_pair(mqtt_msg, "Msg", "Ok");
+            add_value_pair(mqtt_msg, "msg", "ok");
         } else if(moddata[0] == UMDK_IEC61107_ERROR_REPLY){
-            add_value_pair(mqtt_msg, "Msg", "Error");
+            add_value_pair(mqtt_msg, "msg", "error");
 		}
 		else if(moddata[0] == UMDK_IEC61107_INVALID_CMD_REPLY){
-			add_value_pair(mqtt_msg, "Msg", "Invalid command");
+			add_value_pair(mqtt_msg, "msg", "invalid command");
 		}
         return true;
     }	

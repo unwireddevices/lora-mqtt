@@ -912,17 +912,18 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 
 			uint8_t num_char = 0;
 
+			num_char = snprintf(buf, sizeof(buf), "[ ");
 			for(i = 0; i < 4; i++) {
 				week = moddata[i + 2];
 				for(j = 0; j < 8; j++) {
 					day = (week >> j) & 1;
 					if(day == 1) {
 						flag_holiday = 1;
-						num_char += snprintf(buf + num_char, sizeof(buf) - num_char, " %02d", 8*i + j + 1);						
+						num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%02d, ", 8*i + j + 1);						
 					}
 				}
 			}
-			
+			num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "]");
 			
 			if(flag_holiday == 1) {
 				add_value_pair(mqtt_msg, "Holidays", buf);
