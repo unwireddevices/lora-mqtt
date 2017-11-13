@@ -9,7 +9,7 @@ RemainAfterExit=no
 StartLimitInterval=0
 User=root
 PIDFile=/var/run/mqtt-lora.pid
-ExecStart=/usr/bin/mqtt -d
+ExecStart=/usr/bin/lora-mqtt -d
 ExecStop=/bin/kill -TERM $MAINPID
 
 [Install]
