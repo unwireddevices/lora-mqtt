@@ -34,6 +34,11 @@ install -D -m 644 bin/mqtt  %{buildroot}%{_bindir}/lora-mqtt
 install -D -m 644 %{S:1001} %{buildroot}%{_unitdir}/%{name}.service
 install -D -m 644 dist/openwrt/files/mqtt.conf %{buildroot}/etc/lora-mqtt/mqtt.conf
 
+%post
+/bin/systemctl enable %{name}.service
+/bin/systemctl start %{name}.service
+/bin/systemctl daemon-reload
+
 %files
 %defattr(-,root,root,-)
 %config(noreplace) %attr(-,root,root) /etc/lora-mqtt/mqtt.conf
