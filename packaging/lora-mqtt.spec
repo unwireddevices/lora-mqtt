@@ -28,6 +28,7 @@ and network layer and high-level protocols and applications
 
 %build
 make all
+chmod +x bin/mqtt
 
 %install
 install -D -m 744 bin/mqtt  %{buildroot}%{_bindir}/lora-mqtt
