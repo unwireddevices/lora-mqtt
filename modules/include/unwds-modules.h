@@ -62,6 +62,7 @@ bool umdk_adxl345_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_pacs_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_hd44780_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_idcard_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 
 void umdk_counter_command(char *param, char *out, int bufsize);
 void umdk_pulse_command(char *param, char *out, int bufsize);
@@ -86,6 +87,7 @@ void umdk_adxl345_command(char *param, char *out, int bufsize);
 void umdk_iec61107_command(char *param, char *out, int bufsize);
 void umdk_pacs_command(char *param, char *out, int bufsize);
 void umdk_hd44780_command(char *param, char *out, int bufsize);
+void umdk_idcard_command(char *param, char *out, int bufsize);
 
 static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_GPIO_MODULE_ID,    .name = "gpio",    .cmd = &umdk_gpio_command,       .reply = &umdk_gpio_reply     },
@@ -116,6 +118,7 @@ static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_IEC61107_MODULE_ID,.name = "iec61107",.cmd = &umdk_iec61107_command,   .reply = &umdk_iec61107_reply },
     { .id = UNWDS_HD44780_MODULE_ID, .name = "hd44780",	.cmd = &umdk_hd44780_command,    .reply = &umdk_hd44780_reply  },
     { .id = UNWDS_PACS_MODULE_ID,    .name = "pacs",	.cmd = &umdk_pacs_command,       .reply = &umdk_pacs_reply     },
+    { .id = UNWDS_IDCARD_MODULE_ID,  .name = "idcard",  .cmd = &umdk_idcard_command,     .reply = &umdk_idcard_reply   },
 };
 
 bool (*umdk_reply_ptr)(uint8_t*, int, mqtt_msg_t*);
