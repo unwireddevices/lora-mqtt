@@ -45,7 +45,13 @@
 #define IEC61107_MODE_SP_READ 0x36
 
 typedef enum {   
-    IEC61107_CMD_PROPRIETARY_COMMAND = 0xF0,		/* Less this value - single command of IEC61107 */
+    UMDK_IEC61107_CMD_RESET 			= 0xFF,		/* Clear database */
+    UMDK_IEC61107_CMD_ADD_ADDR 			= 0xFE,		/* Add address  in database */
+    UMDK_IEC61107_CMD_REMOVE_ADDR 		= 0xFD,		/* Remove address from database */
+	UMDK_IEC61107_CMD_REMOVE_NUMB 		= 0xFC,		/* Remove address from database by number */
+	UMDK_IEC61107_CMD_GET_LIST 			= 0xFB,		/* Send database of addresses */
+
+    IEC61107_CMD_PROPRIETARY_COMMAND 	= 0xF0,		/* Less this value - single command of CE102M */
 
     IEC61107_CMD_SPECIFIC				= 0x00,		/* Manufacturer Special cmd */
 	
@@ -81,7 +87,7 @@ typedef enum {
 	UMDK_IEC61107_INVALID_CMD_REPLY 	= 0xFF,
 } iec61107_reply_t;
 
-// static char str_dow[8][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Hol" };
+static char str_dow[7][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 
 void umdk_iec61107_command(char *param, char *out, int bufsize) {
 	uint8_t cmd = 0;		
@@ -271,14 +277,14 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	uint8_t length_addr = moddata[1];	
 	
 	if(cmd < IEC61107_CMD_PROPRIETARY_COMMAND) {
-		uint8_t *address_ptr = &moddata[2];	
+		uint8_t *address_ptr = moddata + 2;	
 		uint16_t num_char = 0;
 		uint8_t i = 0;
-		uint8_t symb_addr = 0;
+		uint8_t symbol = 0;
 		
 		for(i = 0; i < length_addr; i++) {
-			symb_addr = *address_ptr;
-			num_char += snprintf(buf_addr + num_char, sizeof(buf_addr) - num_char, "%c", symb_addr);
+			symbol = *address_ptr;
+			num_char += snprintf(buf_addr + num_char, sizeof(buf_addr) - num_char, "%c", symbol);
 			address_ptr++;
 		}
 		
@@ -298,9 +304,8 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
   
 	// uint8_t i;
 	// uint32_t * ptr_value;
-	
-	switch(cmd) {			
-		case IEC61107_CMD_TIME: {
+				
+		if(cmd == IEC61107_CMD_TIME) {
 			char time_buf[10] = { };
 			
 			uint8_t hour = ( moddata[length_addr + 2] - 0x30) * 10 + ( moddata[length_addr + 3] - 0x30);
@@ -311,35 +316,52 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", hour, min, sec);	
 			add_value_pair(mqtt_msg, "time", time_buf);
 			
-			return true;
-			break;
 		}
-
-		// case M200_CMD_GET_VALUE: {
-			// uint32_t value[5] = { 0 };
-			// for(i = 0; i < 5; i++) {
-				// ptr_value = (uint32_t *)(&moddata[4*i + 5]);
-				// uint32_to_le(ptr_value);      
-				// value[i] = *ptr_value;
-			// }
+		else if(cmd == IEC61107_CMD_DATE) {
+			char date_buf[15] = { };
 			
-			// char tariff[5] = { };
-			// for(i = 0; i < 4; i++) {
-				// snprintf(tariff, sizeof(tariff), "T%02d", i + 1);
-                // int_to_float_str(strbuf, value[i], 2);
-				// snprintf(buf, sizeof(buf), "%s", strbuf);
-				// add_value_pair(mqtt_msg, tariff, buf);				
-			// }
-            // int_to_float_str(strbuf, value[4], 2);
-			// snprintf(buf, sizeof(buf), "%s", strbuf);
-			// add_value_pair(mqtt_msg, "Total", buf);		
-	
-			// return true;
-			// break;
-		// }		
+			uint8_t dow = ( moddata[length_addr + 2] - 0x30) * 10 + ( moddata[length_addr + 3] - 0x30);
+			
+			uint8_t day = ( moddata[length_addr + 4] - 0x30) * 10 + ( moddata[length_addr + 5] - 0x30);
+			uint8_t month =  ( moddata[length_addr + 6] - 0x30) * 10 + ( moddata[length_addr + 7] - 0x30);
+			uint8_t year =  ( moddata[length_addr + 8] - 0x30) * 10 + ( moddata[length_addr + 9] - 0x30);
+
+			add_value_pair(mqtt_msg, "day", str_dow[dow]);			
+			
+			snprintf(date_buf, sizeof(date_buf), "%02d/%02d/%02d", day, month, year);	
+			add_value_pair(mqtt_msg, "date", date_buf);
+		}				
+		else if(cmd == IEC61107_CMD_SERIAL) {
+			uint8_t *serial_ptr = moddata + length_addr + 2;	
+			for(i = length_addr + 2; i < moddatalen; i++) {
+				symbol = *serial_ptr;
+				um_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
+				serial_ptr++;
+			}
+		
+			add_value_pair(mqtt_msg, "serial", buf);
+		}
+		else if(cmd == IEC61107_CMD_ADDRESS) {
+			
+		}			
+		else if(cmd == IEC61107_CMD_GET_VOLT) {
+			
+		}			
+		else if(cmd == IEC61107_CMD_GET_CURR) {
+			
+		}			
+		else if(cmd == IEC61107_CMD_GET_POWER) {
+			
+		}		
+		else if(cmd == IEC61107_CMD_SCHEDULE) {
+			
+		}			
+		else if(cmd == IEC61107_CMD_HOLIDAYS) {
+			
+		}			
+		else if((cmd >= IEC61107_CMD_GET_VALUE_TOTAL_ALL && (cmd <= IEC61107_CMD_GET_VALUE_END_DAY)) {
+			
+		}				
 				
-		default:
-			break;
-	}
 	return true;
 }
