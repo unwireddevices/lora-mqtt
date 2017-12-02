@@ -1328,6 +1328,8 @@ int main(int argc, char *argv[])
         }
         snprintf(pidval, sizeof(pidval), "%d\n", getpid());
         write(pidfile, pidval, strlen(pidval));
+        
+        sleep(30);
     }
 	
     

@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 typedef enum {
 	UMDK_IDCARD_CMD_SET_PERIOD = 0,
@@ -45,6 +46,17 @@ typedef enum {
     UMDK_IDCARD_REPLY_ACK_OK,
     UMDK_IDCARD_REPLY_ACK_ERR,
 } umdk_reply_action_t;
+
+typedef enum {
+    UMDK_IDCARD_PACKET_ID = 0,
+    UMDK_IDCARD_BIOMETRY = 1,
+    UMDK_IDCARD_GPS = 2,
+    UMDK_IDCARD_RESERVED = 9,
+    UMDK_IDCARD_ALARM = 10,
+    UMDK_IDCARD_MESSAGE_ID = 11,
+    UMDK_IDCARD_MESSAGE_ID2 = 12,
+    UMDK_IDCARD_MESSAGE_LENGTH = 13,
+} umdk_idcard_packet_fields_t;
 
 #include "unwds-modules.h"
 #include "utils.h"
@@ -73,7 +85,7 @@ bool umdk_idcard_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     char buf[100];
     uint16_t message_id;
 
-    switch (moddata[0]) {
+    switch (moddata[UMDK_IDCARD_PACKET_ID]) {
         case UMDK_IDCARD_REPLY_ACK_OK:
             add_value_pair(mqtt_msg, "msg", "ok");
             break;
@@ -84,17 +96,34 @@ bool umdk_idcard_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             add_value_pair(mqtt_msg, "fingerprint", "ok");
             break;
         case UMDK_IDCARD_REPLY_PACKET:
-            if (moddata[1] == 0) {
+            if (moddata[UMDK_IDCARD_BIOMETRY] == 0) {
                 add_value_pair(mqtt_msg, "biometry", "passed");
-            } else if (moddata[1] == 1) {
+            } else if (moddata[UMDK_IDCARD_BIOMETRY] == 1) {
                 add_value_pair(mqtt_msg, "biometry", "failed");
-            } else if (moddata[1] == 2) {
+            } else if (moddata[UMDK_IDCARD_BIOMETRY] == 2) {
                 add_value_pair(mqtt_msg, "biometry", "skipped");
             }
             
             add_value_pair(mqtt_msg, "fingerprints", "1");
-            add_value_pair(mqtt_msg, "gps", "absent");
-            if (moddata[10]) {
+            
+            /* GPS data parser */
+            uint8_t *bytes = &moddata[UMDK_IDCARD_GPS];
+            gps_data_t gps;
+            parse_gps_data(&gps, bytes, false);
+            
+            if (!gps.ready) {
+                snprintf(buf, sizeof(buf), "absent");
+            } else if (!gps.valid) {
+                snprintf(buf, sizeof(buf), "invalid");
+            } else {
+                snprintf(buf, sizeof(buf), "%f%s, %f%s",
+                        fabs(gps.latitude), (gps.latitude)>0?"S":"N",
+                        fabs(gps.longitude), (gps.longitude)>0?"W":"E");
+            }
+            
+            add_value_pair(mqtt_msg, "gps", buf);
+            
+            if (moddata[UMDK_IDCARD_ALARM]) {
                 add_value_pair(mqtt_msg, "alarm", "1");
             } else {
                 add_value_pair(mqtt_msg, "alarm", "0");
@@ -102,7 +131,7 @@ bool umdk_idcard_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             break;
     }
     
-    message_id = moddata[11] | moddata[12] << 8;
+    message_id = moddata[UMDK_IDCARD_MESSAGE_ID] | moddata[UMDK_IDCARD_MESSAGE_ID + 1] << 8;
     uint16_to_le(&message_id);
     sprintf(buf, "%" PRIu16, message_id);
     add_value_pair(mqtt_msg, "mid", buf);
