@@ -37,7 +37,8 @@
 typedef enum {
 	UMDK_IDCARD_CMD_SET_PERIOD = 0,
 	UMDK_IDCARD_CMD_COLLECT,
-    UMDK_IDCARD_CMD_AUTH,
+	UMDK_IDCARD_CMD_AUTH,
+    UMDK_IDCARD_CMD_ALARM,
 } umdk_idcard_cmd_t;
 
 typedef enum {
@@ -77,6 +78,10 @@ void umdk_idcard_command(char *param, char *out, int bufsize) {
             uint16_t cmdid = strtol(param, &param, 10);
             snprintf(out, bufsize, "%02x%04x", UMDK_IDCARD_CMD_AUTH, cmdid);
         }
+    } else if (strstr(param, "alarm ") == param) {
+        param += strlen("alarm ");
+        uint16_t cmdid = strtol(param, &param, 10);
+        snprintf(out, bufsize, "%02x%04x", UMDK_IDCARD_CMD_ALARM, cmdid);
     }
 }
 
