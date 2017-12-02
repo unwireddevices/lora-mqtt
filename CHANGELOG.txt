@@ -1,3 +1,8 @@
+02.12.2017
+* Release 2.2.2
+* umdk-idcard module added
+* umdk-m230 uses JSON for weekends and holidays list
+
 31.10.2017
 * Release 2.2.1
 * umdk-ibutton module simplified
