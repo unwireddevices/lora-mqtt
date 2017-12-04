@@ -46,7 +46,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "2.2.1"
+#define VERSION "2.2.2"
 
 #define MAX_PENDING_NODES 1000
 
@@ -1328,6 +1328,8 @@ int main(int argc, char *argv[])
         }
         snprintf(pidval, sizeof(pidval), "%d\n", getpid());
         write(pidfile, pidval, strlen(pidval));
+        
+        sleep(30);
     }
 	
     
