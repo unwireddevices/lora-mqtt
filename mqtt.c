@@ -1474,8 +1474,8 @@ int main(int argc, char *argv[])
 	mosquitto_subscribe_callback_set(mosq, my_subscribe_callback);
 
 	if(mosquitto_connect(mosq, host, port, keepalive) == MOSQ_ERR_ERRNO){
-        int err_num = errno;
-        strerror_r(err_num, errbuf, sizeof(errbuf));
+        int errno_saved = errno;
+        int err_extracting = strerror_r(errno_saved, errbuf, sizeof(errbuf));
 		snprintf(logbuf, sizeof(logbuf), "Unable to connect.");
         logprint(logbuf);
         logprint(errbuf);
