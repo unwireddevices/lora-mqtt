@@ -1477,7 +1477,7 @@ int main(int argc, char *argv[])
         int errno_saved = errno;
         char *errmsg_extracting = strerror_r(errno_saved, errbuf, sizeof(errbuf));
         if (errmsg_extracting != errbuf) {
-            char *logmsg = malloc(sizeof[errmsg_extracting] + 1);
+            char *logmsg = malloc(sizeof(errmsg_extracting) + 1);
             logprint(strcat(strcpy(logmsg, errmsg_extracting), "\n"));
         }
 		snprintf(logbuf, sizeof(logbuf), "Unable to connect.");
