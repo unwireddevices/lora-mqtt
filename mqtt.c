@@ -1475,9 +1475,10 @@ int main(int argc, char *argv[])
 
 	if(mosquitto_connect(mosq, host, port, keepalive) == MOSQ_ERR_ERRNO){
         int errno_saved = errno;
-        char *err_extracting = strerror_r(errno_saved, errbuf, sizeof(errbuf));
-        if (err_extracting != errbuf) {
-            logprint(err_extracting);
+        char *errmsg_extracting = strerror_r(errno_saved, errbuf, sizeof(errbuf));
+        if (errmsg_extracting != errbuf) {
+            char *logmsg = malloc(sizeof[errmsg_extracting] + 1);
+            logprint(strcat(strcpy(logmsg, errmsg_extracting), "\n"));
         }
 		snprintf(logbuf, sizeof(logbuf), "Unable to connect.");
         logprint(logbuf);
