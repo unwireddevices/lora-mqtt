@@ -82,6 +82,7 @@ static int tx_delay;
 static int tx_maxretr;
 
 char logbuf[1024];
+char errbuf[1024];
 
 typedef struct entry {
 	TAILQ_ENTRY(entry) entries;   /* Circular queue. */
@@ -1472,9 +1473,12 @@ int main(int argc, char *argv[])
 	mosquitto_message_callback_set(mosq, my_message_callback);
 	mosquitto_subscribe_callback_set(mosq, my_subscribe_callback);
 
-	if(mosquitto_connect(mosq, host, port, keepalive)){
-		snprintf(logbuf, sizeof(logbuf), "Unable to connect.\n");
-		logprint(logbuf);
+	if(mosquitto_connect(mosq, host, port, keepalive) == MOSQ_ERR_ERRNO){
+        int err_num = errno;
+        strerror_r(err_num, errbuf, sizeof(errbuf));
+		snprintf(logbuf, sizeof(logbuf), "Unable to connect.");
+        logprint(logbuf);
+        logprint(errbuf);
 		return 1;
 	}
 
