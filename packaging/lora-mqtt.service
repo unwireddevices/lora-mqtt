@@ -1,0 +1,16 @@
+[Unit]
+Description=LoRa-MQTT translator daemon
+ConditionPathExists=/etc/lora-mqtt/mqtt.conf
+After=network.target mosquitto.service
+Requires=network.target mosquitto.service dev-ttySAC1.device
+
+[Service]
+RemainAfterExit=no
+StartLimitInterval=0
+User=root
+PIDFile=/var/run/mqtt-lora.pid
+ExecStart=/usr/bin/lora-mqtt -d
+ExecStop=/bin/kill -TERM $MAINPID
+
+[Install]
+WantedBy=multi-user.target
