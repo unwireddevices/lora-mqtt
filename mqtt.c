@@ -1328,13 +1328,14 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
         snprintf(pidval, sizeof(pidval), "%d\n", getpid());
-        
+
         if (write(pidfile, pidval, strlen(pidval)) < 0)
         {
             exit(EXIT_FAILURE);
-        }    }
+        }
 
-
+        sleep(30);
+    }
     /* Create message queue */
     msgqid = msgget(IPC_PRIVATE, IPC_CREAT);
     if (msgqid < 0) {
