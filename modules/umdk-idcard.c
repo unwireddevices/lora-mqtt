@@ -39,6 +39,7 @@ typedef enum {
 	UMDK_IDCARD_CMD_COLLECT,
 	UMDK_IDCARD_CMD_AUTH,
     UMDK_IDCARD_CMD_ALARM,
+    UMDK_IDCARD_CMD_LOCATION,
 } umdk_idcard_cmd_t;
 
 typedef enum {
@@ -77,6 +78,10 @@ void umdk_idcard_command(char *param, char *out, int bufsize) {
             param += strlen("fingerprint ");
             uint16_t cmdid = strtol(param, &param, 10);
             snprintf(out, bufsize, "%02x%04x", UMDK_IDCARD_CMD_AUTH, cmdid);
+        } else if (strstr(param, "location ") == param) {
+            param += strlen("location ");
+            uint16_t cmdid = strtol(param, &param, 10);
+            snprintf(out, bufsize, "%02x%04x", UMDK_IDCARD_CMD_LOCATION, cmdid);
         }
     } else if (strstr(param, "alarm ") == param) {
         param += strlen("alarm ");
@@ -128,11 +133,9 @@ bool umdk_idcard_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             
             add_value_pair(mqtt_msg, "gps", buf);
             
-            if (moddata[UMDK_IDCARD_ALARM]) {
-                add_value_pair(mqtt_msg, "alarm", "1");
-            } else {
-                add_value_pair(mqtt_msg, "alarm", "0");
-            }
+            snprintf(buf, sizeof(buf), "%d", moddata[UMDK_IDCARD_ALARM]);
+            add_value_pair(mqtt_msg, "alarm", buf);
+
             break;
     }
     
