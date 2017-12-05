@@ -24,8 +24,8 @@
  * @ingroup
  * @brief
  * @{
- * @file	umdk-ibutton.c
- * @brief   umdk-ibutton message parser
+ * @file	 umdk-ibutton.c
+ * @brief    umdk-ibutton message parser
  * @author   Mikhail Perkov
  * @author  
  */
@@ -40,44 +40,23 @@
 typedef enum {
 	UMDK_IBUTTON_OK 		= 0x01,		/* OK */
 	UMDK_IBUTTON_ERROR 		= 0x00,		/* ERROR */
-	UMDK_IBUTTON_GRANTED 	= 0x11,		/* ACCESS GRANTED */
-	UMDK_IBUTTON_DENIED	 	= 0x1F,		/* ACCESS DENIED */
-	UMDK_IBUTTON_UPDATED 	= 0x20,		/* ID key removed by timer access */
 } umdk_ibutton_reply_t;
 
 typedef enum {
-	UMDK_IBUTTON_CMD_RESET_LIST = 0x00,
-	UMDK_IBUTTON_CMD_ADD_ID = 0x01,
-	UMDK_IBUTTON_CMD_REMOVE_ID = 0x02,
+	UMDK_IBUTTON_CMD_NONE = 0x00,
 }umdk_ibutton_cmd_t;
 
 void umdk_ibutton_command(char *param, char *out, int bufsize)
  {
-	if (strstr(param, "reset") == param) {
-		snprintf(out, bufsize, "%02x", UMDK_IBUTTON_CMD_RESET_LIST);
-	}
-	else if (strstr(param, "add ") == param) {
-		param += strlen("add ");    // Skip command
-		uint64_t id = strtoll(param, &param, 16);
-		param += strlen(" ");    						// Skip space
-		uint16_t time = strtol(param, NULL, 10);
-		snprintf(out, bufsize, "%02x%016llx%04x", UMDK_IBUTTON_CMD_ADD_ID, id, time);
-	}
-	else if (strstr(param, "remove ") == param) {
-		param += strlen("remove ");    // Skip command
-		uint64_t id = strtoll(param, &param, 16);
-		snprintf(out, bufsize, "%02x%016llx", UMDK_IBUTTON_CMD_REMOVE_ID, id);
-	}
+	return;
 }
 
 bool umdk_ibutton_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
-
-	umdk_ibutton_reply_t cmd = moddata[0];
 		
     if (moddatalen == 1) {
-        if (cmd == UMDK_IBUTTON_OK) {
+        if (moddata[0] == UMDK_IBUTTON_OK) {
             add_value_pair(mqtt_msg, "msg", "OK");
         } 
 		else {
@@ -86,31 +65,11 @@ bool umdk_ibutton_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
         return true;
     }
 
-	uint64_t *id = ((uint64_t *)&moddata[1]);
-
-	snprintf(buf, sizeof(buf), "%016llX", *id);
-			
-	switch(cmd) {
-		case UMDK_IBUTTON_GRANTED: {        
-			add_value_pair(mqtt_msg, "GRANTED", buf);		
-			return true;
-			break;
-		}
-		
-		case UMDK_IBUTTON_DENIED: {
-			add_value_pair(mqtt_msg, "DENIED", buf);		
-			return true;
-			break;
-		}
-
-		case UMDK_IBUTTON_UPDATED: {
-			add_value_pair(mqtt_msg, "Removed by timer", buf);		
-			return true;
-			break;
-		}
-		
-		default:
-			break;
-	}
+    int  i = 0;
+    for (i=7; i >= 0; i--) {
+        snprintf(&buf[14 - i*2], 3, "%02X", moddata[i]);
+    }
+    printf("\n");
+    add_value_pair(mqtt_msg, "id", buf);
 	return true;
 }

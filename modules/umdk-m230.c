@@ -616,13 +616,13 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 
    if (moddatalen == 1) {
 		if (moddata[0] == M230_OK_REPLY) {
-			add_value_pair(mqtt_msg, "Msg", "Ok");
+			add_value_pair(mqtt_msg, "msg", "ok");
 		}
 		else if(moddata[0] == M230_ERROR_REPLY){
-			add_value_pair(mqtt_msg, "Msg", "Error");
+			add_value_pair(mqtt_msg, "msg", "error");
 		}
 		else if(moddata[0] == M230_ERROR_CMD){
-			add_value_pair(mqtt_msg, "Msg", "Invalid command");
+			add_value_pair(mqtt_msg, "msg", "invalid command");
 		}
 		return true;
 	}
@@ -638,29 +638,29 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 
 		if (moddatalen == 2) {
 			if (moddata[0] == M230_OK_REPLY) {
-				add_value_pair(mqtt_msg, "Msg", "Ok");
+				add_value_pair(mqtt_msg, "msg", "ok");
 			} else if(moddata[0] == M230_ERROR_REPLY){
-				add_value_pair(mqtt_msg, "Msg", "Error");
+				add_value_pair(mqtt_msg, "msg", "error");
 			} else if(moddata[0] == M230_NO_RESPONSE_REPLY){
-				add_value_pair(mqtt_msg, "Msg", "No response");
+				add_value_pair(mqtt_msg, "msg", "no response");
 			} else if(moddata[0] == M230_ERROR_NOT_FOUND){
-				add_value_pair(mqtt_msg, "Msg", "Device Not found");
+				add_value_pair(mqtt_msg, "msg", "device not found");
 			} else if(moddata[0] == M230_ERROR_OFFLINE){
-				add_value_pair(mqtt_msg, "Msg", "OFFLINE");
+				add_value_pair(mqtt_msg, "msg", "offline");
 			} else if(moddata[0] == M230_WRONG_CMD){
-				add_value_pair(mqtt_msg, "Msg", "Invalid command or parameter");
+				add_value_pair(mqtt_msg, "msg", "invalid parameter");
 			} else if(moddata[0] == M230_INTERNAL_ERROR){
-				add_value_pair(mqtt_msg, "Msg", "Internal error");
+				add_value_pair(mqtt_msg, "msg", "internal error");
 			} else if(moddata[0] == M230_ACCESS_ERROR){
-				add_value_pair(mqtt_msg, "Msg", "Access error");
+				add_value_pair(mqtt_msg, "msg", "access error");
 			} else if(moddata[0] == M230_TIME_CORRECTED){
-				add_value_pair(mqtt_msg, "Msg", "Time has already been corrected");
+				add_value_pair(mqtt_msg, "msg", "time already corrected");
 			} else if(moddata[0] == M230_OFFLINE){
-				add_value_pair(mqtt_msg, "Msg", "Offline");
+				add_value_pair(mqtt_msg, "msg", "offline");
 			} else if(moddata[0] == M230_OK){
-				add_value_pair(mqtt_msg, "Msg", "OK");
+				add_value_pair(mqtt_msg, "msg", "ok");
 			} else if(moddata[0] == M230_WAIT_REPLY){
-				add_value_pair(mqtt_msg, "Msg", "Please wait");
+				add_value_pair(mqtt_msg, "msg", "please wait");
 			}
 			return true;
 		// }
@@ -691,7 +691,7 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 				add_value_pair(mqtt_msg, "A-", buf);
 			}
 			else {
-				add_value_pair(mqtt_msg, "A-", "Not support");
+				add_value_pair(mqtt_msg, "A-", "N/A");
 			}
 
 			int_to_float_str(strbuf, value[2], 3);
@@ -704,7 +704,7 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 				add_value_pair(mqtt_msg, "R-", buf);
 			}
 			else {
-				add_value_pair(mqtt_msg, "R-", "Not support");
+				add_value_pair(mqtt_msg, "R-", "N/A");
 			}
 
 			return true;
@@ -781,14 +781,14 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 				add_value_pair(mqtt_msg, "Energy limit control", "Allowed");
 			}
 			else if(mode_limit_energy == 0) {
-				add_value_pair(mqtt_msg, "Energy limit control", "Not Allowed");
+				add_value_pair(mqtt_msg, "Energy limit control", "Not allowed");
 			}
 
 			if(mode_limit_power == 1) {
 				add_value_pair(mqtt_msg, "Power limit control", "Allowed");
 			}
 			else if(mode_limit_power == 0) {
-				add_value_pair(mqtt_msg, "Power limit control", "Not Allowed");
+				add_value_pair(mqtt_msg, "Power limit control", "Not allowed");
 			}
 
 			if(mode_load == 1) {
@@ -912,23 +912,24 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 
 			uint8_t num_char = 0;
 
+			num_char = snprintf(buf, sizeof(buf), "[ ");
 			for(i = 0; i < 4; i++) {
 				week = moddata[i + 2];
 				for(j = 0; j < 8; j++) {
 					day = (week >> j) & 1;
 					if(day == 1) {
 						flag_holiday = 1;
-						num_char += snprintf(buf + num_char, sizeof(buf) - num_char, " %02d", 8*i + j + 1);
+						num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%02d, ", 8*i + j + 1);
 					}
 				}
 			}
-
+			num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "]");
 
 			if(flag_holiday == 1) {
 				add_value_pair(mqtt_msg, "Holidays", buf);
 			}
 			else if(flag_holiday == 0) {
-				add_value_pair(mqtt_msg, "Holidays", "No");
+				add_value_pair(mqtt_msg, "Holidays", "None");
 			}
 
 			break;

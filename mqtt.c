@@ -46,7 +46,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "2.2.0"
+#define VERSION "2.2.2"
 
 #define MAX_PENDING_NODES 1000
 
@@ -368,10 +368,12 @@ static void set_blocking (int fd, int should_block)
 static void serve_reply(char *str) {
     puts("[info] Gate reply received");
 
+    /*
 	if (strlen(str) > REPLY_LEN * 2) {
 		puts("[error] Received too long reply from the gate");
 		return;
 	}
+    */
 
 	gate_reply_type_t reply = (gate_reply_type_t)str[0];
 	str += 1;
@@ -506,11 +508,19 @@ static void serve_reply(char *str) {
             mqtt_status.battery = 2000 + (50*(status & 0x1F));
             mqtt_status.temperature = 20*(status >> 5) - 30;
 
-			if (!convert_to(modid, moddata, moddatalen, topic, mqtt_msg)) {
-				snprintf(logbuf, sizeof(logbuf), "[error] Unable to convert gate reply \"%s\" for module %d\n", str, modid);
-				logprint(logbuf);
-				return;
-			}
+            if (modid == UNWDS_MODULE_NOT_FOUND) {
+                strcpy(topic, "device");
+                strcat(mqtt_msg[0].name, "error");
+                char mqtt_val[50];
+                snprintf(mqtt_val, 50, "module ID %d is not available", moddata[0]);
+                strcat(mqtt_msg[0].value, mqtt_val);
+            } else {
+                if (!convert_to(modid, moddata, moddatalen, topic, mqtt_msg)) {
+                    snprintf(logbuf, sizeof(logbuf), "[error] Unable to convert gate reply \"%s\" for module %d\n", str, modid);
+                    logprint(logbuf);
+                    return;
+                }
+            }
 
             build_mqtt_message(msg, mqtt_msg, mqtt_status, addr);
             publish_mqtt_message(mosq, addr, topic, msg, (mqtt_format_t) mqtt_format);
@@ -935,7 +945,7 @@ static void *uart_reader(void *arg)
 
 		if (strlen(buf) > 0) {
 
-            printf("Some data received: %d bytes\n", strlen(buf));
+            printf("Some data received: %d bytes\n", (int)strlen(buf));
 
             char *running = strdup(buf), *token;
             const char *delims = "\n";
@@ -1156,7 +1166,7 @@ static void my_message_callback(struct mosquitto *m, void *userdata, const struc
         }
     }
 
-	if (topic_count > 4) {
+	if (topic_count > 3) {
 		/* Convert address */
 		char *addr = topics[2];
 		uint64_t nodeid = 0;
@@ -1318,11 +1328,11 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
         snprintf(pidval, sizeof(pidval), "%d\n", getpid());
+        
         if (write(pidfile, pidval, strlen(pidval)) < 0)
         {
             exit(EXIT_FAILURE);
-        }
-    }
+        }    }
 
 
     /* Create message queue */

@@ -76,8 +76,9 @@ bool umdk_gps_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             if ((moddata[0] >> 6) & 1) {
                 lon = -lon;
             }
-
-            add_value_pair(mqtt_msg, "valid", "true");
+            
+            
+            add_value_pair(mqtt_msg, "valid", (moddata[0]>>7)?"true":"false");
             snprintf(buf, sizeof(buf), "%03d.%d", lat, lat_d);
             add_value_pair(mqtt_msg, "lat", buf);
             snprintf(buf, sizeof(buf), "%04d.%d", lon, lon_d);

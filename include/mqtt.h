@@ -22,6 +22,8 @@
 #ifndef MQTT_H
 #define MQTT_H
 
+#define UNWDS_MODULE_NOT_FOUND 255
+
 typedef enum {
 	CMD_PING = 'P',				/* Command to ping/pong with client */
 	CMD_DEVLIST = 'L',			/* Command to get devices list from a gate */

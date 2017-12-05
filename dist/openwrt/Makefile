@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=lora-mqtt
-PKG_VERSION:=2.2.0
+PKG_VERSION:=2.2.2
 PKG_RELEASE:=1
 
 # PKG_SOURCE_PROTO:=git

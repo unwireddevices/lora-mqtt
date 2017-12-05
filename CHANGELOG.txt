@@ -1,3 +1,15 @@
+02.12.2017
+* Release 2.2.2
+* umdk-idcard module added
+* umdk-m230 uses JSON for weekends and holidays list
+
+31.10.2017
+* Release 2.2.1
+* umdk-ibutton module simplified
+* access control system functionality moved from umdk-ibutton to umdk-pacs
+* umdk-m200 and umdk-m230 unified MQTT messages, see https://www.unwds.com/docs/riot/umdk-m200/ and https://www.unwds.com/docs/riot/umdk-m230/ for reference
+* umdk-hd44780 module added
+
 28.09.2017
 * Release 2.2.0
 * MQTT commands to alter gate module settings

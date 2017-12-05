@@ -19,8 +19,6 @@
  * SOFTWARE.
 */
 
-#define _DEFAULT_SOURCE
-
 #include "unwds-mqtt.h"
 #include "mqtt.h"
 

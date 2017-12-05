@@ -90,9 +90,9 @@ bool umdk_pwm_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
 	if (moddatalen == 1) {
 		if (moddata[0] == 0) {
-			add_value_pair(mqtt_msg, "Msg", "Ok");
+			add_value_pair(mqtt_msg, "msg", "ok");
 		} else if(moddata[0] == 1){
-			add_value_pair(mqtt_msg, "Msg", "Error");
+			add_value_pair(mqtt_msg, "msg", "error");
 		}
 		return true;
 	}
