@@ -442,11 +442,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			} else if(moddata[0] == M200_ERROR_REPLY){
 				add_value_pair(mqtt_msg, "msg", "error");
 			} else if(moddata[0] == M200_NO_RESPONSE_REPLY){
-<<<<<<< HEAD
 				add_value_pair(mqtt_msg, "msg", "no response");
-=======
-				add_value_pair(mqtt_msg, "msg", "no response");
->>>>>>> 96f12f37a905c5e75a8763ddad970ad7df9748b7
 			}
 			return true;
 		}
