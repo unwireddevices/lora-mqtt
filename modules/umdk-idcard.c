@@ -40,6 +40,7 @@ typedef enum {
 	UMDK_IDCARD_CMD_AUTH,
     UMDK_IDCARD_CMD_ALARM,
     UMDK_IDCARD_CMD_LOCATION,
+    UMDK_IDCARD_CMD_SWITCH_GPS,
 } umdk_idcard_cmd_t;
 
 typedef enum {
@@ -87,6 +88,18 @@ void umdk_idcard_command(char *param, char *out, int bufsize) {
         param += strlen("alarm ");
         uint16_t cmdid = strtol(param, &param, 10);
         snprintf(out, bufsize, "%02x%04x", UMDK_IDCARD_CMD_ALARM, cmdid);
+    } else if (strstr(param, "gps ") == param) {
+        param += strlen("gps ");
+        uint8_t gps_state = 1;
+        if (strstr(param, "on ") == param) {
+            gps_state = 1;
+            param += strlen("on ");
+        } else {
+            gps_state = 0;
+            param += strlen("off ");
+        }
+        uint16_t cmdid = strtol(param, &param, 10);
+        snprintf(out, bufsize, "%02x%02x%04x", UMDK_IDCARD_CMD_SWITCH_GPS, gps_state, cmdid);
     }
 }
 
