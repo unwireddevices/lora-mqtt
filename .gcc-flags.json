@@ -1,5 +1,0 @@
-{
-  "gccDefaultCFlags": "-v -O0 -O -Wall -Werror",
-  "gccIncludePaths": "./include,./modules/include",
-  "gccSuppressWarnings": false
-}
