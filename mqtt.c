@@ -1484,16 +1484,18 @@ int main(int argc, char *argv[])
 	mosquitto_message_callback_set(mosq, my_message_callback);
 	mosquitto_subscribe_callback_set(mosq, my_subscribe_callback);
 
-	if(mosquitto_connect(mosq, host, port, keepalive) == MOSQ_ERR_ERRNO){
+	if (mosquitto_connect(mosq, host, port, keepalive) == MOSQ_ERR_ERRNO) {
+        snprintf(logbuf, sizeof(logbuf), "Unable to connect");
         int errno_saved = errno;
         char *errmsg_extracting = strerror_r(errno_saved, errbuf, sizeof(errbuf));
         if (errmsg_extracting != errbuf) {
-            char *logmsg = malloc(sizeof(errmsg_extracting) + 1);
-            logprint(strcat(strcpy(logmsg, errmsg_extracting), "\n"));
+            logprint(strcat(logbuf, ".\n"));
+        } else {
+            logbuf = strncat(logbuf, ": ", sizeof(logbuf) - (strlen(logbuf) + 1));
+            logbuf = strncat(logbuf, errbuf, sizeof(logbuf) - (strlen(logbuf) + 1));
+            logbuf = strncat(logbuf, "\n", sizeof(logbuf) - (strlen(logbuf) + 1));
+            logprint(logbuf);
         }
-		snprintf(logbuf, sizeof(logbuf), "Unable to connect.");
-        logprint(logbuf);
-        logprint(errbuf);
 		return 1;
 	}
 
