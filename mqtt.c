@@ -1491,9 +1491,9 @@ int main(int argc, char *argv[])
 		if (errmsg_extracting != errbuf) {
 			logprint(strcat(logbuf, ".\n"));
 		} else {
-			logbuf = strncat(logbuf, ": ", sizeof(logbuf) - (strlen(logbuf) + 1));
-			logbuf = strncat(logbuf, errbuf, sizeof(logbuf) - (strlen(logbuf) + 1));
-			logbuf = strncat(logbuf, "\n", sizeof(logbuf) - (strlen(logbuf) + 1));
+			strncat(logbuf, ": ", sizeof(logbuf) - (strlen(logbuf) + 1));
+			strncat(logbuf, errbuf, sizeof(logbuf) - (strlen(logbuf) + 1));
+			strncat(logbuf, "\n", sizeof(logbuf) - (strlen(logbuf) + 1));
 			logprint(logbuf);
 		}
 		return 1;
