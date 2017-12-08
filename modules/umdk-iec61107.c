@@ -45,11 +45,10 @@
 #define IEC61107_MODE_SP_READ 0x36
 
 typedef enum {   
-    UMDK_IEC61107_CMD_RESET 			= 0xFF,		/* Clear database */
-    UMDK_IEC61107_CMD_ADD_ADDR 			= 0xFE,		/* Add address  in database */
-    UMDK_IEC61107_CMD_REMOVE_ADDR 		= 0xFD,		/* Remove address from database */
-	UMDK_IEC61107_CMD_REMOVE_NUMB 		= 0xFC,		/* Remove address from database by number */
-	UMDK_IEC61107_CMD_GET_LIST 			= 0xFB,		/* Send database of addresses */
+    UMDK_IEC61107_CMD_DATABASE_RESET 		= 0xFE,		/* Clear database */
+    UMDK_IEC61107_CMD_DATABASE_ADD 			= 0xFD,		/* Add address  in database */
+    UMDK_IEC61107_CMD_DATABASE_REMOVE 		= 0xFC,		/* Remove address from database */
+	UMDK_IEC61107_CMD_DATABASE_FIND 		= 0xFB,		/* Find address in database */
 
     IEC61107_CMD_PROPRIETARY_COMMAND 	= 0xF0,		/* Less this value - single command of CE102M */
 
@@ -77,8 +76,17 @@ typedef enum {
 	
 	IEC61107_CMD_SCHEDULE				= 0x12,		/* Read/write schedule ot tariffs */
 	IEC61107_CMD_HOLIDAYS				= 0x13,		/* Read/write list of holidays */
+	
+	IEC61107_CMD_TARIFF_DEFAULT			= 0x14,		/* Set/get default tariff */	
 	// IEC61107_CMD_GET_SAVING_END_MONTH	= 0x14,
 } umdk_iec61107_cmd_t;
+
+typedef enum {
+	NONE	= 0,
+	ADDRESS = 1,
+	DEVICE	= 2,
+	FREE	= 3,
+} iec61107_database_param_t;
 
 typedef enum {
 	UMDK_IEC61107_ERROR_REPLY 		= 0,
@@ -93,7 +101,96 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 	uint8_t cmd = 0;		
 	uint8_t mode = 0;
 	uint8_t zz_param = 0;
-	if (strstr(param, "set init") == param) {
+	iec61107_database_param_t parametr = NONE;
+	uint8_t device = 0;
+	char *address_ptr = NULL;
+	uint8_t symb_addr = 0;
+	uint8_t i = 0;
+	uint8_t length_addr = 0;
+	uint16_t num_char = 0;
+	
+	if (strstr(param, "reset") == param) {
+		cmd = UMDK_IEC61107_CMD_DATABASE_RESET;
+		snprintf(out, bufsize, "%02x", cmd);
+		return;
+	}
+	else if (strstr(param, "add ") == param) {
+		param += strlen("add ");    // Skip 
+		cmd = UMDK_IEC61107_CMD_DATABASE_ADD;
+		parametr = NONE;
+		device = 0;
+		address_ptr = param;
+		length_addr = (uint8_t)strlen(address_ptr);
+
+		num_char = snprintf(out, bufsize, "%02x%02x%02x", cmd, parametr, device);
+		for(i = 0; i < length_addr; i++) {
+			symb_addr = *address_ptr;
+			num_char += snprintf(out + num_char, bufsize - num_char, "%02x", symb_addr);
+			address_ptr++;
+		}			
+		return;		
+	}
+	else if (strstr(param, "remove ") == param) {
+		param += strlen("remove ");    // Skip 
+		cmd = UMDK_IEC61107_CMD_DATABASE_REMOVE;
+		if (strstr(param, "device ") == param) {
+			param += strlen("device ");    // Skip 
+			parametr = DEVICE;			
+			device = strtol(param, &param, 10);
+			symb_addr = 0;
+			snprintf(out, bufsize, "%02x%02x%02x%02x", cmd, parametr, device, symb_addr);
+		}
+		else if (strstr(param, "address ") == param) {
+			param += strlen("address ");    // Skip 
+			parametr = ADDRESS;
+			device = 0;
+			
+			address_ptr = param;
+			length_addr = (uint8_t)strlen(address_ptr);
+
+			num_char = snprintf(out, bufsize, "%02x%02x%02x", cmd, parametr, device);
+			for(i = 0; i < length_addr; i++) {
+				symb_addr = *address_ptr;
+				num_char += snprintf(out + num_char, bufsize - num_char, "%02x", symb_addr);
+				address_ptr++;
+			}						
+		}
+		else  {
+			snprintf(out, bufsize, "%02x", UMDK_IEC61107_INVALID_CMD_REPLY);
+		}
+		return;
+	}
+	else if (strstr(param, "find ") == param) {
+		param += strlen("find ");    // Skip 
+		cmd = UMDK_IEC61107_CMD_DATABASE_FIND;
+		if (strstr(param, "device ") == param) {
+			param += strlen("device ");    // Skip 
+			parametr = DEVICE;			
+			device = strtol(param, &param, 10);
+			symb_addr = 0;
+			snprintf(out, bufsize, "%02x%02x%02x%02x", cmd, parametr, device, symb_addr);
+		}
+		else if (strstr(param, "address ") == param) {
+			param += strlen("address ");    // Skip 
+			parametr = ADDRESS;
+			device = 0;
+			
+			address_ptr = param;
+			length_addr = (uint8_t)strlen(address_ptr);
+
+			num_char = snprintf(out, bufsize, "%02x%02x%02x", cmd, parametr, device);
+			for(i = 0; i < length_addr; i++) {
+				symb_addr = *address_ptr;
+				num_char += snprintf(out + num_char, bufsize - num_char, "%02x", symb_addr);
+				address_ptr++;
+			}						
+		}
+		else  {
+			snprintf(out, bufsize, "%02x", UMDK_IEC61107_INVALID_CMD_REPLY);
+		}
+		return;
+	}
+	else if (strstr(param, "set init") == param) {
 		param += strlen("set init");    // Skip 
 		cmd = IEC61107_CMD_OPTIONS;
 		mode = IEC61107_WRITE;
@@ -198,49 +295,41 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 	param += strlen(" ");    						// Skip space
 		
 	char *parametr_ptr = param;
-	char *address_ptr = NULL;
-	
-	uint8_t symb_addr = 0;
+	uint8_t address = 0;
 	uint8_t symb_param = 0;
 	uint8_t length_total = 0;
 	uint8_t length_param = 0;
-	uint8_t length_addr = 0;
 		
 	length_total = (uint8_t)strlen(parametr_ptr);
+	length_param = length_total;
+	printf("Length total: %d\n", length_total);
 	
-	address_ptr = strstr(param, " ");
-	if(address_ptr == NULL) {
-		length_param = 0;
-		length_addr = length_total;
-		address_ptr = parametr_ptr;
-	}
-	else {
-		address_ptr += strlen(" ");    // Skip space
-		length_addr = (uint8_t)strlen(address_ptr);		
-		length_param = length_total - length_addr - strlen(" ");
-	}
-	
-	if(length_addr == 0) {
+	if(length_total < 2) {
 		snprintf(out, bufsize, "%02x", UMDK_IEC61107_INVALID_CMD_REPLY);
-		return;		
+		return;				
 	}
 	
-	uint16_t num_char;		
-	num_char = snprintf(out, bufsize, "%02x%02x%02x%02x", cmd, mode, zz_param, length_addr);
-	
-	uint8_t i = 0;
-	for(i = 0; i < length_addr; i++) {
-		symb_addr = *address_ptr;
-		num_char += snprintf(out + num_char, bufsize - num_char, "%02x", symb_addr);
-		address_ptr++;
+	address_ptr = parametr_ptr + length_total - 1;
+	while(*address_ptr != ' '){
+		address_ptr--;
+		length_param--;
 	}
+	 
+	address_ptr++;	
+	device = strtol(address_ptr, &address_ptr, 10);
+	printf("Device: %02d\n", device);
 	
-	num_char += snprintf(out + num_char, bufsize - num_char, "%02x", IEC61107_BRACKET_OPEN);	
+	if(address_ptr != parametr_ptr) {
+		length_param--;
+	}
+	printf("Length param: %d\n", length_param);	
+	num_char = snprintf(out, bufsize, "%02x%02x%02x%02x", cmd, mode, zz_param, device);
 	
-	for(i = 0; i < length_param; i++) {
-		
+	num_char += snprintf(out + num_char, bufsize - num_char, "%02x", IEC61107_BRACKET_OPEN);
+	
+	for(i = 0; i < length_param; i++) {		
 		symb_param = *parametr_ptr;
-		num_char += snprintf(out + num_char, bufsize - num_char, "%02x", symb_param);			
+		num_char += snprintf(out + num_char, bufsize - num_char, "%02x", symb_param);
 		parametr_ptr++;
 	}
 	
@@ -250,9 +339,9 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 
 bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
-	// char buf[100];
+	char buf[100];
     // char strbuf[20];
-	char buf_addr[50];
+	char buf_addr[10];
 	
 	uint8_t ii;
     printf("[iec61107] RX data:  ");
@@ -274,23 +363,14 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     }	
 	
 	umdk_iec61107_cmd_t cmd = moddata[0];	
-	uint8_t length_addr = moddata[1];	
+	uint8_t address = moddata[1];
 	
-	if(cmd < IEC61107_CMD_PROPRIETARY_COMMAND) {
-		uint8_t *address_ptr = moddata + 2;	
-		uint16_t num_char = 0;
-		uint8_t i = 0;
-		uint8_t symbol = 0;
+	if(cmd < IEC61107_CMD_PROPRIETARY_COMMAND) {	
+		snprintf(buf_addr, sizeof(buf_addr), "%02d", address);
+		add_value_pair(mqtt_msg, "device", buf_addr);
 		
-		for(i = 0; i < length_addr; i++) {
-			symbol = *address_ptr;
-			num_char += snprintf(buf_addr + num_char, sizeof(buf_addr) - num_char, "%c", symbol);
-			address_ptr++;
-		}
-		
-		add_value_pair(mqtt_msg, "address", buf_addr);
-							
-		if (moddatalen == length_addr + 2) {
+								
+		if (moddatalen == 2) {
 			if (moddata[0] == UMDK_IEC61107_OK_REPLY) {
 				add_value_pair(mqtt_msg, "msg", "ok");
 			} else if(moddata[0] == UMDK_IEC61107_ERROR_REPLY){
@@ -299,69 +379,92 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 				add_value_pair(mqtt_msg, "msg", "no response");					
 			}
 			return true;
-		}
+		}	
 	}
-  
-	// uint8_t i;
-	// uint32_t * ptr_value;
-				
-		if(cmd == IEC61107_CMD_TIME) {
-			char time_buf[10] = { };
-			
-			uint8_t hour = ( moddata[length_addr + 2] - 0x30) * 10 + ( moddata[length_addr + 3] - 0x30);
-			uint8_t min =  ( moddata[length_addr + 4] - 0x30) * 10 + ( moddata[length_addr + 5] - 0x30);
-			uint8_t sec =  ( moddata[length_addr + 6] - 0x30) * 10 + ( moddata[length_addr + 7] - 0x30);
-					
-			
-			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", hour, min, sec);	
-			add_value_pair(mqtt_msg, "time", time_buf);
-			
+	else {
+		if(cmd == UMDK_IEC61107_CMD_DATABASE_ADD) {
+			add_value_pair(mqtt_msg, "cmd", "added");
 		}
-		else if(cmd == IEC61107_CMD_DATE) {
-			char date_buf[15] = { };
-			
-			uint8_t dow = ( moddata[length_addr + 2] - 0x30) * 10 + ( moddata[length_addr + 3] - 0x30);
-			
-			uint8_t day = ( moddata[length_addr + 4] - 0x30) * 10 + ( moddata[length_addr + 5] - 0x30);
-			uint8_t month =  ( moddata[length_addr + 6] - 0x30) * 10 + ( moddata[length_addr + 7] - 0x30);
-			uint8_t year =  ( moddata[length_addr + 8] - 0x30) * 10 + ( moddata[length_addr + 9] - 0x30);
-
-			add_value_pair(mqtt_msg, "day", str_dow[dow]);			
-			
-			snprintf(date_buf, sizeof(date_buf), "%02d/%02d/%02d", day, month, year);	
-			add_value_pair(mqtt_msg, "date", date_buf);
-		}				
-		else if(cmd == IEC61107_CMD_SERIAL) {
-			uint8_t *serial_ptr = moddata + length_addr + 2;	
-			for(i = length_addr + 2; i < moddatalen; i++) {
-				symbol = *serial_ptr;
-				um_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
-				serial_ptr++;
-			}
+		else if(cmd == UMDK_IEC61107_CMD_DATABASE_REMOVE) {
+			add_value_pair(mqtt_msg, "cmd", "removed");
+		}
+		else if(cmd == UMDK_IEC61107_CMD_DATABASE_SEARCH) {
+			add_value_pair(mqtt_msg, "cmd", "found");
+		}
 		
-			add_value_pair(mqtt_msg, "serial", buf);
+		snprintf(buf_addr, sizeof(buf_addr), "%02d", address);
+		add_value_pair(mqtt_msg, "device", buf_addr);	
+		
+		uint8_t *device_ptr = moddata + 2;	
+		uint16_t num_char = 0;
+		uint8_t i = 0;
+		uint8_t symbol = 0;
+		
+		for(i = 0; i < (moddatalen - 2); i++) {
+			symbol = *address_ptr;
+			num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
+			device_ptr++;
 		}
-		else if(cmd == IEC61107_CMD_ADDRESS) {
-			
-		}			
-		else if(cmd == IEC61107_CMD_GET_VOLT) {
-			
-		}			
-		else if(cmd == IEC61107_CMD_GET_CURR) {
-			
-		}			
-		else if(cmd == IEC61107_CMD_GET_POWER) {
-			
-		}		
-		else if(cmd == IEC61107_CMD_SCHEDULE) {
-			
-		}			
-		else if(cmd == IEC61107_CMD_HOLIDAYS) {
-			
-		}			
-		else if((cmd >= IEC61107_CMD_GET_VALUE_TOTAL_ALL && (cmd <= IEC61107_CMD_GET_VALUE_END_DAY)) {
-			
-		}				
+		add_value_pair(mqtt_msg, "address", buf);			
+	}
+ 
+	if(cmd == IEC61107_CMD_TIME) {
+		char time_buf[10] = { };
+		
+		uint8_t hour = ( moddata[length_addr + 2] - 0x30) * 10 + ( moddata[length_addr + 3] - 0x30);
+		uint8_t min =  ( moddata[length_addr + 4] - 0x30) * 10 + ( moddata[length_addr + 5] - 0x30);
+		uint8_t sec =  ( moddata[length_addr + 6] - 0x30) * 10 + ( moddata[length_addr + 7] - 0x30);
+				
+		
+		snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", hour, min, sec);	
+		add_value_pair(mqtt_msg, "time", time_buf);
+		
+	}
+	else if(cmd == IEC61107_CMD_DATE) {
+		char date_buf[15] = { };
+		
+		uint8_t dow = ( moddata[length_addr + 2] - 0x30) * 10 + ( moddata[length_addr + 3] - 0x30);
+		
+		uint8_t day = ( moddata[length_addr + 4] - 0x30) * 10 + ( moddata[length_addr + 5] - 0x30);
+		uint8_t month =  ( moddata[length_addr + 6] - 0x30) * 10 + ( moddata[length_addr + 7] - 0x30);
+		uint8_t year =  ( moddata[length_addr + 8] - 0x30) * 10 + ( moddata[length_addr + 9] - 0x30);
+
+		add_value_pair(mqtt_msg, "day", str_dow[dow]);			
+		
+		snprintf(date_buf, sizeof(date_buf), "%02d/%02d/%02d", day, month, year);	
+		add_value_pair(mqtt_msg, "date", date_buf);
+	}				
+	else if(cmd == IEC61107_CMD_SERIAL) {
+		uint8_t *serial_ptr = moddata + length_addr + 2;	
+		for(i = length_addr + 2; i < moddatalen; i++) {
+			symbol = *serial_ptr;
+			um_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
+			serial_ptr++;
+		}
+	
+		add_value_pair(mqtt_msg, "serial", buf);
+	}
+	else if(cmd == IEC61107_CMD_ADDRESS) {
+		
+	}			
+	else if(cmd == IEC61107_CMD_GET_VOLT) {
+		
+	}			
+	else if(cmd == IEC61107_CMD_GET_CURR) {
+		
+	}			
+	else if(cmd == IEC61107_CMD_GET_POWER) {
+		
+	}		
+	else if(cmd == IEC61107_CMD_SCHEDULE) {
+		
+	}			
+	else if(cmd == IEC61107_CMD_HOLIDAYS) {
+		
+	}			
+	else if((cmd >= IEC61107_CMD_GET_VALUE_TOTAL_ALL && (cmd <= IEC61107_CMD_GET_VALUE_END_DAY)) {
+		
+	}				
 				
 	return true;
 }
