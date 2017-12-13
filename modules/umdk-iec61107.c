@@ -280,7 +280,9 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 		param += strlen("get schedule");    // Skip command
 		cmd = IEC61107_CMD_SCHEDULE;	
 		mode = IEC61107_READ;		
-		zz_param = 0x01;
+		param += strlen(" ");    						// Skip space
+		// zz_param = 0x01;
+		zz_param = strtol(address_ptr, &address_ptr, 10);
 	}
 	else if (strstr(param, "get holidays") == param) { 
 		param += strlen("get holidays");    // Skip command
@@ -295,7 +297,6 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 	param += strlen(" ");    						// Skip space
 		
 	char *parametr_ptr = param;
-	uint8_t address = 0;
 	uint8_t symb_param = 0;
 	uint8_t length_total = 0;
 	uint8_t length_param = 0;
@@ -316,12 +317,17 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 	}
 	 
 	address_ptr++;	
-	device = strtol(address_ptr, &address_ptr, 10);
-	printf("Device: %02d\n", device);
 	
 	if(address_ptr != parametr_ptr) {
 		length_param--;
 	}
+	else {
+		puts("No parametr");
+	}
+	
+	device = strtol(address_ptr, &address_ptr, 10);
+	printf("\nDevice: %02d\n", device);
+	
 	printf("Length param: %d\n", length_param);	
 	num_char = snprintf(out, bufsize, "%02x%02x%02x%02x", cmd, mode, zz_param, device);
 	
@@ -342,7 +348,10 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	char buf[100];
     // char strbuf[20];
 	char buf_addr[10];
-	
+	uint16_t num_char = 0;
+	uint16_t i = 0;
+	uint8_t symbol = 0;
+		
 	uint8_t ii;
     printf("[iec61107] RX data:  ");
     for(ii = 0; ii < moddatalen; ii++) {
@@ -363,10 +372,10 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     }	
 	
 	umdk_iec61107_cmd_t cmd = moddata[0];	
-	uint8_t address = moddata[1];
+	uint8_t device = moddata[1];
 	
 	if(cmd < IEC61107_CMD_PROPRIETARY_COMMAND) {	
-		snprintf(buf_addr, sizeof(buf_addr), "%02d", address);
+		snprintf(buf_addr, sizeof(buf_addr), "%02d", device);
 		add_value_pair(mqtt_msg, "device", buf_addr);
 		
 								
@@ -388,32 +397,31 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		else if(cmd == UMDK_IEC61107_CMD_DATABASE_REMOVE) {
 			add_value_pair(mqtt_msg, "cmd", "removed");
 		}
-		else if(cmd == UMDK_IEC61107_CMD_DATABASE_SEARCH) {
+		else if(cmd == UMDK_IEC61107_CMD_DATABASE_FIND) {
 			add_value_pair(mqtt_msg, "cmd", "found");
 		}
 		
-		snprintf(buf_addr, sizeof(buf_addr), "%02d", address);
+		snprintf(buf_addr, sizeof(buf_addr), "%02d", device);
 		add_value_pair(mqtt_msg, "device", buf_addr);	
 		
-		uint8_t *device_ptr = moddata + 2;	
+		uint8_t *address_ptr = moddata + 2;	
 		uint16_t num_char = 0;
-		uint8_t i = 0;
-		uint8_t symbol = 0;
-		
+
 		for(i = 0; i < (moddatalen - 2); i++) {
 			symbol = *address_ptr;
 			num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
-			device_ptr++;
+			address_ptr++;
 		}
-		add_value_pair(mqtt_msg, "address", buf);			
+		add_value_pair(mqtt_msg, "address", buf);		
+		return true;		
 	}
  
 	if(cmd == IEC61107_CMD_TIME) {
 		char time_buf[10] = { };
 		
-		uint8_t hour = ( moddata[length_addr + 2] - 0x30) * 10 + ( moddata[length_addr + 3] - 0x30);
-		uint8_t min =  ( moddata[length_addr + 4] - 0x30) * 10 + ( moddata[length_addr + 5] - 0x30);
-		uint8_t sec =  ( moddata[length_addr + 6] - 0x30) * 10 + ( moddata[length_addr + 7] - 0x30);
+		uint8_t hour = ( moddata[2] - 0x30) * 10 + ( moddata[3] - 0x30);
+		uint8_t min =  ( moddata[4] - 0x30) * 10 + ( moddata[5] - 0x30);
+		uint8_t sec =  ( moddata[6] - 0x30) * 10 + ( moddata[7] - 0x30);
 				
 		
 		snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", hour, min, sec);	
@@ -423,11 +431,11 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	else if(cmd == IEC61107_CMD_DATE) {
 		char date_buf[15] = { };
 		
-		uint8_t dow = ( moddata[length_addr + 2] - 0x30) * 10 + ( moddata[length_addr + 3] - 0x30);
+		uint8_t dow = ( moddata[2] - 0x30) * 10 + ( moddata[3] - 0x30);
 		
-		uint8_t day = ( moddata[length_addr + 4] - 0x30) * 10 + ( moddata[length_addr + 5] - 0x30);
-		uint8_t month =  ( moddata[length_addr + 6] - 0x30) * 10 + ( moddata[length_addr + 7] - 0x30);
-		uint8_t year =  ( moddata[length_addr + 8] - 0x30) * 10 + ( moddata[length_addr + 9] - 0x30);
+		uint8_t day = ( moddata[4] - 0x30) * 10 + ( moddata[5] - 0x30);
+		uint8_t month =  ( moddata[6] - 0x30) * 10 + ( moddata[7] - 0x30);
+		uint8_t year =  ( moddata[8] - 0x30) * 10 + ( moddata[9] - 0x30);
 
 		add_value_pair(mqtt_msg, "day", str_dow[dow]);			
 		
@@ -435,10 +443,10 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		add_value_pair(mqtt_msg, "date", date_buf);
 	}				
 	else if(cmd == IEC61107_CMD_SERIAL) {
-		uint8_t *serial_ptr = moddata + length_addr + 2;	
-		for(i = length_addr + 2; i < moddatalen; i++) {
+		uint8_t *serial_ptr = moddata + 2;	
+		for(i = 1 + 2; i < moddatalen; i++) {
 			symbol = *serial_ptr;
-			um_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
+			num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
 			serial_ptr++;
 		}
 	
@@ -462,7 +470,7 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	else if(cmd == IEC61107_CMD_HOLIDAYS) {
 		
 	}			
-	else if((cmd >= IEC61107_CMD_GET_VALUE_TOTAL_ALL && (cmd <= IEC61107_CMD_GET_VALUE_END_DAY)) {
+	else if((cmd >= IEC61107_CMD_GET_VALUE_TOTAL_ALL) && (cmd <= IEC61107_CMD_GET_VALUE_END_DAY)) {
 		
 	}				
 				
