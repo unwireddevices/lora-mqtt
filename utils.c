@@ -76,7 +76,7 @@ void bytes_to_hex(uint8_t *bytes, size_t num_bytes, char *str, bool reverse_orde
 	size_t i;
 	for (i = 0; i < num_bytes; i++) {
 		char buf[2];
-		snprintf(buf, sizeof(buf), "%02x", bytes[(reverse_order) ? num_bytes - 1 - i : i]);
+		snprintf(buf, sizeof(buf), "%02X", bytes[(reverse_order) ? num_bytes - 1 - i : i]);
 		strcat(str, buf);
 	}
 }
@@ -88,17 +88,48 @@ bool is_big_endian(void)
     return (*(char *)&n == 0);
 }
 
+void uint64_swap_bytes(uint64_t *num)
+{
+    *num =  ((*num & (uint64_t)0x00000000000000ff) << 56) | \
+            ((*num & (uint64_t)0x000000000000ff00) << 40) | \
+            ((*num & (uint64_t)0x0000000000ff0000) << 24) | \
+            ((*num & (uint64_t)0x00000000ff000000) <<  8) | \
+            ((*num & (uint64_t)0x000000ff00000000) >>  8) | \
+            ((*num & (uint64_t)0x0000ff0000000000) >> 24) | \
+            ((*num & (uint64_t)0x00ff000000000000) >> 40) | \
+            ((*num & (uint64_t)0xff00000000000000) >> 56);
+}
+
+void uint32_swap_bytes(uint32_t *num) {
+    *num =  ((*num & 0x000000ff) << 24) | \
+            ((*num & 0x0000ff00) <<  8) | \
+            ((*num & 0x00ff0000) >>  8) | \
+            ((*num & 0xff000000) >> 24);
+}
+
+void uint16_swap_bytes(uint16_t *num) {
+    *num =  ((*num & 0x00ff) << 8) | \
+            ((*num & 0xff00) >> 8);
+}
+
+void uint64_to_le(uint64_t *num)
+{
+    if (is_big_endian()) {
+        uint64_swap_bytes(num);
+    }
+}
+
 void uint32_to_le(uint32_t *num)
 {
     if (is_big_endian()) {
-        *num = ((*num >> 24) & 0xff) | ((*num << 8) & 0xff0000) | ((*num >> 8) & 0xff00) | ((*num << 24) & 0xff000000);
+        uint32_swap_bytes(num);
     }
 }
 
 void uint16_to_le(uint16_t *num)
 {
     if (is_big_endian()) {
-        *num = ((*num >> 8) & 0xff) | ((*num << 8) & 0xff00);
+        uint16_swap_bytes(num);
     }
 }
 
@@ -140,6 +171,25 @@ bool is_number(char* str) {
     } else {
         return false;
     }
+}
+
+uint16_t crc16_arc(uint8_t *data, uint16_t len)
+{
+   uint16_t crc = 0x0000;
+   uint16_t j;
+   for (j = len; j > 0; j--)
+   {
+      crc ^= *data++;
+      uint8_t i;
+      for (i = 0; i < 8; i++)
+      {
+         if (crc & 1)
+            crc = (crc >> 1) ^ 0xA001; // 0xA001 is the reflection of 0x8005
+         else
+            crc >>= 1;
+      }
+   }
+   return (crc);
 }
 
 /* GPS binary format decoder */
