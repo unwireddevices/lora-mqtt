@@ -56,6 +56,17 @@ void int_to_float_str(char *buf, int decimal, uint8_t precision);
 
 bool is_number(char* str);
 
+typedef struct {
+	float latitude;
+	float longitude;
+    /*
+	char date[15];
+	char time[15];
+    */
+    bool valid;
+    bool ready;
+} gps_data_t;
+
 void parse_gps_data(gps_data_t *gps, uint8_t *data, bool decode_nmea);
 
 uint16_t crc16_arc(uint8_t *data, uint16_t len);
