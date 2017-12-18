@@ -9,7 +9,7 @@
 
 CFLAGS += -v -O0 -O -Wall -Werror -I./include -I./modules/include
 # CXXFLAGS =
-LDFLAGS += -lcares -lcrypto -lssl -lmosquitto -lpthread -pthread
+LDFLAGS += -lcares -lcrypto -lssl -lmosquitto -lpthread -pthread -lm
 
 # do not use the default `rv` option
 ARFLAGS=cr
