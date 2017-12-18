@@ -943,9 +943,6 @@ static void *uart_reader(void *arg)
 		buf[i] = '\0';
 
 		if (strlen(buf) > 0) {
-            
-            printf("Some data received: %d bytes\n", (int)strlen(buf));
-            
             char *running = strdup(buf), *token;
             const char *delims = "\n";
             
@@ -955,13 +952,9 @@ static void *uart_reader(void *arg)
                     continue;
                 }
                 
-                puts("Creating internal message");
-                
                 msg_rx.mtype = 1;
                 memcpy(msg_rx.mtext, token, strlen(token));
                 msg_rx.mtext[strlen(token)] = 0;
-                
-                puts("Sending internal message");
                 
                 if (msgsnd(msgqid, &msg_rx, sizeof(msg_rx.mtext), 0) < 0) {
                     perror( strerror(errno) );
