@@ -139,9 +139,14 @@ bool umdk_idcard_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             } else if (!gps.valid) {
                 snprintf(buf, sizeof(buf), "invalid");
             } else {
-                snprintf(buf, sizeof(buf), "%04.2f%s, %05.2f%s",
-                        fabs(gps.latitude), (gps.latitude)>0?"N":"S",
-                        fabs(gps.longitude), (gps.longitude)>0?"E":"W");
+                int lat_d, lon_d;
+                double lat, lon;
+                lat_d = 100*modf(gps.latitude, &lat);
+                lon_d = 100*modf(gps.longitude, &lon);
+                
+                snprintf(buf, sizeof(buf), "%04d.%02d%s, %05d.%02d%s",
+                        abs((int)lat), abs(lat_d), (gps.latitude)>0?"N":"S",
+                        abs((int)lon), abs(lon_d), (gps.longitude)>0?"E":"W");
             }
             
             add_value_pair(mqtt_msg, "gps", buf);
