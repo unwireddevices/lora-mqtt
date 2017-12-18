@@ -201,10 +201,10 @@ void parse_gps_data(gps_data_t *gps, uint8_t *data, bool decode_nmea) {
     
     if (gps->ready) {
         int lat, lat_d, lon, lon_d;
-        lat = data[1] + (data[2] << 8);
-        lat_d = data[3];
-        lon = data[4] + (data[5] << 8);
-        lon_d = data[6];
+        lat = data[2] + (data[3] << 8);
+        lat_d = data[1];
+        lon = data[5] + (data[6] << 8);
+        lon_d = data[4];
         
         gps->latitude = (float)lat + (float)lat_d/100.0;
         gps->longitude = (float)lon + (float)lon_d/100.0;
