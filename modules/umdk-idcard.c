@@ -69,24 +69,27 @@ void umdk_idcard_command(char *param, char *out, int bufsize) {
         param += strlen("fingerprint ");    // Skip command
         if (strstr(param, "set ") == param) {
             param += strlen("set ");
-            uint8_t cell = strtol(param, &param, 10);
             uint16_t cmdid = strtol(param, &param, 10);
-            snprintf(out, bufsize, "%02x%02x%04x", UMDK_IDCARD_CMD_COLLECT, cell, cmdid);
+            uint16_to_le(&cmdid);
+            snprintf(out, bufsize, "%02x%04x", UMDK_IDCARD_CMD_COLLECT, cmdid);
         } 
     } else if (strstr(param, "get ") == param) {
         param += strlen("get ");    // Skip command
         if (strstr(param, "fingerprint ") == param) {
             param += strlen("fingerprint ");
             uint16_t cmdid = strtol(param, &param, 10);
+            uint16_to_le(&cmdid);
             snprintf(out, bufsize, "%02x%04x", UMDK_IDCARD_CMD_AUTH, cmdid);
         } else if (strstr(param, "location ") == param) {
             param += strlen("location ");
             uint16_t cmdid = strtol(param, &param, 10);
+            uint16_to_le(&cmdid);
             snprintf(out, bufsize, "%02x%04x", UMDK_IDCARD_CMD_LOCATION, cmdid);
         }
     } else if (strstr(param, "alarm ") == param) {
         param += strlen("alarm ");
         uint16_t cmdid = strtol(param, &param, 10);
+        uint16_to_le(&cmdid);
         snprintf(out, bufsize, "%02x%04x", UMDK_IDCARD_CMD_ALARM, cmdid);
     } else if (strstr(param, "gps ") == param) {
         param += strlen("gps ");
@@ -99,6 +102,7 @@ void umdk_idcard_command(char *param, char *out, int bufsize) {
             param += strlen("off ");
         }
         uint16_t cmdid = strtol(param, &param, 10);
+        uint16_to_le(&cmdid);
         snprintf(out, bufsize, "%02x%02x%04x", UMDK_IDCARD_CMD_SWITCH_GPS, gps_state, cmdid);
     }
 }
