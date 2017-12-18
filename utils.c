@@ -196,6 +196,37 @@ uint16_t crc16_arc(uint8_t *data, uint16_t len)
 /* format is used by umdk-gps, umdk-idcard and other GPS-enabled devices */
 void parse_gps_data(gps_data_t *gps, uint8_t *data, bool decode_nmea) {
     memset(gps, 0, sizeof(gps_data_t));
+    
+    gps->ready = (data[0] & 1);
+    
+    if (gps->ready) {
+        int lat, lat_d, lon, lon_d;
+        lat = data[1] + (data[2] << 8);
+        lat_d = data[3];
+        lon = data[4] + (data[5] << 8);
+        lon_d = data[6];
+        
+        gps->latitude = (float)lat + (float)lat_d/100.0;
+        gps->longitude = (float)lon + (float)lon_d/100.0;
+        
+        /* Apply sign bits from reply */
+        if ((data[0] >> 5) & 1) {
+            gps->latitude = -gps->latitude;
+        }
+
+        if ((data[0] >> 6) & 1) {
+            gps->longitude = -gps->longitude;
+        }
+        
+        gps->valid = (data[0] >> 7) & 1;
+    }
+    
+    return;
+}
+/* GPS binary format decoder */
+/* format is used by umdk-gps, umdk-idcard and other GPS-enabled devices */
+void parse_gps_data(gps_data_t *gps, uint8_t *data, bool decode_nmea) {
+    memset(gps, 0, sizeof(gps_data_t));
 
     gps->ready = (data[0] & 1);
 
