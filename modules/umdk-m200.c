@@ -410,7 +410,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	char buf_addr[30];
 	
 	// uint8_t ii;
-    // printf("[m230] RX data:  ");
+    // printf("[m200] RX data:  ");
     // for(ii = 0; ii < moddatalen; ii++) {
         // printf(" %02X ", moddata[ii]);
     // }
@@ -619,21 +619,26 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		}				
 		
 		case M200_CMD_GET_LAST_OPEN: {
-			
+
 			char time_buf[10] = { };
 			uint8_t time[7] = { 0 };
 			
 			for(i = 0; i < 7; i++) {
 				time[i] = moddata[i + 5];
 			}
-
-			add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
 			
-			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);	
-			add_value_pair(mqtt_msg, "Time", time_buf);
-			
-			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);	
-			add_value_pair(mqtt_msg, "Date", time_buf);
+			if(time[0] < 8) {
+				add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
+				
+				snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);	
+				add_value_pair(mqtt_msg, "Time", time_buf);
+				
+				snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);	
+				add_value_pair(mqtt_msg, "Date", time_buf);
+			}
+			else {
+				add_value_pair(mqtt_msg, "msg", "Not support");
+			}
 			
 			return true;
 			break;
@@ -648,13 +653,18 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 				time[i] = moddata[i + 5];
 			}
 
-			add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
-			
-			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);	
-			add_value_pair(mqtt_msg, "Time", time_buf);
-			
-			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);	
-			add_value_pair(mqtt_msg, "Date", time_buf);
+			if(time[0] < 8) {
+				add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
+				
+				snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);	
+				add_value_pair(mqtt_msg, "Time", time_buf);
+				
+				snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);	
+				add_value_pair(mqtt_msg, "Date", time_buf);
+			}
+			else {
+				add_value_pair(mqtt_msg, "msg", "Not support");
+			}
 			
 			return true;
 			break;
