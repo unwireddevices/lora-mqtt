@@ -851,6 +851,8 @@ static void *publisher(void *arg)
         if (msgrcv(msgqid, &msg_rx, sizeof(msg_rx.mtext), 0, 0) < 0) {
             puts("[error] Failed to receive internal message");
             continue;
+        } else {
+            puts("[info] Internal message received");
         }
 		serve_reply(msg_rx.mtext);
 	}
@@ -933,6 +935,8 @@ static void *uart_reader(void *arg)
 
 		pthread_mutex_lock(&mutex_uart);
 
+        puts("[info] Requesting data");
+
 		dprintf(uart, "%c\r", CMD_FLUSH);
 
 		while ((r = read(uart, &c, 1)) != 0) {
@@ -956,18 +960,24 @@ static void *uart_reader(void *arg)
                     continue;
                 }
 
-                puts("Creating internal message");
+                printf("[info] Received: 0x");
+                int t = 0;
+                for (t = 0; t < strlen(token); t++) {
+                    printf("%02x", token[t]);
+                }
+                printf("\n");
 
                 msg_rx.mtype = 1;
-                memcpy(msg_rx.mtext, token, strlen(token));
-                msg_rx.mtext[strlen(token)] = 0;
+                memcpy(msg_rx.mtext, token, strlen(token) + 1);
 
-                puts("Sending internal message");
+                puts("[info] Sending internal message");
 
                 if (msgsnd(msgqid, &msg_rx, sizeof(msg_rx.mtext), 0) < 0) {
                     perror( strerror(errno) );
-                    printf("[error] Failed to send internal message");
+                    puts("[error] Failed to send internal message");
                     continue;
+                } else {
+                    puts("[info] Internal message sent");
                 }
             }
 		}
