@@ -101,13 +101,17 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 	uint8_t cmd = 0;		
 	uint8_t mode = 0;
 	uint8_t zz_param = 0;
-	iec61107_database_param_t parametr = NONE;
+
+	iec61107_database_param_t param_database = NONE;
 	uint8_t device = 0;
 	char *address_ptr = NULL;
 	uint8_t symb_addr = 0;
 	uint8_t i = 0;
 	uint8_t length_addr = 0;
 	uint16_t num_char = 0;
+	
+	uint8_t tariff_hour = 0;
+	uint8_t min = 0;
 	
 	if (strstr(param, "reset") == param) {
 		cmd = UMDK_IEC61107_CMD_DATABASE_RESET;
@@ -117,12 +121,12 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 	else if (strstr(param, "add ") == param) {
 		param += strlen("add ");    // Skip 
 		cmd = UMDK_IEC61107_CMD_DATABASE_ADD;
-		parametr = NONE;
+		param_database = NONE;
 		device = 0;
 		address_ptr = param;
 		length_addr = (uint8_t)strlen(address_ptr);
 
-		num_char = snprintf(out, bufsize, "%02x%02x%02x", cmd, parametr, device);
+		num_char = snprintf(out, bufsize, "%02x%02x%02x", cmd, param_database, device);
 		for(i = 0; i < length_addr; i++) {
 			symb_addr = *address_ptr;
 			num_char += snprintf(out + num_char, bufsize - num_char, "%02x", symb_addr);
@@ -135,20 +139,20 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 		cmd = UMDK_IEC61107_CMD_DATABASE_REMOVE;
 		if (strstr(param, "device ") == param) {
 			param += strlen("device ");    // Skip 
-			parametr = DEVICE;			
+			param_database = DEVICE;			
 			device = strtol(param, &param, 10);
 			symb_addr = 0;
-			snprintf(out, bufsize, "%02x%02x%02x%02x", cmd, parametr, device, symb_addr);
+			snprintf(out, bufsize, "%02x%02x%02x%02x", cmd, param_database, device, symb_addr);
 		}
 		else if (strstr(param, "address ") == param) {
 			param += strlen("address ");    // Skip 
-			parametr = ADDRESS;
+			param_database = ADDRESS;
 			device = 0;
 			
 			address_ptr = param;
 			length_addr = (uint8_t)strlen(address_ptr);
 
-			num_char = snprintf(out, bufsize, "%02x%02x%02x", cmd, parametr, device);
+			num_char = snprintf(out, bufsize, "%02x%02x%02x", cmd, param_database, device);
 			for(i = 0; i < length_addr; i++) {
 				symb_addr = *address_ptr;
 				num_char += snprintf(out + num_char, bufsize - num_char, "%02x", symb_addr);
@@ -165,20 +169,20 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 		cmd = UMDK_IEC61107_CMD_DATABASE_FIND;
 		if (strstr(param, "device ") == param) {
 			param += strlen("device ");    // Skip 
-			parametr = DEVICE;			
+			param_database = DEVICE;			
 			device = strtol(param, &param, 10);
 			symb_addr = 0;
-			snprintf(out, bufsize, "%02x%02x%02x%02x", cmd, parametr, device, symb_addr);
+			snprintf(out, bufsize, "%02x%02x%02x%02x", cmd, param_database, device, symb_addr);
 		}
 		else if (strstr(param, "address ") == param) {
 			param += strlen("address ");    // Skip 
-			parametr = ADDRESS;
+			param_database = ADDRESS;
 			device = 0;
 			
 			address_ptr = param;
 			length_addr = (uint8_t)strlen(address_ptr);
 
-			num_char = snprintf(out, bufsize, "%02x%02x%02x", cmd, parametr, device);
+			num_char = snprintf(out, bufsize, "%02x%02x%02x", cmd, param_database, device);
 			for(i = 0; i < length_addr; i++) {
 				symb_addr = *address_ptr;
 				num_char += snprintf(out + num_char, bufsize - num_char, "%02x", symb_addr);
@@ -191,7 +195,6 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 		return;
 	}
 	else if (strstr(param, "set init") == param) {
-		param += strlen("set init");    // Skip 
 		cmd = IEC61107_CMD_OPTIONS;
 		mode = IEC61107_WRITE;
 	}
@@ -203,6 +206,26 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 	else if (strstr(param, "get serial") == param) {
 		param += strlen("get serial");    // Skip 
 		cmd = IEC61107_CMD_SERIAL;
+		mode = IEC61107_READ;
+	}
+	else if (strstr(param, "get address") == param) {
+		param += strlen("get address");    // Skip 
+		cmd = IEC61107_CMD_ADDRESS;
+		mode = IEC61107_READ;
+	}
+	else if (strstr(param, "get volt") == param) {
+		param += strlen("get volt");    // Skip 
+		cmd = IEC61107_CMD_GET_VOLT;
+		mode = IEC61107_READ;
+	}
+	else if (strstr(param, "get current") == param) {
+		param += strlen("get current");    // Skip 
+		cmd = IEC61107_CMD_GET_CURR;
+		mode = IEC61107_READ;
+	}
+	else if (strstr(param, "get power") == param) {
+		param += strlen("get power");    // Skip 
+		cmd = IEC61107_CMD_GET_POWER;
 		mode = IEC61107_READ;
 	}
 	else if (strstr(param, "get time") == param) { 
@@ -252,25 +275,7 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 		else if(strstr(param, "end_day") == param) { 
 			param += strlen("end_day");    // Skip command
 			cmd = IEC61107_CMD_GET_VALUE_END_DAY;
-		}
-		else if(strstr(param, "saving ") == param) { 
-			param += strlen("saving ");    // Skip command
-			if(strstr(param, "end_month ") == param) {
-				param += strlen("end_month ");				// Skip command
-				
-				// cmd = IEC61107_CMD_GET_SAVING_END_MONTH;
-				// zz_param = strtol(param, &param, 10);
-				
-				// if((zz_param < 1) || (zz_param > 12)) {
-					// snprintf(out, bufsize, "%02x", UMDK_IEC61107_INVALID_CMD_REPLY);
-					// return;					
-				// }
-			}
-			else {
-				snprintf(out, bufsize, "%02x", UMDK_IEC61107_INVALID_CMD_REPLY);
-				return;
-			}
-		}		
+		}	
 		else {
 			snprintf(out, bufsize, "%02x", UMDK_IEC61107_INVALID_CMD_REPLY);
 			return;
@@ -281,8 +286,14 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 		cmd = IEC61107_CMD_SCHEDULE;	
 		mode = IEC61107_READ;		
 		param += strlen(" ");    						// Skip space
-		// zz_param = 0x01;
-		zz_param = strtol(address_ptr, &address_ptr, 10);
+		zz_param = strtol(param, &param, 10);
+	}
+	else if (strstr(param, "set schedule") == param) { 
+		param += strlen("set schedule");    // Skip command
+		cmd = IEC61107_CMD_SCHEDULE;	
+		mode = IEC61107_WRITE;		
+		param += strlen(" ");    						// Skip space
+		zz_param = strtol(param, &param, 10);		
 	}
 	else if (strstr(param, "get holidays") == param) { 
 		param += strlen("get holidays");    // Skip command
@@ -303,7 +314,6 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 		
 	length_total = (uint8_t)strlen(parametr_ptr);
 	length_param = length_total;
-	printf("Length total: %d\n", length_total);
 	
 	if(length_total < 2) {
 		snprintf(out, bufsize, "%02x", UMDK_IEC61107_INVALID_CMD_REPLY);
@@ -321,22 +331,37 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 	if(address_ptr != parametr_ptr) {
 		length_param--;
 	}
-	else {
-		puts("No parametr");
-	}
 	
 	device = strtol(address_ptr, &address_ptr, 10);
-	printf("\nDevice: %02d\n", device);
 	
-	printf("Length param: %d\n", length_param);	
+	if(cmd == IEC61107_CMD_OPTIONS) {
+		length_param = 5;
+		parametr_ptr = "18290";
+	}
+	
 	num_char = snprintf(out, bufsize, "%02x%02x%02x%02x", cmd, mode, zz_param, device);
 	
 	num_char += snprintf(out + num_char, bufsize - num_char, "%02x", IEC61107_BRACKET_OPEN);
 	
-	for(i = 0; i < length_param; i++) {		
-		symb_param = *parametr_ptr;
-		num_char += snprintf(out + num_char, bufsize - num_char, "%02x", symb_param);
-		parametr_ptr++;
+	for(i = 0; i < length_param; i++) {
+		if((cmd == IEC61107_CMD_SCHEDULE) && (mode == IEC61107_WRITE)) {
+			tariff_hour = strtol(parametr_ptr, &parametr_ptr, 10) << 5;
+			parametr_ptr += strlen(" ");    						// Skip space
+			tariff_hour |= strtol(parametr_ptr, &parametr_ptr, 10);
+			parametr_ptr += strlen(" ");    						// Skip space
+			min = strtol(parametr_ptr, &parametr_ptr, 10);
+			parametr_ptr += strlen(" ");    						// Skip space
+			num_char += snprintf(out + num_char, bufsize - num_char, "%02x%02x", tariff_hour, min);			
+			i += 8;
+		}
+		else if((cmd == IEC61107_CMD_HOLIDAYS) && (mode == IEC61107_WRITE)) {
+			
+		}
+		else {
+			symb_param = *parametr_ptr;
+			num_char += snprintf(out + num_char, bufsize - num_char, "%02x", symb_param);
+			parametr_ptr++;
+		}
 	}
 	
 	num_char += snprintf(out + num_char, bufsize - num_char, "%02x", IEC61107_BRACKET_CLOSE);	
@@ -346,7 +371,7 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
 	char buf[100];
-    // char strbuf[20];
+    char strbuf[20];
 	char buf_addr[10];
 	uint16_t num_char = 0;
 	uint16_t i = 0;
@@ -464,14 +489,51 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	else if(cmd == IEC61107_CMD_GET_POWER) {
 		
 	}		
-	else if(cmd == IEC61107_CMD_SCHEDULE) {
-		
+	else if(cmd == IEC61107_CMD_SCHEDULE) {				
+		if((moddata[2] == 0) && (moddata[3] == 0)) {
+			add_value_pair(mqtt_msg, "schedule", "not set");
+		}
+		else {
+			char tariff_str[5] = { };
+			uint8_t num_schedule = (moddatalen  - 2) / 2;			
+			uint8_t hour = 0;
+			uint8_t min = 0;
+			uint8_t tariff = 0;
+			
+			for(i = 0; i < num_schedule; i++) {
+				tariff = moddata[2 + 2*i] >> 5;
+				if(tariff != 0) {
+					hour = moddata[2 + 2*i] & 0x1F;
+					min = moddata[3 + 2*i];
+					snprintf(tariff_str, sizeof(tariff_str), "T%02d", tariff);		
+					snprintf(buf, sizeof(buf), "%02d:%02d",  hour, min);
+					add_value_pair(mqtt_msg, tariff_str, buf);			
+				}
+			}
+		}		
 	}			
 	else if(cmd == IEC61107_CMD_HOLIDAYS) {
 		
 	}			
 	else if((cmd >= IEC61107_CMD_GET_VALUE_TOTAL_ALL) && (cmd <= IEC61107_CMD_GET_VALUE_END_DAY)) {
-		
+		uint32_t value[5] = { 0 };
+		uint32_t * ptr_value;
+		for(i = 0; i < 5; i++) {
+			ptr_value = (uint32_t *)(&moddata[4*i + 2]);
+			uint32_to_le(ptr_value);
+			value[i] = *ptr_value;
+		}
+				
+		char tariff[5] = { };
+		for(i = 1; i < 5; i++) {
+			snprintf(tariff, sizeof(tariff), "T%02d", i);
+			int_to_float_str(strbuf, value[i], 2);
+			snprintf(buf, sizeof(buf), "%s", strbuf);
+			add_value_pair(mqtt_msg, tariff, buf);								
+		}
+		int_to_float_str(strbuf, value[0], 2);
+		snprintf(buf, sizeof(buf), "%s", strbuf);
+		add_value_pair(mqtt_msg, "Total", buf);		
 	}				
 				
 	return true;
