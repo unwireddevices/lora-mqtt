@@ -78,6 +78,7 @@ typedef enum {
 	IEC61107_CMD_HOLIDAYS				= 0x13,		/* Read/write list of holidays */
 	
 	IEC61107_CMD_TARIFF_DEFAULT			= 0x14,		/* Set/get default tariff */	
+    IEC61107_CMD_SEASON         		= 0x15,        /* Set/get season programm */  	
 	// IEC61107_CMD_GET_SAVING_END_MONTH	= 0x14,
 } umdk_iec61107_cmd_t;
 
@@ -569,7 +570,31 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		}		
 	}			
 	else if(cmd == IEC61107_CMD_HOLIDAYS) {
+		uint8_t list = moddata[2];
 		
+		char list_str[5] = { };
+		char schedule_str[5] = { };
+		uint8_t num_holidays = (moddatalen  - 3) / 2;			
+		uint8_t day = 0;
+		uint8_t month = 0;
+		uint8_t schedule = 0;
+		
+		snprintf(list_str, sizeof(list_str), "%d/%d", list >> 4, list & 0x0F);		
+		add_value_pair(mqtt_msg, "holidays list", list_str);
+
+		for(i = 0; i < num_holidays; i++) {
+			month = moddata[3 + 2*i] >> 4;
+			day = (moddata[3 + 2*i] & 0x07) + (moddata[4 + 2*i] >> 6);
+			schedule = moddata[4 + 2*i] % 0x3F;
+			snprintf(buf, sizeof(buf), "%02d.%02d",  day, month);
+			if(schedule == 0) {
+				snprintf(schedule_str, sizeof(schedule_str), "not set");
+			}
+			else {
+				snprintf(schedule_str, sizeof(schedule_str), "Sch%02d", schedule);		
+			}
+			add_value_pair(mqtt_msg, buf, schedule_str);			
+		}
 	}			
 	else if((cmd >= IEC61107_CMD_GET_VALUE_TOTAL_ALL) && (cmd <= IEC61107_CMD_GET_VALUE_END_DAY)) {
 		uint32_t value[5] = { 0 };
