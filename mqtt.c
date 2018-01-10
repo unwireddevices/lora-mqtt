@@ -934,7 +934,7 @@ static void *uart_reader(void *arg)
 
 		pthread_mutex_lock(&mutex_uart);
         
-        puts("[info] Requesting data");
+        //puts("[info] Requesting data");
 
 		dprintf(uart, "%c\r", CMD_FLUSH);
 
@@ -950,7 +950,11 @@ static void *uart_reader(void *arg)
             char *running = strdup(buf), *token;
             const char *delims = "\n";
             
-            while (strlen(token = strsep(&running, delims))) {
+            while ((token = strsep(&running, delims)) != NULL) {
+                if (strlen(token) == 0) {
+                    continue;
+                }
+                
                 if((strlen(token) + 1 ) > sizeof(msg_rx.mtext)) {
                     puts("[error] Oversized message, unable to send");
                     continue;
@@ -977,7 +981,6 @@ static void *uart_reader(void *arg)
                 }
             }
 		}
-
 		usleep(1e3 * UART_POLLING_INTERVAL);
 		
 		/* Request devices list on demand */
