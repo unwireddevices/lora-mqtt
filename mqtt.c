@@ -850,6 +850,8 @@ static void *publisher(void *arg)
         if (msgrcv(msgqid, &msg_rx, sizeof(msg_rx.mtext), 0, 0) < 0) {
             puts("[error] Failed to receive internal message");
             continue;
+        } else {
+            puts("[info] Internal message received");
         }
 		serve_reply(msg_rx.mtext);
 	}	
@@ -931,6 +933,8 @@ static void *uart_reader(void *arg)
 		int r = 0, i = 0;
 
 		pthread_mutex_lock(&mutex_uart);
+        
+        //puts("[info] Requesting data");
 
 		dprintf(uart, "%c\r", CMD_FLUSH);
 
@@ -946,24 +950,37 @@ static void *uart_reader(void *arg)
             char *running = strdup(buf), *token;
             const char *delims = "\n";
             
-            while (strlen(token = strsep(&running, delims))) {
+            while ((token = strsep(&running, delims)) != NULL) {
+                if (strlen(token) == 0) {
+                    continue;
+                }
+                
                 if((strlen(token) + 1 ) > sizeof(msg_rx.mtext)) {
                     puts("[error] Oversized message, unable to send");
                     continue;
                 }
                 
+                printf("[info] Received: 0x");
+                int t = 0;
+                for (t = 0; t < strlen(token); t++) {
+                    printf("%02x", token[t]);
+                }
+                printf("\n");
+                
                 msg_rx.mtype = 1;
-                memcpy(msg_rx.mtext, token, strlen(token));
-                msg_rx.mtext[strlen(token)] = 0;
+                memcpy(msg_rx.mtext, token, strlen(token) + 1);
+                
+                puts("[info] Sending internal message");
                 
                 if (msgsnd(msgqid, &msg_rx, sizeof(msg_rx.mtext), 0) < 0) {
                     perror( strerror(errno) );
-                    printf("[error] Failed to send internal message");
+                    puts("[error] Failed to send internal message");
                     continue;
+                } else {
+                    puts("[info] Internal message sent");
                 }
             }
 		}
-
 		usleep(1e3 * UART_POLLING_INTERVAL);
 		
 		/* Request devices list on demand */
