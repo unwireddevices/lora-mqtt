@@ -101,20 +101,20 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		uint32_t new_address = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
-		uint32_to_le(&new_address);
+		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
+		new_address = ((new_address >> 24) & 0xff) | ((new_address << 8) & 0xff0000) | ((new_address >> 8) & 0xff00) | ((new_address << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x%08x", M200_CMD_SET_NEW_ADDR, destination, new_address);
 	}
 	else if (strstr(param, "get serial ") == param) {
 		param += strlen("get serial ");    // Skip command
 		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
+		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_SERIAL, destination);
 	}
 	else if (strstr(param, "get number tariffs ") == param) {
 		param += strlen("get number tariffs ");    // Skip command
 		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
+		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_NUM_TARIFFS, destination);
 	}
 	else if (strstr(param, "set number tariffs ") == param) {
@@ -123,19 +123,19 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		// tarif--;
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
+		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x%02x", M200_CMD_SET_NUM_TARIFFS, destination, tarif);
 	}
 	else if (strstr(param, "get power_limit ") == param) {
 		param += strlen("get power_limit ");    // Skip command
 		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
+		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_LIMIT_POWER, destination);
 	}
 	else if (strstr(param, "get power_current ") == param) {
 		param += strlen("get power_current ");    // Skip command
 		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
+		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_CURR_POWER_LOAD, destination);
 	}
 	else if (strstr(param, "get value ") == param) {
@@ -161,7 +161,9 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
+
+		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
+
 		if(month == 0xFF) {
 			snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_TOTAL_VALUE, destination);
 		}
@@ -178,7 +180,7 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
 		uint8_t date = (uint8_t)((month << 4) + (dow << 0));
-		uint32_to_le(&destination);
+		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x%02x", M200_CMD_GET_SCHEDULE, destination, date);
 	}
 	else if (strstr(param, "get time ") == param) {
@@ -206,13 +208,13 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		}
 
 		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
+		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", cmd, destination);
 	}
 	else if (strstr(param, "get timedate ") == param) {
 		param += strlen("get timedate ");    // Skip command
 		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
+		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_TIMEDATE, destination);
 	}
 	else if (strstr(param, "set timedate ") == param) {
@@ -232,20 +234,20 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		uint8_t year = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
+		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x%02d%02d%02d%02d%02d%02d%02d",
 														M200_CMD_SET_TIMEDATE, destination, dow, hour, min, sec, day, month, year);
 	}
 	else if (strstr(param, "get worktime ") == param) {
 		param += strlen("get worktime ");    // Skip command
 		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
+		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_WORKING_TIME, destination);
 	}
 	else if (strstr(param, "get uip ") == param) {
 		param += strlen("get uip ");    // Skip command
 		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
+		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_U_I_P, destination);
 	}
 	else if (strstr(param, "set holidays ") == param) {
@@ -267,7 +269,7 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
+		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 
 		uint8_t num_char;
 		num_char = snprintf(out, bufsize, "%02x%08x", M200_CMD_SET_TABLE_HOLIDAYS, destination);
@@ -354,7 +356,7 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
-		uint32_to_le(&destination);
+		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 
 		date = (uint8_t)((month << 4) + (day << 0));
 
@@ -368,13 +370,13 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 	else if (strstr(param, "add ") == param) {
 		param += strlen("add ");    // Skip command
 		uint32_t addr = strtol(param, &param, 10);
-		uint32_to_le(&addr);
+		addr = ((addr >> 24) & 0xff) | ((addr << 8) & 0xff0000) | ((addr >> 8) & 0xff00) | ((addr << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", M200_CMD_ADD_ADDR, addr);
 	}
 	else if (strstr(param, "remove ") == param) {
 		param += strlen("remove ");    // Skip command
 		uint32_t addr = strtol(param, &param, 10);
-		uint32_to_le(&addr);
+		addr = ((addr >> 24) & 0xff) | ((addr << 8) & 0xff0000) | ((addr >> 8) & 0xff00) | ((addr << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%02x", M200_CMD_REMOVE_ADDR, addr);
 	}
 	else if (strstr(param, "reset") == param) {
@@ -431,9 +433,9 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	m200_cmd_t cmd = moddata[0];
 
 	if(cmd < M200_CMD_PROPRIETARY_COMMAND) {
-		uint32_t *address = (uint32_t *)(&moddata[1]);
-		uint32_to_le(address);
-		snprintf(buf_addr, sizeof(buf_addr), "%u", *address);
+		uint32_t address = moddata[1] | moddata[2] << 8 | moddata[3] << 16 | moddata[4] << 24;
+		uint32_to_le(&address);
+		snprintf(buf_addr, sizeof(buf_addr), "%u", address);
 		add_value_pair(mqtt_msg, "Address", buf_addr);
 
 		if (moddatalen == 5) {
