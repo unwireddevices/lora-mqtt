@@ -6,10 +6,10 @@
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,7 +27,7 @@
  * @file	umdk-mercury.c
  * @brief   umdk-mercury message parser
  * @author   Mikhail Perkov
- * @author  
+ * @author
  */
 
 #include <stdio.h>
@@ -44,11 +44,11 @@ typedef enum {
     M200_CMD_ADD_ADDR 			 = 0xFE,		/* Add address  in database */
     M200_CMD_REMOVE_ADDR 		 = 0xFD,		/* Remove address from database */
 	M200_CMD_GET_LIST 			 = 0xFC,		/* Send database of addresses */
- 
+
 	M200_CMD_SET_IFACE			 = 0xFB,		/* Set interfase => CAN or RS485 */
- 
+
     M200_CMD_SET_TABLE_HOLIDAYS  = 0xF1, 	/* Set the full table of holidays */
-    
+
     M200_CMD_PROPRIETARY_COMMAND = 0xF0,		/* Less this value single command of mercury */
 
     M200_CMD_GET_ADDR				= 0x00,		/* Read the address */
@@ -95,7 +95,7 @@ static char str_dow[8][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "
 
 void umdk_m200_command(char *param, char *out, int bufsize) {
 	uint32_t destination;
-		
+
 	if (strstr(param, "set address ") == param) {
 		param += strlen("set address ");    // Skip command
 		uint32_t new_address = strtol(param, &param, 10);
@@ -116,7 +116,7 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		destination = strtol(param, &param, 10);
 		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_NUM_TARIFFS, destination);
-	}	
+	}
 	else if (strstr(param, "set number tariffs ") == param) {
 		param += strlen("set number tariffs ");    // Skip command
 		uint8_t tarif = strtol(param, &param, 10);
@@ -131,14 +131,14 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		destination = strtol(param, &param, 10);
 		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_LIMIT_POWER, destination);
-	}	
+	}
 	else if (strstr(param, "get power_current ") == param) {
 		param += strlen("get power_current ");    // Skip command
 		destination = strtol(param, &param, 10);
 		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_CURR_POWER_LOAD, destination);
-	}			
-	else if (strstr(param, "get value ") == param) { 
+	}
+	else if (strstr(param, "get value ") == param) {
 		param += strlen("get value ");    // Skip command
 		uint8_t month = 0;
 		if(strstr(param, "total") == param) {
@@ -150,7 +150,7 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 			month = 0x0F;
 		}
 		else if(strstr(param, "month ") == param) {
-			param += strlen("month ");				// Skip command			
+			param += strlen("month ");				// Skip command
 			month = strtol(param, &param, 10);
 			month--;
 		}
@@ -158,20 +158,20 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 			snprintf(out, bufsize, "%02x", M200_INVALID_CMD_REPLY);
 			return;
 		}
-		
+
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
-        
+
 		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
-        
+
 		if(month == 0xFF) {
-			snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_TOTAL_VALUE, destination);			
+			snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_TOTAL_VALUE, destination);
 		}
 		else {
-			snprintf(out, bufsize, "%02x%08x%02x", M200_CMD_GET_VALUE, destination, month);			
+			snprintf(out, bufsize, "%02x%08x%02x", M200_CMD_GET_VALUE, destination, month);
 		}
 	}
-	else if (strstr(param, "get schedule ") == param) { 
+	else if (strstr(param, "get schedule ") == param) {
 		param += strlen("get schedule "); // skip command
 		uint8_t month = strtol(param, &param, 10);
 		month--;
@@ -206,18 +206,18 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 			snprintf(out, bufsize, "%02x", M200_INVALID_CMD_REPLY);
 			return;
 		}
-		
+
 		destination = strtol(param, &param, 10);
 		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", cmd, destination);
-	}	
-	else if (strstr(param, "get timedate ") == param) { 
+	}
+	else if (strstr(param, "get timedate ") == param) {
 		param += strlen("get timedate ");    // Skip command
 		destination = strtol(param, &param, 10);
 		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_TIMEDATE, destination);
 	}
-	else if (strstr(param, "set timedate ") == param) { 
+	else if (strstr(param, "set timedate ") == param) {
 		param += strlen("set timedate "); // skip command
 		uint8_t dow = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
@@ -235,30 +235,30 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
 		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
-		snprintf(out, bufsize, "%02x%08x%02d%02d%02d%02d%02d%02d%02d", 
+		snprintf(out, bufsize, "%02x%08x%02d%02d%02d%02d%02d%02d%02d",
 														M200_CMD_SET_TIMEDATE, destination, dow, hour, min, sec, day, month, year);
-	}	
-	else if (strstr(param, "get worktime ") == param) { 
+	}
+	else if (strstr(param, "get worktime ") == param) {
 		param += strlen("get worktime ");    // Skip command
 		destination = strtol(param, &param, 10);
 		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_WORKING_TIME, destination);
-	}	
-	else if (strstr(param, "get uip ") == param) { 
+	}
+	else if (strstr(param, "get uip ") == param) {
 		param += strlen("get uip ");    // Skip command
 		destination = strtol(param, &param, 10);
 		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", M200_CMD_GET_U_I_P, destination);
-	}	
-	else if (strstr(param, "set holidays ") == param) { 
+	}
+	else if (strstr(param, "set holidays ") == param) {
 		param += strlen("set holidays "); // skip command
-		
+
 		uint8_t day[16] = { 0xFF };
 		uint8_t month[16] = { 0xFF };
 		uint8_t i = 0;
 		memset(day, 0xFF, sizeof(day));
 		memset(month, 0xFF, sizeof(month));
-		
+
 		uint8_t number = strtol(param, &param, 10);
 		for(i = 0; i < number; i++) {
 			param += strlen(" ");    						// Skip space
@@ -266,25 +266,25 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 			param += strlen(" ");    						// Skip space
 			month[i] = strtol(param, &param, 10);
 		}
-	
-		param += strlen(" ");    						// Skip space	
+
+		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
 		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
-	
+
 		uint8_t num_char;
 		num_char = snprintf(out, bufsize, "%02x%08x", M200_CMD_SET_TABLE_HOLIDAYS, destination);
-		
+
 		for(i = 0; i < sizeof(day); i++) {
 			if(day[i] != 0xFF) {
 				num_char += snprintf(out + num_char, bufsize - num_char, "%02d%02d", day[i], month[i]);
 			}
 			else {
-				num_char += snprintf(out + num_char, bufsize - num_char, "%02x%02x", day[i], month[i]);				
+				num_char += snprintf(out + num_char, bufsize - num_char, "%02x%02x", day[i], month[i]);
 			}
 		}
-		
+
 	}
-	else if (strstr(param, "set schedule ") == param) { 
+	else if (strstr(param, "set schedule ") == param) {
 		uint8_t i = 0;
 		uint8_t tariff_hour[8] = { 0xFF };
 		uint8_t hour_tmp = 0xFF;
@@ -298,7 +298,7 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		memset(min, 0xFF, sizeof(min));
 
 		param += strlen("set schedule "); // skip command
-		
+
 		if(strstr(param, "year ") == param) {
 			param += strlen("year ");				// Skip command
 			month = (uint8_t)M200_ALL_YEAR;
@@ -313,7 +313,7 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 			snprintf(out, bufsize, "%02x", M200_INVALID_CMD_REPLY);
 			return;
 		}
-	
+
 		if(strstr(param, "day ") == param) {
 			param += strlen("day ");				// Skip command
 			day = strtol(param, &param, 10);
@@ -323,22 +323,22 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 			day = (uint8_t)M200_ALL_DAYS;
 		}
 		else if(strstr(param, "weekdays") == param) {
-			param += strlen("weekdays");				// Skip command			
+			param += strlen("weekdays");				// Skip command
 			day = (uint8_t)M200_WEEKDAYS;
 		}
 		else if(strstr(param, "weekends") == param) {
-			param += strlen("weekends");				// Skip command			
+			param += strlen("weekends");				// Skip command
 			day = (uint8_t)M200_WEEKENDS;
 		}
 		else if(strstr(param, "holidays") == param) {
-			param += strlen("holidays");				// Skip command			
+			param += strlen("holidays");				// Skip command
 			day = (uint8_t)M200_HOLIDAYS;
 		}
 		else {
 			snprintf(out, bufsize, "%02x", M200_INVALID_CMD_REPLY);
 			return;
 		}
-			
+
 		param += strlen(" ");    						// Skip space
 		uint8_t checkpoint = strtol(param, &param, 10);
 
@@ -353,13 +353,13 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 			min_tmp = strtol(param, &param, 10);
 			min[i] = (uint8_t)(((min_tmp / 10) << 4) + ((min_tmp % 10) << 0));
 		}
-	
-		param += strlen(" ");    						// Skip space	
+
+		param += strlen(" ");    						// Skip space
 		destination = strtol(param, &param, 10);
 		destination = ((destination >> 24) & 0xff) | ((destination << 8) & 0xff0000) | ((destination >> 8) & 0xff00) | ((destination << 24) & 0xff000000);
-		
+
 		date = (uint8_t)((month << 4) + (day << 0));
-		
+
 		uint8_t num_char;
 		num_char = snprintf(out, bufsize, "%02x%08x", M200_CMD_SET_SCHEDULE, destination);
 		for(i = 0; i < sizeof(tariff_hour); i++) {
@@ -367,34 +367,34 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 		}
 		snprintf(out + num_char, bufsize - num_char, "%02x", date);
 	}
-	else if (strstr(param, "add ") == param) { 
+	else if (strstr(param, "add ") == param) {
 		param += strlen("add ");    // Skip command
 		uint32_t addr = strtol(param, &param, 10);
 		addr = ((addr >> 24) & 0xff) | ((addr << 8) & 0xff0000) | ((addr >> 8) & 0xff00) | ((addr << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%08x", M200_CMD_ADD_ADDR, addr);
 	}
-	else if (strstr(param, "remove ") == param) { 
+	else if (strstr(param, "remove ") == param) {
 		param += strlen("remove ");    // Skip command
 		uint32_t addr = strtol(param, &param, 10);
 		addr = ((addr >> 24) & 0xff) | ((addr << 8) & 0xff0000) | ((addr >> 8) & 0xff00) | ((addr << 24) & 0xff000000);
 		snprintf(out, bufsize, "%02x%02x", M200_CMD_REMOVE_ADDR, addr);
 	}
-	else if (strstr(param, "reset") == param) { 
+	else if (strstr(param, "reset") == param) {
 		snprintf(out, bufsize, "%02x", M200_CMD_RESET);
 	}
-	else if (strstr(param, "get list") == param) { 
+	else if (strstr(param, "get list") == param) {
 		snprintf(out, bufsize, "%02x", M200_CMD_GET_LIST);
 	}
-	else if (strstr(param, "iface ") == param) { 
-		param += strlen("iface ");    // Skip command	
-		uint8_t interface;
-		if (strstr(param, "can") == param) { 	
+	else if (strstr(param, "iface ") == param) {
+		param += strlen("iface ");    // Skip command
+		uint8_t interface = 0;
+		if (strstr(param, "can") == param) {
 			interface = 2;
 		}
-		else if (strstr(param, "485") == param) { 	
-			interface = 1;		
+		else if (strstr(param, "485") == param) {
+			interface = 1;
 		}
-		
+
 		snprintf(out, bufsize, "%02x%02x", M200_CMD_SET_IFACE, interface);
 	}
 	else {
@@ -408,15 +408,15 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	char buf[100];
     char strbuf[20];
 	char buf_addr[30];
-	
+
 	// uint8_t ii;
     // printf("[m200] RX data:  ");
     // for(ii = 0; ii < moddatalen; ii++) {
         // printf(" %02X ", moddata[ii]);
     // }
    // puts("\n");
-	
-	
+
+
 
    if (moddatalen == 1) {
         if (moddata[0] == M200_OK_REPLY) {
@@ -428,92 +428,92 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			add_value_pair(mqtt_msg, "msg", "invalid command");
 		}
         return true;
-    }	
-	
-	m200_cmd_t cmd = moddata[0];	
-	
+    }
+
+	m200_cmd_t cmd = moddata[0];
+
 	if(cmd < M200_CMD_PROPRIETARY_COMMAND) {
 		uint32_t address = moddata[1] | moddata[2] << 8 | moddata[3] << 16 | moddata[4] << 24;
 		uint32_to_le(&address);
-		snprintf(buf_addr, sizeof(buf_addr), "%u", address);	
+		snprintf(buf_addr, sizeof(buf_addr), "%u", address);
 		add_value_pair(mqtt_msg, "Address", buf_addr);
-							
+
 		if (moddatalen == 5) {
 			if (moddata[0] == M200_OK_REPLY) {
 				add_value_pair(mqtt_msg, "msg", "ok");
 			} else if(moddata[0] == M200_ERROR_REPLY){
 				add_value_pair(mqtt_msg, "msg", "error");
 			} else if(moddata[0] == M200_NO_RESPONSE_REPLY){
-				add_value_pair(mqtt_msg, "msg", "no response");					
+				add_value_pair(mqtt_msg, "msg", "no response");
 			}
 			return true;
 		}
 	}
-  
+
 	uint8_t i;
 	uint32_t * ptr_value;
-	
+
 	switch(cmd) {
 		case M200_CMD_GET_LIST: {
 			uint8_t cnt = 0;
 			char number[15];
 			uint8_t num_devices = (moddatalen - 1) / 4;
 			uint32_t *address_dev;
-			
+
 			for( i  = 0; i < num_devices; i++) {
 				address_dev = (uint32_t *)(&moddata[4*i + 1]);
 				if(*address_dev != M200_ADDR_DEF) {
 					cnt++;
-					uint32_to_le(address_dev);			
+					uint32_to_le(address_dev);
 
-					snprintf(number, sizeof(number), "Address %d", cnt);		
-					snprintf(buf_addr, sizeof(buf_addr), "%u", *address_dev);	
-					add_value_pair(mqtt_msg, number, buf_addr);								
+					snprintf(number, sizeof(number), "Address %d", cnt);
+					snprintf(buf_addr, sizeof(buf_addr), "%u", *address_dev);
+					add_value_pair(mqtt_msg, number, buf_addr);
 				}
 			}
 			if(cnt == 0) {
-				add_value_pair(mqtt_msg, "msg", "empty");				
+				add_value_pair(mqtt_msg, "msg", "empty");
 				}
 			return true;
 			break;
-		}		
-			
+		}
+
 		case M200_CMD_GET_SERIAL: {
 			uint32_t *serial = (uint32_t *)(&moddata[5]);
-			uint32_to_le(serial);      
+			uint32_to_le(serial);
 			snprintf(buf, sizeof(buf), "%u", *serial);
-			add_value_pair(mqtt_msg, "Serial number", buf);		
+			add_value_pair(mqtt_msg, "Serial number", buf);
 			return true;
 			break;
 		}
-		
+
 		case M200_CMD_GET_NUM_TARIFFS: {
-			uint8_t number = moddata[5];  	
+			uint8_t number = moddata[5];
 			snprintf(buf, sizeof(buf), "%u", number);
-			add_value_pair(mqtt_msg, "Tariffs", buf);		
+			add_value_pair(mqtt_msg, "Tariffs", buf);
 			return true;
 			break;
 		}
-			
+
 		case M200_CMD_GET_TOTAL_VALUE: {
 			uint32_t value[5] = { 0 };
 			for(i = 0; i < 5; i++) {
 				ptr_value = (uint32_t *)(&moddata[4*i + 5]);
-				uint32_to_le(ptr_value);      
+				uint32_to_le(ptr_value);
 				value[i] = *ptr_value;
 			}
-			 		
+
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
 				snprintf(tariff, sizeof(tariff), "T%02d", i + 1);
                 int_to_float_str(strbuf, value[i], 2);
 				snprintf(buf, sizeof(buf), "%s", strbuf);
-				add_value_pair(mqtt_msg, tariff, buf);								
+				add_value_pair(mqtt_msg, tariff, buf);
 			}
             int_to_float_str(strbuf, value[4], 2);
 			snprintf(buf, sizeof(buf), "%s", strbuf);
-			add_value_pair(mqtt_msg, "Total", buf);		
-			
+			add_value_pair(mqtt_msg, "Total", buf);
+
 			return true;
 			break;
 		}
@@ -522,157 +522,157 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			uint32_t value[5] = { 0 };
 			for(i = 0; i < 5; i++) {
 				ptr_value = (uint32_t *)(&moddata[4*i + 5]);
-				uint32_to_le(ptr_value);      
+				uint32_to_le(ptr_value);
 				value[i] = *ptr_value;
 			}
-			
+
 			char tariff[5] = { };
 			for(i = 0; i < 4; i++) {
 				snprintf(tariff, sizeof(tariff), "T%02d", i + 1);
                 int_to_float_str(strbuf, value[i], 2);
 				snprintf(buf, sizeof(buf), "%s", strbuf);
-				add_value_pair(mqtt_msg, tariff, buf);				
+				add_value_pair(mqtt_msg, tariff, buf);
 			}
             int_to_float_str(strbuf, value[4], 2);
 			snprintf(buf, sizeof(buf), "%s", strbuf);
-			add_value_pair(mqtt_msg, "Total", buf);		
-	
+			add_value_pair(mqtt_msg, "Total", buf);
+
 			return true;
 			break;
-		}		
-		
+		}
+
 		case M200_CMD_GET_SCHEDULE: {
-			
+
 			char tariff[5] = { };
 			uint8_t num_schedule = (moddatalen  - 5) / 3;
 			for(i = 0; i < num_schedule; i++) {
-				snprintf(tariff, sizeof(tariff), "T%02d", moddata[3*i + 5] + 1);		
+				snprintf(tariff, sizeof(tariff), "T%02d", moddata[3*i + 5] + 1);
 				snprintf(buf, sizeof(buf), "%02d:%02d",  moddata[3*i + 6],  moddata[3*i + 7]);
-				add_value_pair(mqtt_msg, tariff, buf);			
+				add_value_pair(mqtt_msg, tariff, buf);
 			}
-			
+
 			return true;
 			break;
-		}		
-		
+		}
+
 		case M200_CMD_GET_TIMEDATE: {
-			
+
 			char time_buf[10] = { };
 			uint8_t time[7] = { 0 };
-			
+
 			for(i = 0; i < 7; i++) {
 				time[i] = moddata[i + 5];
 			}
 
 			add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
-			
-			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);	
+
+			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);
 			add_value_pair(mqtt_msg, "Time", time_buf);
-			
-			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);	
+
+			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);
 			add_value_pair(mqtt_msg, "Date", time_buf);
-			
+
 			return true;
 			break;
-		}		
-		
+		}
+
 		case M200_CMD_GET_LAST_POWER_OFF: {
-			
+
 			char time_buf[10] = { };
 			uint8_t time[7] = { 0 };
-			
+
 			for(i = 0; i < 7; i++) {
 				time[i] = moddata[i + 5];
 			}
 
 			add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
-			
-			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);	
+
+			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);
 			add_value_pair(mqtt_msg, "Time", time_buf);
-			
-			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);	
+
+			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);
 			add_value_pair(mqtt_msg, "Date", time_buf);
-			
+
 			return true;
 			break;
-		}				
-		
+		}
+
 		case M200_CMD_GET_LAST_POWER_ON: {
-			
+
 			char time_buf[10] = { };
 			uint8_t time[7] = { 0 };
-			
+
 			for(i = 0; i < 7; i++) {
 				time[i] = moddata[i + 5];
 			}
 
 			add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
-			
-			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);	
+
+			snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);
 			add_value_pair(mqtt_msg, "Time", time_buf);
-			
-			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);	
+
+			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);
 			add_value_pair(mqtt_msg, "Date", time_buf);
-			
+
 			return true;
 			break;
-		}				
-		
+		}
+
 		case M200_CMD_GET_LAST_OPEN: {
 
 			char time_buf[10] = { };
 			uint8_t time[7] = { 0 };
-			
-			for(i = 0; i < 7; i++) {
-				time[i] = moddata[i + 5];
-			}
-			
-			if(time[0] < 8) {
-				add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
-				
-				snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);	
-				add_value_pair(mqtt_msg, "Time", time_buf);
-				
-				snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);	
-				add_value_pair(mqtt_msg, "Date", time_buf);
-			}
-			else {
-				add_value_pair(mqtt_msg, "msg", "Not support");
-			}
-			
-			return true;
-			break;
-		}				
-	
-		case M200_CMD_GET_LAST_CLOSE: {
-			
-			char time_buf[10] = { };
-			uint8_t time[7] = { 0 };
-			
+
 			for(i = 0; i < 7; i++) {
 				time[i] = moddata[i + 5];
 			}
 
 			if(time[0] < 8) {
 				add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
-				
-				snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);	
+
+				snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);
 				add_value_pair(mqtt_msg, "Time", time_buf);
-				
-				snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);	
+
+				snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);
 				add_value_pair(mqtt_msg, "Date", time_buf);
 			}
 			else {
 				add_value_pair(mqtt_msg, "msg", "Not support");
 			}
-			
+
 			return true;
 			break;
-		}				
-		
+		}
+
+		case M200_CMD_GET_LAST_CLOSE: {
+
+			char time_buf[10] = { };
+			uint8_t time[7] = { 0 };
+
+			for(i = 0; i < 7; i++) {
+				time[i] = moddata[i + 5];
+			}
+
+			if(time[0] < 8) {
+				add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
+
+				snprintf(time_buf, sizeof(time_buf), "%02d:%02d:%02d", time[1], time[2], time[3]);
+				add_value_pair(mqtt_msg, "Time", time_buf);
+
+				snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", time[4], time[5], time[6]);
+				add_value_pair(mqtt_msg, "Date", time_buf);
+			}
+			else {
+				add_value_pair(mqtt_msg, "msg", "Not support");
+			}
+
+			return true;
+			break;
+		}
+
 		case M200_CMD_GET_WORKING_TIME: {
             uint32_t tl = 0, tlb = 0;
-   
+
             /* Working time under voltage */
             tl =  ( moddata[5] >> 4) * 100000;
             tl += ( moddata[5] & 0x0F) * 10000;
@@ -689,17 +689,17 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             tlb += ( moddata[10] >> 4) * 10;
             tlb += ( moddata[10] & 0x0F) * 1;
             tlb = tlb & 0x00FFFFFF;
- 
-			snprintf(buf, sizeof(buf), "%u", tl);	
+
+			snprintf(buf, sizeof(buf), "%u", tl);
 			add_value_pair(mqtt_msg, "Working time under voltage", buf);
-			
-			snprintf(buf, sizeof(buf), "%u", tlb);	
+
+			snprintf(buf, sizeof(buf), "%u", tlb);
 			add_value_pair(mqtt_msg, "Working time without voltage", buf);
-			
+
 			return true;
-			break;			
+			break;
 		}
-		
+
 		case M200_CMD_GET_U_I_P: {
             uint16_t voltage = 0;
             uint16_t current = 0;
@@ -712,7 +712,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			int_to_float_str(strbuf, voltage, 1);
 			snprintf(buf, sizeof(buf), "%s", strbuf);
 			add_value_pair(mqtt_msg, "Voltage", buf);
-			
+
             current =  ( moddata[7] >> 4) * 1000;
             current += ( moddata[7] & 0x0F) * 100;
             current += ( moddata[8] >> 4) * 10;
@@ -729,44 +729,44 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             power += ( moddata[11] & 0x0F) * 1;
             power = power & 0x00FFFFFF;
 
-			snprintf(buf, sizeof(buf), "%u", power);	
+			snprintf(buf, sizeof(buf), "%u", power);
 			add_value_pair(mqtt_msg, "Power", buf);
-			
+
 			return true;
-			break;						
+			break;
 		}
-		
+
 		case M200_CMD_GET_CURR_POWER_LOAD: {
             uint16_t power = 0;
-                    
+
 			power =  ( moddata[5] >> 4) * 1000;
             power += ( moddata[5] & 0x0F) * 100;
             power += ( moddata[6] >> 4) * 10;
             power += ( moddata[6] & 0x0F) * 1;
-			
+
 			int_to_float_str(strbuf, power, 2);
 			snprintf(buf, sizeof(buf), "%s", strbuf);
 			add_value_pair(mqtt_msg, "Current power", buf);
-			
+
 			return true;
-			break;				
+			break;
 		}
-		
+
 		case M200_CMD_GET_LIMIT_POWER: {
             uint16_t power = 0;
-                    
+
 			power =  ( moddata[5] >> 4) * 1000;
             power += ( moddata[5] & 0x0F) * 100;
             power += ( moddata[6] >> 4) * 10;
             power += ( moddata[6] & 0x0F) * 1;
-			
+
 			int_to_float_str(strbuf, power, 2);
 			snprintf(buf, sizeof(buf), "%s", strbuf);
 			add_value_pair(mqtt_msg, "Power limit", buf);
 			return true;
-			break;				
-		}		
-		
+			break;
+		}
+
 		default:
 			break;
 	}

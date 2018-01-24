@@ -1,14 +1,14 @@
 ################################################################
-# 
+#
 # Easymake, a handy makefile for simple C/C++ applications
 # https://github.com/roxma/easymake
-# 
+#
 ################################################################
 # Modify your Options here
 # After that, please "make clean" and "make" to re-compile your code
 
-CFLAGS += -v -O0 -Wall -Werror -I./include -I./modules/include
-# CXXFLAGS = 
+CFLAGS += -v -O0 -O -Wall -Werror -I./include -I./modules/include
+# CXXFLAGS =
 LDFLAGS += -lcares -lcrypto -lssl -lmosquitto -lpthread -pthread -lm
 
 # do not use the default `rv` option
@@ -53,8 +53,8 @@ AR?=ar
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 # version      : 8
-# Descriptions : A generic makefiles under linux, to help you build 
-#                your c/c++ programs easily without writing a long 
+# Descriptions : A generic makefiles under linux, to help you build
+#                your c/c++ programs easily without writing a long
 #                long tedious makefile.
 # github       : https://github.com/roxma/easymake
 
@@ -102,7 +102,7 @@ ifneq (,$(filter ./%,$(BUILD_ROOT)))
     $(error Please do not use prefix "./" in variable BUILD_ROOT=$(BUILD_ROOT))
 endif
 
-# if CXXSRC are not specified, automatically scan all .$(CXXEXT) files in the 
+# if CXXSRC are not specified, automatically scan all .$(CXXEXT) files in the
 # current directories.
 ifeq ($(strip $(CXXSRC)),)
     CXXSRC:=$(call RWildcard,,*.$(CXXEXT)) $(foreach dir,$(VPATH),$(foreach src,$(call RWildcard,$(dir),*.$(CXXEXT)),$(src:$(dir)/%=%)))
@@ -114,7 +114,7 @@ endif
 # remove "./" in file path, which may cause pattern rules problems.
 CXXSRC:=$(subst ./,,$(CXXSRC))
 
-# if CSRC are not specified, automatically scan all .$(CEXT) files in the 
+# if CSRC are not specified, automatically scan all .$(CEXT) files in the
 # current directories.
 ifeq ($(strip $(CSRC)),)
     CSRC:=$(call RWildcard,,*.$(CEXT)) $(foreach dir,$(VPATH),$(foreach src,$(call RWildcard,$(dir),*.$(CEXT)),$(src:$(dir)/%=%)))
@@ -191,13 +191,13 @@ all: $(easymake_all_objects) $(easymake_nontest_built_exe)
 # This recipe to handle command "make bin/foo"
 # Explicit exec goals does not know their dependencies
 $(filter-out  $(easymake_nontest_built_exe) %.so %.a %.o %.d,$(filter $(BUILD_ROOT)/%,$(MAKECMDGOALS))): $(easymake_all_objects)
-	@echo 
+	@echo
 	@echo -e "$@: $(call easymake_get_objects,$(easymake_entry_name_from_target))\neasymake_built_target_list+=$@\neasymake_nontest_built_entry_list+=$(call easymake_get_entry,$(easymake_entry_name_from_target))" > $(easymake_f_targets_dep_prefix)_$(notdir $@).d
 	$(easymake_linker) $(LDFLAGS) -o $@ $(call easymake_get_objects,$(easymake_entry_name_from_target)) $(LOADLIBES) $(LDLIBS)
 
 # targets built before have already know their own dependencies
 $(easymake_nontest_built_exe):
-	@echo 
+	@echo
 	@echo -e "$@: $(call easymake_get_objects,$(easymake_entry_name_from_target))\neasymake_built_target_list+=$@\neasymake_nontest_built_entry_list+=$(call easymake_get_entry,$(easymake_entry_name_from_target))" > $(easymake_f_targets_dep_prefix)_$(notdir $@).d
 	$(easymake_linker) $(LDFLAGS) -o $@ $(call easymake_get_objects,$(easymake_entry_name_from_target)) $(LOADLIBES) $(LDLIBS)
 
@@ -220,7 +220,7 @@ check:
 test: $(easymake_all_objects)
 	@$(foreach e, $(easymake_test_entry_list),  echo -e "$(call easymake_get_target,$(e)): $(call easymake_get_objects,$(e))\neasymake_built_target_list+=$(call easymake_get_target,$(e))\neasymake_test_built_entry_list+=$(e)" > $(easymake_f_targets_dep_prefix)_$(notdir $(call easymake_get_target,$(e))).d ; ) true
 	@$(foreach e, $(easymake_test_entry_list), $(call CmdEchoAndExec, $(easymake_linker) -o $(call easymake_get_target,$(e)) $(call easymake_get_objects,$(e)) $(LDFLAGS))  && ) true
-	@echo 
+	@echo
 	@cnt=0; failed=0; $(foreach e,$(easymake_test_entry_list), echo '# run [$(call easymake_get_target,$(e))]' && { $(call easymake_get_target,$(e)) 2>&1 | sed "s/^/  # /g" 2>/dev/null; ret=$${PIPESTATUS[0]}; if [[ $$ret != 0 ]]; then echo "# test [$(call easymake_get_target,$(e))] failed [$$ret]"; failed=$$((failed+1));  fi; cnt=$$((cnt+1)); true; } 2>/dev/null && ) { echo "# $$cnt test complete. $$failed failed test."; }
 
 ##

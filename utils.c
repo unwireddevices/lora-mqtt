@@ -6,10 +6,10 @@
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -20,12 +20,12 @@
 */
 
 /**
- * @defgroup    
- * @ingroup     
- * @brief       
+ * @defgroup
+ * @ingroup
+ * @brief
  * @{
  * @file
- * @brief       
+ * @brief
  * @author      Evgeniy Ponomarev
  */
 
@@ -141,31 +141,31 @@ void logprint(char *str)
 	syslog(LOG_INFO, "%s", str);
 }
 
-void int_to_float_str(char *buf, int decimal, uint8_t precision) {  
+void int_to_float_str(char *buf, int decimal, uint8_t precision) {
     int i = 0;
     int divider = 1;
     char format[10] = { };
     char digits[3];
-    
+
     if (decimal < 0) {
         strcat(format, "-");
     }
     strcat(format, "%d.%0");
-    
+
     for (i = 0; i<precision; i++) {
         divider *= 10;
     }
 
     snprintf(digits, 3, "%dd", i);
     strcat(format, digits);
-    
+
     snprintf(buf, 50, format, abs(decimal/divider), abs(decimal%divider));
 }
 
 bool is_number(char* str) {
     char *endptr = NULL;
     strtol(str, &endptr, 0);
-    
+
     if ( &str[strlen(str)] == endptr  ) {
         return true;
     } else {
@@ -221,5 +221,36 @@ void parse_gps_data(gps_data_t *gps, uint8_t *data, bool decode_nmea) {
         gps->valid = (data[0] >> 7) & 1;
     }
     
+    return;
+}
+/* GPS binary format decoder */
+/* format is used by umdk-gps, umdk-idcard and other GPS-enabled devices */
+void parse_gps_data(gps_data_t *gps, uint8_t *data, bool decode_nmea) {
+    memset(gps, 0, sizeof(gps_data_t));
+
+    gps->ready = (data[0] & 1);
+
+    if (gps->ready) {
+        int lat, lat_d, lon, lon_d;
+        lat = data[1] + (data[2] << 8);
+        lat_d = data[3];
+        lon = data[4] + (data[5] << 8);
+        lon_d = data[6];
+
+        gps->latitude = (float)lat + (float)lat_d/100.0;
+        gps->longitude = (float)lon + (float)lon_d/100.0;
+
+        /* Apply sign bits from reply */
+        if ((data[0] >> 5) & 1) {
+            gps->latitude = -gps->latitude;
+        }
+
+        if ((data[0] >> 6) & 1) {
+            gps->longitude = -gps->longitude;
+        }
+
+        gps->valid = (data[0] >> 7) & 1;
+    }
+
     return;
 }
