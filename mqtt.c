@@ -937,6 +937,8 @@ static void *uart_reader(void *arg)
 
         //puts("[info] Requesting data");
 
+        //puts("[info] Requesting data");
+
 		dprintf(uart, "%c\r", CMD_FLUSH);
 
 		while ((r = read(uart, &c, 1)) != 0) {
@@ -948,9 +950,6 @@ static void *uart_reader(void *arg)
 		buf[i] = '\0';
 
 		if (strlen(buf) > 0) {
-
-            printf("Some data received: %d bytes\n", (int)strlen(buf));
-
             char *running = strdup(buf), *token;
             const char *delims = "\n";
 
