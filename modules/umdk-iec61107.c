@@ -51,6 +51,8 @@ typedef enum {
 	UMDK_IEC61107_CMD_DATABASE_FIND 		= 0xFB,		/* Find address in database */
 
     IEC61107_CMD_PROPRIETARY_COMMAND 	= 0xF0,		/* Less this value - single command of CE102M */
+	
+	IEC61107_ERROR_PROTOCOL_DEVICE      = 0xEF,		/* Returning error from device */
 
     IEC61107_CMD_SPECIFIC				= 0x00,		/* Manufacturer Special cmd */
 	
@@ -202,6 +204,12 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 	else if (strstr(param, "set init") == param) {
 		cmd = IEC61107_CMD_OPTIONS;
 		mode = IEC61107_WRITE;
+		zz_param = 0;
+	}
+	else if (strstr(param, "set fin") == param) {
+		cmd = IEC61107_CMD_OPTIONS;
+		mode = IEC61107_WRITE;
+		zz_param =  1;
 	}
 	else if (strstr(param, "get init") == param) {
 		param += strlen("get init");    // Skip 
@@ -268,8 +276,8 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 		cmd = IEC61107_CMD_TARIFF_DEFAULT;	
 		mode = IEC61107_WRITE;		
 	}	
-	else if (strstr(param, "get special") == param) { 
-		param += strlen("get special");    // Skip command
+	else if (strstr(param, "get special_cmd") == param) { 
+		param += strlen("get special_cmd");    // Skip command
 		cmd = IEC61107_CMD_SPECIFIC;
 		mode = IEC61107_MODE_SP_READ;
 	}
@@ -296,6 +304,10 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 			param += strlen("total_day");    // Skip command
 			cmd = IEC61107_CMD_GET_VALUE_END_DAY;
 		}	
+		else if(strstr(param, "date_day") == param) { 
+			param += strlen("date_day");    // Skip command
+			cmd = IEC61107_CMD_GET_VALUE_DATE_DAY;
+		}			
 		else {
 			snprintf(out, bufsize, "%02x", UMDK_IEC61107_INVALID_CMD_REPLY);
 			return;
@@ -384,7 +396,13 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 	
 	if(cmd == IEC61107_CMD_OPTIONS) {
 		length_param = 5;
-		parametr_ptr = "18290";
+		if(zz_param == 0) {
+			parametr_ptr = "18290";
+		}
+		else {
+			parametr_ptr = "18288";
+		}
+		zz_param = 0;
 	}
 	
 	num_char = snprintf(out, bufsize, "%02x%02x%02x%02x", cmd, mode, zz_param, device);
@@ -438,12 +456,12 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	uint8_t symbol = 0;
 	uint8_t * data_ptr = NULL;
 		
-	uint8_t ii;
-    printf("[iec61107] RX data:  ");
-    for(ii = 0; ii < moddatalen; ii++) {
-        printf(" %02X ", moddata[ii]);
-    }
-   puts("\n");
+	// uint8_t ii;
+    // printf("[iec61107] RX data:  ");
+    // for(ii = 0; ii < moddatalen; ii++) {
+        // printf(" %02X ", moddata[ii]);
+    // }
+   // puts("\n");
 	
    if (moddatalen == 1) {
         if (moddata[0] == UMDK_IEC61107_OK_REPLY) {
@@ -460,11 +478,11 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	umdk_iec61107_cmd_t cmd = moddata[0];	
 	uint8_t device = moddata[1];
 	
-	if(cmd < IEC61107_CMD_PROPRIETARY_COMMAND) {	
-		snprintf(buf_addr, sizeof(buf_addr), "%02d", device);
+	if(cmd < IEC61107_CMD_PROPRIETARY_COMMAND) {
+
+		snprintf(buf_addr, sizeof(buf_addr), "%d", device);
 		add_value_pair(mqtt_msg, "device", buf_addr);
-		
-								
+										
 		if (moddatalen == 2) {
 			if (moddata[0] == UMDK_IEC61107_OK_REPLY) {
 				add_value_pair(mqtt_msg, "msg", "ok");
@@ -490,8 +508,8 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			add_value_pair(mqtt_msg, "cmd", "found");
 		}
 		
-		snprintf(buf_addr, sizeof(buf_addr), "%02d", device);
-		add_value_pair(mqtt_msg, "device", buf_addr);	
+		snprintf(buf_addr, sizeof(buf_addr), "%d", device);
+		add_value_pair(mqtt_msg, "device", buf_addr);
 		
 		uint8_t *address_ptr = moddata + 2;	
 		uint16_t num_char = 0;
@@ -673,7 +691,7 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		uint8_t stat_batt = (*data_ptr & 0x08);
 		uint8_t curr_tar = (*data_ptr & 0x07);
 	
-		snprintf(curr_tariff, sizeof(curr_tariff), "%02d", curr_tar);
+		snprintf(curr_tariff, sizeof(curr_tariff), "T%02d", curr_tar);
 		add_value_pair(mqtt_msg, "current tariff", curr_tariff);
 		
 		num_char = snprintf(buf, sizeof(buf), "[ ");		
@@ -777,6 +795,41 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			add_value_pair(mqtt_msg, "metrology", "normal");
 		}		
 		
+	}
+	else if(cmd == IEC61107_ERROR_PROTOCOL_DEVICE) {
+		char err_buf[5];
+		uint8_t error = moddata[2];
+		
+		snprintf(err_buf, sizeof(err_buf), "%d", error);
+		add_value_pair(mqtt_msg, "err", err_buf);
+		
+		if(error == 10) {
+			add_value_pair(mqtt_msg, "msg", "invalid number of parameters");
+		}
+		else if(error == 11) {
+			add_value_pair(mqtt_msg, "msg", "not supported");
+		}
+		else if(error == 12) {
+			add_value_pair(mqtt_msg, "msg", "unknown parameter");
+		}
+		else if(error == 13) {
+			add_value_pair(mqtt_msg, "msg", "invalid format");
+		}
+		else if(error == 14) {
+			add_value_pair(mqtt_msg, "msg", "not initialized");
+		}
+		else if(error == 15) {
+			add_value_pair(mqtt_msg, "msg", "access denied");
+		}
+		else if(error == 16) {
+			add_value_pair(mqtt_msg, "msg", "no programming rights");
+		}
+		else if(error == 17) {
+			add_value_pair(mqtt_msg, "msg", "invalid parameter value");
+		}
+		else if(error == 18) {
+			add_value_pair(mqtt_msg, "msg", "nonexistent parameter value");
+		}
 	}
 				
 	return true;
