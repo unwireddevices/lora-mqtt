@@ -37,6 +37,8 @@
 #include "unwds-modules.h"
 #include "utils.h"
 
+#define IEC61107_DEBUG 0
+
 #define IEC61107_BRACKET_OPEN 0x28 /* '(' */
 #define IEC61107_BRACKET_CLOSE 0x29 /* ')' */
 #define	IEC61107_WRITE 0x57	/* 'W' - Write */
@@ -64,24 +66,18 @@ typedef enum {
 	IEC61107_CMD_STATUS					= 0x06,		/* Read device status */
 		
     IEC61107_CMD_GET_VALUE_TOTAL_ALL	= 0x07,		/* Read the total values of energy after reset */
-	IEC61107_CMD_GET_VALUE_TOTAL_MONTH	= 0x08,		/* Read the total values of monthly energy */
-    IEC61107_CMD_GET_VALUE_TOTAL_DAY	= 0x09,		/* Read the total values of daily energy */
-    IEC61107_CMD_GET_VALUE_END_MONTH	= 0x0A,		/* Read the values of monthly energy */
-    IEC61107_CMD_GET_VALUE_END_DAY		= 0x0B,		/* Read the values of daily energy */ 
-    IEC61107_CMD_GET_VALUE_DATE_MONTH	= 0x0C,		/* Read the date array of monthly energy savings */
-    IEC61107_CMD_GET_VALUE_DATE_DAY		= 0x0D,		/* Read the date array of daily energy savings */
-	IEC61107_CMD_ERASAE_VALUES			= 0x0E,		/* Erase all energy  values */
+	IEC61107_CMD_GET_VALUE_MONTH		= 0x08,		/* Read the values of monthly energy */
+    IEC61107_CMD_GET_VALUE_DAY			= 0x09,		/* Read the values of daily energy */
+    IEC61107_CMD_GET_VALUE_TOTAL_MONTH	= 0x0A,		/* Read the total values of monthly energy */
+    IEC61107_CMD_GET_VALUE_TOTAL_DAY	= 0x0B,		/* Read the total values of daily energy */
 	
-	IEC61107_CMD_GET_VOLT				= 0x0F,		/* Read the voltage value */
-	IEC61107_CMD_GET_CURR				= 0x10,		/* Read the current value */
-	IEC61107_CMD_GET_POWER				= 0x11,		/* Read the power value */
+	IEC61107_CMD_GET_VOLT				= 0x0C,		/* Read the voltage value */
+	IEC61107_CMD_GET_CURR				= 0x0D,		/* Read the current value */
+	IEC61107_CMD_GET_POWER				= 0x0E,		/* Read the power value */
 	
-	IEC61107_CMD_SCHEDULE				= 0x12,		/* Read/write schedule ot tariffs */
-	IEC61107_CMD_HOLIDAYS				= 0x13,		/* Read/write list of holidays */
-	
-	IEC61107_CMD_TARIFF_DEFAULT			= 0x14,		/* Set/get default tariff */	
-    IEC61107_CMD_SEASON         		= 0x15,     /* Set/get season programm */  	
-	// IEC61107_CMD_GET_SAVING_END_MONTH	= 0x14,
+	IEC61107_CMD_SCHEDULE				= 0x0F,		/* Read/write schedule ot tariffs */
+	IEC61107_CMD_HOLIDAYS				= 0x10,		/* Read/write list of holidays */	
+	IEC61107_CMD_TARIFF_DEFAULT			= 0x11,		/* Set/get default tariff */	
 } umdk_iec61107_cmd_t;
 
 typedef enum {
@@ -290,24 +286,20 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 		}
 		else if(strstr(param, "month") == param) { 
 			param += strlen("month");    // Skip command
-			cmd = IEC61107_CMD_GET_VALUE_TOTAL_MONTH;
+			cmd = IEC61107_CMD_GET_VALUE_MONTH;
 		}
 		else if(strstr(param, "day") == param) { 
 			param += strlen("day");    // Skip command
-			cmd = IEC61107_CMD_GET_VALUE_TOTAL_DAY;
+			cmd = IEC61107_CMD_GET_VALUE_DAY;
 		}
 		else if(strstr(param, "total_month") == param) { 
 			param += strlen("total_month");    // Skip command
-			cmd = IEC61107_CMD_GET_VALUE_END_MONTH;
+			cmd = IEC61107_CMD_GET_VALUE_TOTAL_MONTH;
 		}
 		else if(strstr(param, "total_day") == param) { 
 			param += strlen("total_day");    // Skip command
-			cmd = IEC61107_CMD_GET_VALUE_END_DAY;
+			cmd = IEC61107_CMD_GET_VALUE_TOTAL_DAY;
 		}	
-		else if(strstr(param, "date_day") == param) { 
-			param += strlen("date_day");    // Skip command
-			cmd = IEC61107_CMD_GET_VALUE_DATE_DAY;
-		}			
 		else {
 			snprintf(out, bufsize, "%02x", UMDK_IEC61107_INVALID_CMD_REPLY);
 			return;
@@ -349,16 +341,6 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 			snprintf(out, bufsize, "%02x", UMDK_IEC61107_INVALID_CMD_REPLY);
 			return;
 		}
-	}
-	else if (strstr(param, "get season") == param) { 
-		param += strlen("get season");    // Skip command
-		cmd = IEC61107_CMD_SEASON;	
-		mode = IEC61107_READ;		
-	}
-	else if (strstr(param, "set season") == param) { 
-		param += strlen("set season");    // Skip command
-		cmd = IEC61107_CMD_SEASON;	
-		mode = IEC61107_WRITE;		
 	}
 	else {
 		snprintf(out, bufsize, "%02x", UMDK_IEC61107_INVALID_CMD_REPLY);
@@ -455,13 +437,15 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	uint16_t i = 0;
 	uint8_t symbol = 0;
 	uint8_t * data_ptr = NULL;
-		
-	// uint8_t ii;
-    // printf("[iec61107] RX data:  ");
-    // for(ii = 0; ii < moddatalen; ii++) {
-        // printf(" %02X ", moddata[ii]);
-    // }
-   // puts("\n");
+	
+#if IEC61107_DEBUG	
+	uint8_t ii;
+    printf("[iec61107] RX data:  ");
+    for(ii = 0; ii < moddatalen; ii++) {
+        printf(" %02X ", moddata[ii]);
+    }
+   puts("\n");
+#endif
 	
    if (moddatalen == 1) {
         if (moddata[0] == UMDK_IEC61107_OK_REPLY) {
@@ -644,7 +628,7 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		}
 		
 	}			
-	else if((cmd >= IEC61107_CMD_GET_VALUE_TOTAL_ALL) && (cmd <= IEC61107_CMD_GET_VALUE_END_DAY)) {
+	else if((cmd >= IEC61107_CMD_GET_VALUE_TOTAL_ALL) && (cmd <= IEC61107_CMD_GET_VALUE_TOTAL_DAY)) {
 		uint32_t value[5] = { 0 };
 		uint32_t * ptr_value;
 		for(i = 0; i < 5; i++) {
@@ -664,6 +648,11 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		snprintf(buf, sizeof(buf), "%s", strbuf);
 		add_value_pair(mqtt_msg, "Total", buf);		
 	}	
+	else if(cmd == IEC61107_CMD_TARIFF_DEFAULT) {
+		data_ptr = moddata + 2;	
+		snprintf(buf, sizeof(buf), "%c", *data_ptr);
+		add_value_pair(mqtt_msg, "default tariff", buf);				
+	}
 	else if (cmd == IEC61107_CMD_STATUS){
 		char curr_tariff[5] = { };
 		data_ptr = moddata + 2;	
