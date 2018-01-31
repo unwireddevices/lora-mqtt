@@ -496,8 +496,7 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		add_value_pair(mqtt_msg, "device", buf_addr);
 		
 		uint8_t *address_ptr = moddata + 2;	
-		uint16_t num_char = 0;
-
+		
 		for(i = 0; i < (moddatalen - 2); i++) {
 			symbol = *address_ptr;
 			num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
@@ -650,7 +649,7 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	}	
 	else if(cmd == IEC61107_CMD_TARIFF_DEFAULT) {
 		data_ptr = moddata + 2;	
-		snprintf(buf, sizeof(buf), "%c", *data_ptr);
+		snprintf(buf, sizeof(buf), "%c", *data_ptr + 1);
 		add_value_pair(mqtt_msg, "default tariff", buf);				
 	}
 	else if (cmd == IEC61107_CMD_STATUS){
