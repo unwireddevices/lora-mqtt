@@ -389,7 +389,7 @@ void umdk_m230_command(char *param, char *out, int bufsize) {
 	}		
 	else if (strstr(param, "set mode_tariff ") == param) {
 		param += strlen("set mode_tariff ");    // Skip command
-		uint8_t mode;
+		uint8_t mode = 0;
 		if (strstr(param, "one") == param) { 
 			param += strlen("one");    // Skip command
 			mode = 1;
