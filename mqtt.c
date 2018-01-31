@@ -1337,7 +1337,11 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
         snprintf(pidval, sizeof(pidval), "%d\n", getpid());
-        write(pidfile, pidval, strlen(pidval));
+
+        if (write(pidfile, pidval, strlen(pidval)) < 0)
+        {
+            exit(EXIT_FAILURE);
+        }
         
         sleep(30);
     }
@@ -1491,9 +1495,19 @@ int main(int argc, char *argv[])
 	mosquitto_message_callback_set(mosq, my_message_callback);
 	mosquitto_subscribe_callback_set(mosq, my_subscribe_callback);
 
-	if(mosquitto_connect(mosq, host, port, keepalive)){
-		snprintf(logbuf, sizeof(logbuf), "Unable to connect.\n");
-		logprint(logbuf);
+	if (mosquitto_connect(mosq, host, port, keepalive) == MOSQ_ERR_ERRNO) {
+        snprintf(logbuf, sizeof(logbuf), "Unable to connect");
+        int errno_saved = errno;
+        char *errmsg_extracting = strerror_r(errno_saved, errbuf, sizeof(errbuf));
+        if (errmsg_extracting != errbuf) {
+            logprint(strcat(logbuf, ".\n"));
+        } else {
+            strncat(logbuf, ": ", sizeof(logbuf) - (strlen(logbuf) + 1));
+            strncat(logbuf, errbuf, sizeof(logbuf) - (strlen(logbuf) + 1));
+            strncat(logbuf, "\n", sizeof(logbuf) - (strlen(logbuf) + 1));
+            logprint(logbuf);
+        }
+
 		return 1;
 	}
 

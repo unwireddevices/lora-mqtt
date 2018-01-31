@@ -387,7 +387,7 @@ void umdk_m200_command(char *param, char *out, int bufsize) {
 	}
 	else if (strstr(param, "iface ") == param) { 
 		param += strlen("iface ");    // Skip command	
-		uint8_t interface;
+		uint8_t interface = 0;
 		if (strstr(param, "can") == param) { 	
 			interface = 2;
 		}
