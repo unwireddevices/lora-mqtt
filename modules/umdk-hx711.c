@@ -82,8 +82,11 @@ bool umdk_hx711_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
         case UMDK_HX711_DATA_DATA: {
             uint32_t weight = moddata[1] | (moddata[2] << 8) | (moddata[3] << 16) | (moddata[4] << 24);
             snprintf(buf, sizeof(buf), "%" PRIu32, weight);
-            
             add_value_pair(mqtt_msg, "weight", buf);
+            
+            uint32_t raw = moddata[5] | (moddata[6] << 8) | (moddata[7] << 16) | (moddata[8] << 24);
+            snprintf(buf, sizeof(buf), "%" PRIu32, raw);
+            add_value_pair(mqtt_msg, "raw", buf);
             break;
         }
         default:
