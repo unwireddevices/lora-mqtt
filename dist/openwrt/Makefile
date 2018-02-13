@@ -44,4 +44,9 @@ define Package/lora-mqtt/install
 	$(INSTALL_CONF) ./files/mqtt.conf $(1)/etc/lora-mqtt/mqtt.conf
 endef
 
+define Package/lora-mqtt/prerm
+#!/bin/sh
+exit 0
+endef
+
 $(eval $(call BuildPackage,lora-mqtt))
