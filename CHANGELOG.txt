@@ -1,3 +1,9 @@
+23.02.2018
+* Release 2.2.4
+* umdk-usound ultrasound rangefinder module added
+* umdk-m200 endianness fixes
+* umdk-dali DALI interface module added
+
 02.12.2017
 * Release 2.2.2
 * umdk-idcard module added
