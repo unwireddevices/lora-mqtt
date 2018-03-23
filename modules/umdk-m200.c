@@ -409,12 +409,12 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     char strbuf[20];
 	char buf_addr[30];
 	
-	// uint8_t ii;
-    // printf("[m200] RX data:  ");
-    // for(ii = 0; ii < moddatalen; ii++) {
-        // printf(" %02X ", moddata[ii]);
-    // }
-   // puts("\n");
+	uint8_t ii;
+    printf("[m200] RX data:  ");
+    for(ii = 0; ii < moddatalen; ii++) {
+        printf(" %02X ", moddata[ii]);
+    }
+   puts("\n");
 	
 	
 
@@ -433,9 +433,16 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	m200_cmd_t cmd = moddata[0];	
 	
 	if(cmd < M200_CMD_PROPRIETARY_COMMAND) {
-		uint32_t address = moddata[1] | moddata[2] << 8 | moddata[3] << 16 | moddata[4] << 24;
-		uint32_to_le(&address);
-		snprintf(buf_addr, sizeof(buf_addr), "%u", address);	
+		
+		// uint32_t address = *((uint32_t*)(&moddata[1]));
+		// //uint32_t address = moddata[1] | moddata[2] << 8 | moddata[3] << 16 | moddata[4] << 24;	
+		// uint32_to_le(&address);
+		// snprintf(buf_addr, sizeof(buf_addr), "%u", address);
+
+		uint32_t *address = (uint32_t*)(&moddata[1]);
+		uint32_to_le(address);
+		snprintf(buf_addr, sizeof(buf_addr), "%u", *address);
+
 		add_value_pair(mqtt_msg, "Address", buf_addr);
 							
 		if (moddatalen == 5) {
