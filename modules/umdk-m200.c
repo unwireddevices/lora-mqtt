@@ -409,12 +409,12 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     char strbuf[20];
 	char buf_addr[30];
 	
-	uint8_t ii;
-    printf("[m200] RX data:  ");
-    for(ii = 0; ii < moddatalen; ii++) {
-        printf(" %02X ", moddata[ii]);
-    }
-   puts("\n");
+	// uint8_t ii;
+    // printf("[m200] RX data:  ");
+    // for(ii = 0; ii < moddatalen; ii++) {
+        // printf(" %02X ", moddata[ii]);
+    // }
+   // puts("\n");
 	
 	
 
