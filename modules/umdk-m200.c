@@ -434,16 +434,9 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	
 	if(cmd < M200_CMD_PROPRIETARY_COMMAND) {
 				
-		char buf_addr1[30];
-		uint32_t address1 = moddata[1] | moddata[2] << 8 | moddata[3] << 16 | moddata[4] << 24;	
-		snprintf(buf_addr1, sizeof(buf_addr1), "%u", address1);
-		add_value_pair(mqtt_msg, "Address2", buf_addr1);
-		
-		char buf_addr_tmp[30];
-		uint32_t address_tmp = *((uint32_t*)(&moddata[1]));
-		uint32_to_le(&address_tmp);
-		snprintf(buf_addr_tmp, sizeof(buf_addr_tmp), "%u", address_tmp);
-		add_value_pair(mqtt_msg, "Address_tmp", buf_addr_tmp);
+		uint32_t address = moddata[1] | moddata[2] << 8 | moddata[3] << 16 | moddata[4] << 24;	
+		snprintf(buf_addr, sizeof(buf_addr), "%u", address);
+		add_value_pair(mqtt_msg, "Address", buf_addr);
 		
 		if (moddatalen == 5) {
 			if (moddata[0] == M200_OK_REPLY) {
