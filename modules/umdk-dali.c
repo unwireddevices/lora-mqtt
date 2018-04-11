@@ -53,7 +53,7 @@ typedef enum {
 	DALI_CMD_MIN_LEVEL				= 0x06,		/* Set the min level immediately without fading */
     DALI_CMD_STEP_DOWN_OFF			= 0x07,		/* One power step lower immediately without fading. Switch off if level is min */
     DALI_CMD_STEP_UP_ON				= 0x08,		/* One power step higher immediately without fading. Switch on/*/	
-	DALI_CMD_GOTO_SCENE				= 0x1F,		/* Dimming to power scene */
+	DALI_CMD_GOTO_SCENE				= 0x10,		/* Dimming to power scene */
 /*****/	
 	DALI_CMD_RESET					= 0x20,		/* Reset all values by default */    
 	DALI_CMD_SAVE_ACTUAL_LEVEL		= 0x21,		/* Store actual level in the DTR */	
@@ -63,10 +63,10 @@ typedef enum {
     DALI_CMD_STORE_POWER_ON_LEVEL	= 0x2D,		/* Store new power on level value */
     DALI_CMD_STORE_FADE_TIME		= 0x2E,		/* Store new fade time value */
 	DALI_CMD_STORE_FADE_RATE		= 0x2F,		/* Store new fade rate value */
-    DALI_CMD_STORE_SCENE			= 0x4F,		/* Store new scene level value */	
-	DALI_CMD_REMOVE_SCENE			= 0x5F,		/* Remove the ballast from scene */
-    DALI_CMD_ADD_GROUP				= 0x6F,		/* Add the ballast to group */
-	DALI_CMD_REMOVE_GROUP			= 0x7F,		/* Remove the ballast from group */
+    DALI_CMD_STORE_SCENE			= 0x40,		/* Store new scene level value */	
+	DALI_CMD_REMOVE_SCENE			= 0x50,		/* Remove the ballast from scene */
+    DALI_CMD_ADD_GROUP				= 0x60,		/* Add the ballast to group */
+	DALI_CMD_REMOVE_GROUP			= 0x70,		/* Remove the ballast from group */
 	DALI_CMD_STORE_SHORT_ADDR		= 0x80,		/* Store DTR as short address */
 /*****/	
 	DALI_CMD_QUERY_STATUS			= 0x90,		/* Query ballast status */
@@ -89,15 +89,14 @@ typedef enum {
 	DALI_CMD_QUERY_POWER_ON_LEVEL	= 0xA3,		/* Query power on level value */
 	DALI_CMD_QUERY_SYS_FAIL_LEVEL	= 0xA4,		/* Query system failure level value */
 	DALI_CMD_QUERY_FADE				= 0xA5,		/* Query fade time and fade rate */
-	DALI_CMD_QUERY_SCENE_LEVEL		= 0xBF,		/* Query scene level */
+	DALI_CMD_QUERY_SCENE_LEVEL		= 0xB0,		/* Query scene level */
 	DALI_CMD_QUERY_GROUPS_0_7		= 0xC0,		/* Query group(0-7) belonging */
 	DALI_CMD_QUERY_GROUPS_8_15		= 0xC1,		/* Query group(8-15) belonging */
 /*****/	
 	DALI_INIT_COMMANDS		= 0xF0,
 
     DALI_INIT_RAND			= 0xF1,		/* Random address allocation */
-    DALI_INIT_SELECT		= 0xF2,		/* Physical selection address allocation*/
-	DALI_INIT_SINGLE		= 0xF3,		/* Simplified addressing method (only for one ballast separately connected) */
+	DALI_INIT_SINGLE		= 0xF2,		/* Simplified addressing method (only for one ballast separately connected) */
 	
 } dali_cmd_t;
 
@@ -118,6 +117,12 @@ typedef enum {
 #define DALI_NO_ANSWER 0			/* DALI ballast will not answer */
 #define	DALI_ANSWER	   1			/* DALI ballast will answer - YES/NO */
 
+#define DALI_RX_DATA 1				/* Answer -> data */
+#define DALI_RX_YES_NO 0			/* Answer -> yes/no */
+
+#define DALI_YES 0xFF  
+#define DALI_NO 0x00   
+#define DALI_DATA_ERR 0xFF 
 
 typedef enum {
     UMDK_DALI_ERROR_REPLY        = 0,
@@ -134,24 +139,27 @@ void umdk_dali_command(char *param, char *out, int bufsize)
 	uint8_t address = 0;
 	uint8_t repeat = DALI_NOT_REPEAT;
 	uint8_t answer = DALI_NO_ANSWER;
+	uint8_t type_rx = DALI_RX_DATA;
 	uint8_t type_addr = 0;
 	uint8_t s_bit = DALI_S_BIT_CMD;
 	uint8_t store_dtr = DALI_NOT_STORE;
 	uint8_t service = 0;
+	uint8_t data_tmp = 0;
+	uint8_t intensity = 0;
 	
 	if (strstr(param, "init ") == param) {
 		param += strlen("init ");    // Skip
 		if (strstr(param, "rand") == param) {
 			param += strlen("rand");    // Skip
 			cmd = DALI_INIT_RAND;
+			data = 0;
 		}
-		else if (strstr(param, "select") == param) {
-			param += strlen("select");    // Skip
-			cmd = DALI_INIT_SELECT;
-		}
-		else if (strstr(param, "single") == param) {
-			param += strlen("single");    // Skip
-			cmd = DALI_INIT_SINGLE;
+		else if (strstr(param, "single ") == param) {
+			param += strlen("single ");    // Skip
+			
+			data = strtol(param, &param, 10);
+		
+			cmd = DALI_INIT_SINGLE;			
 		}
 		else {
 			snprintf(out, bufsize, "%02x", UMDK_DALI_INVALID_CMD_REPLY);
@@ -159,18 +167,18 @@ void umdk_dali_command(char *param, char *out, int bufsize)
 		}
 		
 		service = 0;
-		data = 0;
 		address = 0;
 		snprintf(out, bufsize, "%02x%02x%02x%02x", cmd, service, data, address);
 		return;
-		
 	}
 	else if (strstr(param, "set power ") == param) {
 		param += strlen("set power ");    // Skip 
 		
-		data = strtol(param, &param, 10);
+		intensity = strtol(param, &param, 10);
 		param += strlen(" ");    						// Skip space
-	
+		
+		data = (uint8_t)((253*log10(intensity) + 256) / 3);
+		
 		cmd = DALI_CMD_POWER_CONTROL;		
 		s_bit = DALI_S_BIT_POWER;
 	}
@@ -178,13 +186,241 @@ void umdk_dali_command(char *param, char *out, int bufsize)
 		param += strlen("off ");    // Skip 		
 		cmd = DALI_CMD_OFF;
 	}
-	else if (strstr(param, "query_max ") == param) {
-		param += strlen("query_max ");    // Skip 		
-		cmd = DALI_CMD_QUERY_MAX_LEVEL;			
+	else if (strstr(param, "up ") == param) {
+		param += strlen("up ");    // Skip 		
+		cmd = DALI_CMD_UP;
 	}
-	else if (strstr(param, "query_ballast ") == param) {
-		param += strlen("query_ballast ");    // Skip 		
-		cmd = DALI_CMD_QUERY_BALLAST;			
+	else if (strstr(param, "down ") == param) {
+		param += strlen("down ");    // Skip 		
+		cmd = DALI_CMD_DOWN;
+	}
+	else if (strstr(param, "step_up ") == param) {
+		param += strlen("step_up ");    // Skip 		
+		cmd = DALI_CMD_STEP_UP;
+	}
+	else if (strstr(param, "step_down ") == param) {
+		param += strlen("step_down ");    // Skip 		
+		cmd = DALI_CMD_STEP_DOWN;
+	}
+	else if (strstr(param, "max ") == param) {
+		param += strlen("max ");    // Skip 		
+		cmd = DALI_CMD_MAX_LEVEL;
+	}
+	else if (strstr(param, "min ") == param) {
+		param += strlen("min ");    // Skip 		
+		cmd = DALI_CMD_MIN_LEVEL;
+	}
+	else if (strstr(param, "step_down_off ") == param) {
+		param += strlen("step_down_off ");    // Skip 		
+		cmd = DALI_CMD_STEP_DOWN_OFF;
+	}
+	else if (strstr(param, "step_up_on ") == param) {
+		param += strlen("step_up_on ");    // Skip 		
+		cmd = DALI_CMD_STEP_UP_ON;
+	}
+	else if (strstr(param, "goto scene ") == param) {
+		param += strlen("goto scene ");    // Skip 		
+		data_tmp = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		
+		cmd = DALI_CMD_GOTO_SCENE | (data_tmp & 0x0F);		
+	}
+	else if (strstr(param, "reset ") == param) {
+		param += strlen("reset ");    // Skip 		
+		cmd = DALI_CMD_RESET;
+	}
+	else if (strstr(param, "save level ") == param) {
+		param += strlen("save level ");    // Skip
+		cmd = DALI_CMD_SAVE_ACTUAL_LEVEL;
+	}
+	else if (strstr(param, "store ") == param) {
+		param += strlen("store ");    // Skip 		
+		if (strstr(param, "max ") == param) {
+			param += strlen("max ");    // Skip
+			cmd = DALI_CMD_STORE_MAX_LEVEL;
+			
+			intensity = strtol(param, &param, 10);
+			param += strlen(" ");    						// Skip space
+			
+			data = (uint8_t)((253*log10(intensity) + 256) / 3);
+		}
+		else if (strstr(param, "min ") == param) {
+			param += strlen("min ");    // Skip 		
+			cmd = DALI_CMD_STORE_MIN_LEVEL;
+			intensity = strtol(param, &param, 10);
+			param += strlen(" ");    						// Skip space
+			
+			data = (uint8_t)((253*log10(intensity) + 256) / 3);
+		}
+		else if (strstr(param, "sys fail ") == param) {
+			param += strlen("sys fail ");    // Skip
+			cmd = DALI_CMD_STORE_SYS_FAIL_LEVEL;
+			intensity = strtol(param, &param, 10);
+			param += strlen(" ");    						// Skip space
+			
+			data = (uint8_t)((253*log10(intensity) + 256) / 3);
+		}
+		else if (strstr(param, "on ") == param) {
+			param += strlen("on ");    // Skip 		
+			cmd = DALI_CMD_STORE_POWER_ON_LEVEL;
+			intensity = strtol(param, &param, 10);
+			param += strlen(" ");    						// Skip space
+			
+			data = (uint8_t)((253*log10(intensity) + 256) / 3);
+		}
+		else if (strstr(param, "fadetime ") == param) {
+			param += strlen("fadetime ");    // Skip
+			cmd = DALI_CMD_STORE_MAX_LEVEL;
+			
+			data = strtol(param, &param, 10);
+			param += strlen(" ");    						// Skip space
+		}
+		else if (strstr(param, "faderate ") == param) {
+			param += strlen("faderate ");    // Skip 		
+			cmd = DALI_CMD_STORE_MIN_LEVEL;
+			
+			data = strtol(param, &param, 10);
+			param += strlen(" ");    						// Skip space
+		}
+		else if (strstr(param, "scene ") == param) {
+			param += strlen("scene ");    // Skip
+			data_tmp = strtol(param, &param, 10);
+			param += strlen(" ");    						// Skip space
+		
+			cmd = DALI_CMD_STORE_SCENE | (data_tmp & 0x0F);					
+		}
+		else {
+			snprintf(out, bufsize, "%02x", UMDK_DALI_INVALID_CMD_REPLY);
+			return;
+		}
+		data = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+
+	}
+	else if (strstr(param, "remove scene ") == param) {
+		param += strlen("remove scene ");    // Skip 		
+		
+		data_tmp = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		
+		cmd = DALI_CMD_REMOVE_SCENE | (data_tmp & 0x0F);					
+	}
+	else if (strstr(param, "add group ") == param) {
+		param += strlen("add group ");    // Skip 		
+		cmd = DALI_CMD_ADD_GROUP;			
+		data_tmp = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		
+		cmd = DALI_CMD_ADD_GROUP | (data_tmp & 0x0F);					
+	}
+	else if (strstr(param, "remove group ") == param) {
+		param += strlen("remove group ");    // Skip 					
+		data_tmp = strtol(param, &param, 10);
+		param += strlen(" ");    						// Skip space
+		
+		cmd = DALI_CMD_REMOVE_GROUP | (data_tmp & 0x0F);					
+	}
+	
+	else if (strstr(param, "query ") == param) {
+		param += strlen("query ");    // Skip 		
+		if (strstr(param, "status ") == param) {
+			param += strlen("status ");    // Skip 	
+			cmd = DALI_CMD_QUERY_STATUS;
+		}
+		else if (strstr(param, "ballast ") == param) {
+			param += strlen("ballast ");    // Skip 	
+			cmd = DALI_CMD_QUERY_BALLAST;
+			type_rx = DALI_RX_YES_NO;
+		}
+		else if (strstr(param, "fail ") == param) {
+			param += strlen("fail ");    // Skip 	
+			cmd = DALI_CMD_QUERY_LAMP_FAIL;
+			type_rx = DALI_RX_YES_NO;
+		}
+		else if (strstr(param, "on ") == param) {
+			param += strlen("on ");    // Skip 	
+			cmd = DALI_CMD_QUERY_LAMP_POWER_ON;
+			type_rx = DALI_RX_YES_NO;
+		}
+		else if (strstr(param, "error ") == param) {
+			param += strlen("error ");    // Skip 	
+			cmd = DALI_CMD_QUERY_LIMIT_ERROR;
+			type_rx = DALI_RX_YES_NO;
+		}
+		else if (strstr(param, "reset ") == param) {
+			param += strlen("reset ");    // Skip 	
+			cmd = DALI_CMD_QUERY_RESET_STATE;
+			type_rx = DALI_RX_YES_NO;
+		}
+		else if (strstr(param, "no_addr ") == param) {
+			param += strlen("no_addr ");    // Skip 	
+			cmd = DALI_CMD_QUERY_MISS_SHORT_ADDR;
+			type_rx = DALI_RX_YES_NO;
+		}
+		else if (strstr(param, "version ") == param) {
+			param += strlen("version ");    // Skip 	
+			cmd = DALI_CMD_QUERY_VERSION;
+		}
+		else if (strstr(param, "dtr ") == param) {
+			param += strlen("dtr ");    // Skip 	
+			cmd = DALI_CMD_QUERY_CONTENT_DTR;
+		}
+		else if (strstr(param, "type ") == param) {
+			param += strlen("type ");    // Skip 	
+			cmd = DALI_CMD_QUERY_DEVICE_TYPE;
+		}
+		else if (strstr(param, "phys min ") == param) {
+			param += strlen("phys min ");    // Skip 	
+			cmd = DALI_CMD_QUERY_PHYS_MIN_LEVEL;
+		}
+		else if (strstr(param, "power fail ") == param) {
+			param += strlen("power fail ");    // Skip 	
+			cmd = DALI_CMD_QUERY_POWER_FAIL;
+			type_rx = DALI_RX_YES_NO;
+		}
+		else if (strstr(param, "actual ") == param) {
+			param += strlen("actual ");    // Skip 	
+			cmd = DALI_CMD_QUERY_ACTUAL_LEVEL;
+		}
+		else if (strstr(param, "max ") == param) {
+			param += strlen("max ");    // Skip 	
+			cmd = DALI_CMD_QUERY_MAX_LEVEL;
+		}
+		else if (strstr(param, "min ") == param) {
+			param += strlen("min ");    // Skip 	
+			cmd = DALI_CMD_QUERY_MIN_LEVEL;
+		}
+		else if (strstr(param, "level on ") == param) {
+			param += strlen("level on ");    // Skip 	
+			cmd = DALI_CMD_QUERY_POWER_ON_LEVEL;
+		}
+		else if (strstr(param, "sys fail ") == param) {
+			param += strlen("sys fail ");    // Skip 	
+			cmd = DALI_CMD_QUERY_SYS_FAIL_LEVEL;
+		}
+		else if (strstr(param, "fade ") == param) {
+			param += strlen("fade ");    // Skip 	
+			cmd = DALI_CMD_QUERY_FADE;
+		}
+		else if (strstr(param, "scene level ") == param) {
+			param += strlen("scene level ");    // Skip 	
+			data_tmp = strtol(param, &param, 10);
+			param += strlen(" ");    						// Skip space
+			
+			cmd = DALI_CMD_QUERY_SCENE_LEVEL | (data_tmp & 0x0F);					
+		}
+		else if (strstr(param, "group_7 ") == param) {
+			param += strlen("group_7 ");    // Skip 	
+			cmd = DALI_CMD_QUERY_GROUPS_0_7;
+		}
+		else if (strstr(param, "group_15 ") == param) {
+			param += strlen("group_15 ");    // Skip 	
+			cmd = DALI_CMD_QUERY_GROUPS_8_15;
+		}
+		else {
+			snprintf(out, bufsize, "%02x", UMDK_DALI_INVALID_CMD_REPLY);
+			return;
+		}
 	}
 	else  {
 		snprintf(out, bufsize, "%02x", UMDK_DALI_INVALID_CMD_REPLY);
@@ -201,7 +437,7 @@ void umdk_dali_command(char *param, char *out, int bufsize)
 		type_addr = DALI_GROUP_ADDR;
 	}
 	else if (strstr(param, "dev ") == param) {
-		param += strlen("dev ");    // Skip 		
+		param += strlen("dev ");    // Skip 
 		address = strtol(param, &param, 10);
 		type_addr = DALI_SHORT_ADDR;
 	}
@@ -231,8 +467,9 @@ void umdk_dali_command(char *param, char *out, int bufsize)
 		store_dtr = DALI_STORE;
 	}
 	
+	address = address & DALI_BROADCAST;
 	address = (type_addr << 7) + (address << 1) + (s_bit << 0);
-	service = (repeat << 2) + (answer << 1) + (store_dtr << 0);
+	service = (type_rx << 3) + (answer << 2) + (repeat << 1) + (store_dtr << 0);
 	
 	snprintf(out, bufsize, "%02x%02x%02x%02x", cmd, service, data, address);
 	
