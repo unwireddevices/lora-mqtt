@@ -39,6 +39,7 @@
 #define MODBUS_DEBUG 1
 
 #define MODBUS_LENGTH_DATA_MAX 64
+#define MODBUS_PACK_MAX 80
 
 typedef enum {
 	MODBUS_SET_PARAMS 	= 0xFF,
@@ -61,7 +62,7 @@ typedef enum {
 	MODBUS_READ_FILE_REC	= 0x14,
 	MODBUS_WRITE_FILE_REC	= 0x15,
 	MODBUS_MASK_WRITE_REG	= 0x16,
-	MODBUS_RW_MULT_REG		= 0x17,
+	MODBUS_RW_MULT_REG		= 0x17,		/* Not realized */
 	MODBUS_READ_FIFO_QUEUE	= 0x18,
 	MODBUS_READ_DEV_INFO	= 0x2B,
 
@@ -92,30 +93,61 @@ void umdk_modbus_command(char *param, char *out, int bufsize)
 {
 	uint8_t cmd = 0;
 	uint8_t addr = 0;
-	// uint8_t tmp_8 = 0;
+	uint8_t tmp_8 = 0;
 	uint16_t tmp_16 = 0;
 	uint8_t data[MODBUS_LENGTH_DATA_MAX] = { 0 };
 	uint8_t length = 0;
 	uint16_t num_char = 0;
-    uint16_t i = 0;
+    uint8_t i = 0;
+	uint8_t k = 0;
 	
 	if (strstr(param, "send ") == param) {
         uint8_t bytes[100] = {};
         char *hex = param + strlen("send "); // Skip command
 
         if (!hex_to_bytes(hex, bytes, true)) {
+			snprintf(out, bufsize, "%02x", MODBUS_INVALID_CMD_REPLY);
             return;
         }
+		if((strlen(hex) / 2) >= MODBUS_PACK_MAX) {
+			snprintf(out, bufsize, "%02x", MODBUS_INVALID_CMD_REPLY);
+            return;
+		}
 
         snprintf(out, bufsize, "%s", hex);
+		return;
+    }
+	else if (strstr(param, "pack ") == param) {
+		param += strlen("pack "); // Skip commands
+		
+        uint8_t bytes_space[MODBUS_PACK_MAX] = {};		
+		char *parametr_ptr = param;
+		uint8_t length_total = (uint8_t)strlen(parametr_ptr);
+		
+		length_total++;
+		length_total = length_total / 3;
+		
+		if(length_total >= MODBUS_PACK_MAX) {
+			snprintf(out, bufsize, "%02x", MODBUS_INVALID_CMD_REPLY);
+			return;
+		}
+		
+		for(i = 0; i < length_total; i++) {
+			bytes_space[i] = strtol(parametr_ptr, &parametr_ptr, 16);
+			parametr_ptr += strlen(" ");    						// Skip space
+			num_char += snprintf(out + num_char, bufsize - num_char, "%02x", bytes_space[i]);
+		}
+		
+		return;
     }
     else if (strstr(param, "set ") == param) {
         param += strlen("set "); // Skip commands
 		if (strstr(param, "device ") == param) {
 			param += strlen("device "); // Skip commands
 			
-			uint8_t device = strtol(param, &param, 10);
+			uint8_t device = strtol(param, &param, 16);
 			snprintf(out, bufsize, "%02x%02x", MODBUS_SET_DEVICE, device);
+			return;	
 		}
 		else if (strstr(param, "mode ") == param) {
 			param += strlen("mode "); // Skip commands
@@ -131,10 +163,10 @@ void umdk_modbus_command(char *param, char *out, int bufsize)
 			for (k = 0; k < strlen(param); k++) {
 				snprintf(tmpbuf, sizeof(tmpbuf), "%02x", param[k]);
 				strcat(out, tmpbuf);
-				//snprintf(out + 4 + 2*k, 3, "%02x", param[k]);
 			}
 			
 			printf("MODBUS mode: %s\n", param);
+			return;
 		}
 		else {
 			snprintf(out, bufsize, "%02x", MODBUS_INVALID_CMD_REPLY);
@@ -145,55 +177,367 @@ void umdk_modbus_command(char *param, char *out, int bufsize)
 		param += strlen("read_di "); // Skip commands
 		
 		cmd = MODBUS_READ_DESCR_INP;
-		addr = strtol(param, &param, 10);
+		addr = strtol(param, &param, 16);
 		param += strlen(" ");    						// Skip space
 		
-		tmp_16 = strtol(param, &param, 10);
+		tmp_16 = strtol(param, &param, 16);
 		param += strlen(" ");    						// Skip space
 		data[0] = (uint8_t)(tmp_16 >> 8); 
 		data[1] = (uint8_t)(tmp_16 & 0xFF);
 		
-		tmp_16 = strtol(param, &param, 10);
+		tmp_16 = strtol(param, &param, 16);
 		param += strlen(" ");    						// Skip space
 		data[2] = (uint8_t)(tmp_16 >> 8); 
 		data[3] = (uint8_t)(tmp_16 & 0xFF);
 		length = 4;
-		
-		num_char = snprintf(out, bufsize, "%02x%02x", addr, cmd);
-	
-		for(i = 0; i < length; i++) {
-			num_char += snprintf(out + num_char, bufsize - num_char, "%02x", data[i]);
-		}
 	}
 	else if(strstr(param, "read_ao ") == param) {
 		param += strlen("read_ao "); // Skip commands
 		
 		cmd = MODBUS_READ_COILS;
-		addr = strtol(param, &param, 10);
+		addr = strtol(param, &param, 16);
 		param += strlen(" ");    						// Skip space
 		
-		tmp_16 = strtol(param, &param, 10);
+		tmp_16 = strtol(param, &param, 16);
 		param += strlen(" ");    						// Skip space
 		data[0] = (uint8_t)(tmp_16 >> 8); 
 		data[1] = (uint8_t)(tmp_16 & 0xFF);
 		
-		tmp_16 = strtol(param, &param, 10);
+		tmp_16 = strtol(param, &param, 16);
 		param += strlen(" ");    						// Skip space
 		data[2] = (uint8_t)(tmp_16 >> 8); 
 		data[3] = (uint8_t)(tmp_16 & 0xFF);
 		length = 4;
+	}
+	else if(strstr(param, "read_hold_reg ") == param) {
+		param += strlen("read_hold_reg "); // Skip commands
 		
-		num_char = snprintf(out, bufsize, "%02x%02x", addr, cmd);
-	
-		for(i = 0; i < length; i++) {
-			num_char += snprintf(out + num_char, bufsize - num_char, "%02x", data[i]);
+		cmd = MODBUS_READ_HOLD_REG;
+		addr = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[0] = (uint8_t)(tmp_16 >> 8); 
+		data[1] = (uint8_t)(tmp_16 & 0xFF);
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[2] = (uint8_t)(tmp_16 >> 8); 
+		data[3] = (uint8_t)(tmp_16 & 0xFF);
+		length = 4;
+	}
+	else if(strstr(param, "read_inp_reg ") == param) {
+		param += strlen("read_inp_reg "); // Skip commands
+		
+		cmd = MODBUS_READ_INP_REG;
+		addr = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[0] = (uint8_t)(tmp_16 >> 8); 
+		data[1] = (uint8_t)(tmp_16 & 0xFF);
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[2] = (uint8_t)(tmp_16 >> 8); 
+		data[3] = (uint8_t)(tmp_16 & 0xFF);
+		length = 4;
+	}
+	else if(strstr(param, "write_coil ") == param) {
+		param += strlen("write_coil "); // Skip commands
+		
+		cmd = MODBUS_WRITE_SINGLE_COIL;
+		addr = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[0] = (uint8_t)(tmp_16 >> 8); 
+		data[1] = (uint8_t)(tmp_16 & 0xFF);
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[2] = (uint8_t)(tmp_16 >> 8); 
+		data[3] = (uint8_t)(tmp_16 & 0xFF);
+		length = 4;
+	}
+	else if(strstr(param, "write_reg ") == param) {
+		param += strlen("write_reg "); // Skip commands
+		
+		cmd = MODBUS_WRITE_SINGLE_REG;
+		addr = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[0] = (uint8_t)(tmp_16 >> 8); 
+		data[1] = (uint8_t)(tmp_16 & 0xFF);
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[2] = (uint8_t)(tmp_16 >> 8); 
+		data[3] = (uint8_t)(tmp_16 & 0xFF);
+		length = 4;
+	}
+	else if(strstr(param, "status ") == param) {
+		param += strlen("status "); // Skip commands
+		
+		cmd = MODBUS_READ_EXC_STATUS;
+		addr = strtol(param, &param, 16);
+		
+		length = 0;
+	}
+	else if(strstr(param, "diagnostic ") == param) {
+		param += strlen("diagnostic "); // Skip commands
+		
+		cmd = MODBUS_READ_DIAGNOSTIC;
+		addr = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[0] = (uint8_t)(tmp_16 >> 8); 
+		data[1] = (uint8_t)(tmp_16 & 0xFF);
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[2] = (uint8_t)(tmp_16 >> 8); 
+		data[3] = (uint8_t)(tmp_16 & 0xFF);
+		length = 4;
+	}
+	else if(strstr(param, "event_cnt ") == param) {
+		param += strlen("event_cnt "); // Skip commands
+		
+		cmd = MODBUS_GET_COM_EVENT_CNT;
+		addr = strtol(param, &param, 16);
+		
+		length = 0;
+	}
+	else if(strstr(param, "event_log ") == param) {
+		param += strlen("event_log "); // Skip commands
+		
+		cmd = MODBUS_GET_COM_EVENT_LOG;
+		addr = strtol(param, &param, 16);
+		
+		length = 0;
+	}
+	else if(strstr(param, "write_mul_coils ") == param) {
+		param += strlen("write_mul_coils "); // Skip commands
+		
+		cmd = MODBUS_WRITE_MULT_COILS;
+		addr = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[0] = (uint8_t)(tmp_16 >> 8); 
+		data[1] = (uint8_t)(tmp_16 & 0xFF);
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[2] = (uint8_t)(tmp_16 >> 8); 
+		data[3] = (uint8_t)(tmp_16 & 0xFF);
+		
+		tmp_8 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[4] = tmp_8;
+		length = 5;
+		for(k = 0; k < data[4]; k++) {
+			tmp_8 = strtol(param, &param, 16);
+			param += strlen(" ");    						// Skip space
+			data[5 + k] = tmp_8;
 		}
+		length += data[4];
+	}
+	else if(strstr(param, "write_mul_reg ") == param) {
+		param += strlen("write_mul_reg "); // Skip commands
 		
+		cmd = MODBUS_WRITE_MULT_REG;
+		addr = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[0] = (uint8_t)(tmp_16 >> 8); 
+		data[1] = (uint8_t)(tmp_16 & 0xFF);
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[2] = (uint8_t)(tmp_16 >> 8); 
+		data[3] = (uint8_t)(tmp_16 & 0xFF);
+		
+		tmp_8 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[4] = tmp_8;
+		length = 5;
+		
+		for(k = 0; k < (data[4] / 2); k++) {
+			tmp_16 = strtol(param, &param, 16);
+			param += strlen(" ");    						// Skip space
+			data[5 + 2*k] = (uint8_t)(tmp_16 >> 8); 
+			data[6 + 2*k] = (uint8_t)(tmp_16 & 0xFF);
+		}
+		length += data[4];
+	}
+	else if(strstr(param, "server_id ") == param) {
+		param += strlen("server_id "); // Skip commands
+		
+		cmd = MODBUS_READ_SERVER_ID;
+		addr = strtol(param, &param, 16);
+		
+		length = 0;
+	}
+	else if(strstr(param, "read_file ") == param) {
+		param += strlen("read_file "); // Skip commands
+			/* at a time you can read one record from one file */
+		cmd = MODBUS_READ_FILE_REC;	
+		addr = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		
+		tmp_8 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[0] = tmp_8;
+		length = 1;
+
+		tmp_8 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[1] = tmp_8; 
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[2] = (uint8_t)(tmp_16 >> 8); 
+		data[3] = (uint8_t)(tmp_16 & 0xFF);
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[4] = (uint8_t)(tmp_16 >> 8); 
+		data[5] = (uint8_t)(tmp_16 & 0xFF);
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[6] = (uint8_t)(tmp_16 >> 8); 
+		data[7] = (uint8_t)(tmp_16 & 0xFF);			
+
+		length += data[0];
+	}
+	else if(strstr(param, "write_file ") == param) {
+		param += strlen("write_file "); // Skip commands
+		/* at a time you can write one record to one file */
+		cmd = MODBUS_WRITE_FILE_REC;
+		addr = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		
+		tmp_8 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[0] = tmp_8;
+		length = 1;
+		
+		tmp_8 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[1] = tmp_8; 
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[2] = (uint8_t)(tmp_16 >> 8); 
+		data[3] = (uint8_t)(tmp_16 & 0xFF);
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[4] = (uint8_t)(tmp_16 >> 8); 
+		data[5] = (uint8_t)(tmp_16 & 0xFF);
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[6] = (uint8_t)(tmp_16 >> 8); 
+		data[7] = (uint8_t)(tmp_16 & 0xFF);
+		
+		uint16_t length_tmp = tmp_16;
+		
+		for(k = 0; k < length_tmp; k++) {
+			tmp_16 = strtol(param, &param, 16);
+			param += strlen(" ");    						// Skip space
+			data[8 + 2*k] = (uint8_t)(tmp_16 >> 8); 
+			data[9 + 2*k] = (uint8_t)(tmp_16 & 0xFF);
+		}
+
+		length += data[0];
+	}
+	else if(strstr(param, "write_mask ") == param) {
+		param += strlen("write_mask "); // Skip commands
+		
+		cmd = MODBUS_MASK_WRITE_REG;
+		addr = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[0] = (uint8_t)(tmp_16 >> 8); 
+		data[1] = (uint8_t)(tmp_16 & 0xFF);
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[2] = (uint8_t)(tmp_16 >> 8); 
+		data[3] = (uint8_t)(tmp_16 & 0xFF);
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[4] = (uint8_t)(tmp_16 >> 8); 
+		data[5] = (uint8_t)(tmp_16 & 0xFF);
+		
+		length = 6;
+	}
+	else if(strstr(param, "read_fifo ") == param) {
+		param += strlen("read_fifo "); // Skip commands
+		
+		cmd = MODBUS_READ_FIFO_QUEUE;
+		addr = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		
+		tmp_16 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[0] = (uint8_t)(tmp_16 >> 8); 
+		data[1] = (uint8_t)(tmp_16 & 0xFF);
+		
+		length = 2;
+	}
+	else if(strstr(param, "read_info ") == param) {
+		param += strlen("read_info "); // Skip commands
+		
+		cmd = MODBUS_READ_DEV_INFO;
+		addr = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		
+		tmp_8 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[0] = tmp_8; 
+		tmp_8 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[1] = tmp_8; 
+		tmp_8 = strtol(param, &param, 16);
+		param += strlen(" ");    						// Skip space
+		data[2] = tmp_8; 
+		
+		length = 3;
 	}
     else {
 		snprintf(out, bufsize, "%02x", MODBUS_INVALID_CMD_REPLY);
 		return;
 	}
+		
+	if(length >= MODBUS_LENGTH_DATA_MAX) {
+		snprintf(out, bufsize, "%02x", MODBUS_INVALID_CMD_REPLY);
+		return;
+	}
+	
+	num_char = snprintf(out, bufsize, "%02x%02x", addr, cmd);
+	
+	for(i = 0; i < length; i++) {
+		num_char += snprintf(out + num_char, bufsize - num_char, "%02x", data[i]);
+	}
+	
+	return;
 }
 
 bool umdk_modbus_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
@@ -219,10 +563,8 @@ bool umdk_modbus_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     }
 	
 	char buf[100] = { 0 };
-    // char buf_cmd[5] = { 0 };
 	char buf_addr[5] = { 0 };
 	char buf_exc[5] = { 0 };
-	char hex[5] = { 0 };
 	
 	uint8_t addr = moddata[0];
     uint8_t cmd = moddata[1];
@@ -244,9 +586,6 @@ bool umdk_modbus_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	}
 	
 	if(cmd >= 0x80) {
-		// cmd = cmd - 0x80;
-		// snprintf(buf_cmd, sizeof(buf_cmd), "%02d", cmd);
-		// add_value_pair(mqtt_msg, "cmd", buf_cmd);	
 		uint8_t exception = moddata[2];
 		snprintf(buf_exc, sizeof(buf_exc), "%02d", exception);
 		add_value_pair(mqtt_msg, "exception", buf_exc);
@@ -285,100 +624,13 @@ bool umdk_modbus_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		return true;
 	}
 	
-	// snprintf(buf_cmd, sizeof(buf_cmd), "%02d", cmd);
-	// add_value_pair(mqtt_msg, "cmd", buf_cmd);	
-	
-	uint8_t start_data = 0;
-	switch(cmd) {
-		case MODBUS_READ_COILS: {
-			start_data = 1;
-			break;
-		}
-		case MODBUS_READ_DESCR_INP: {
-			start_data = 1;
-			break;
-		}
-		case MODBUS_READ_HOLD_REG: {
-			start_data = 1;
-			break;
-		}
-		case MODBUS_READ_INP_REG: {
-			start_data = 1;
-			break;
-		}
-		case MODBUS_WRITE_SINGLE_COIL: {
-			start_data = 0;
-			break;
-		}
-		case MODBUS_WRITE_SINGLE_REG: {
-			start_data = 0;
-			break;
-		}
-		case MODBUS_READ_EXC_STATUS: {
-			start_data = 0;
-			break;
-		}
-		case MODBUS_READ_DIAGNOSTIC: {
-			start_data = 0;
-			break;
-		}
-		case MODBUS_GET_COM_EVENT_CNT: {
-			start_data = 0;
-			break;
-		}
-		case MODBUS_GET_COM_EVENT_LOG: {
-			start_data = 1;
-			break;
-		}
-		case MODBUS_WRITE_MULT_COILS: {
-			start_data = 0;
-			break;
-		}
-		case MODBUS_WRITE_MULT_REG: {
-			start_data = 0;
-			break;
-		}
-		case MODBUS_READ_SERVER_ID: {
-			start_data = 1;
-			break;
-		}
-		case MODBUS_READ_FILE_REC: {
-			start_data = 1;
-			break;
-		}
-		case MODBUS_WRITE_FILE_REC: {
-			start_data = 1;
-			break;
-		}
-		case MODBUS_MASK_WRITE_REG: {
-			start_data = 0;
-			break;
-		}
-		case MODBUS_RW_MULT_REG: {
-			start_data = 1;
-			break;
-		}
-		case MODBUS_READ_FIFO_QUEUE: {
-			start_data = 1;
-			break;
-		}
-		case MODBUS_READ_DEV_INFO: {
-			start_data = 0;
-			break;
-		}
-		
-		default:
-			break;		
+	uint8_t i = 0;		
+	char byte[10];
+	for(i = 2; i < moddatalen; i++) {	
+		 snprintf(byte, sizeof(byte), "%02x", moddata[i]);
+         strcat(buf, byte);
 	}
-	
-	uint8_t i = 0;	
-	for(i = (2 + start_data); i < moddatalen; i++) {
-		snprintf(hex, sizeof(hex), "%02x ", moddata[i]);
-        strcat(buf, hex);
-	}
-	
 	add_value_pair(mqtt_msg, "data", buf);
 
 	return true;
-    // return false;
 }
