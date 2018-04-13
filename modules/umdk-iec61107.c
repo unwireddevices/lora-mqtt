@@ -88,11 +88,12 @@ typedef enum {
 } iec61107_database_param_t;
 
 typedef enum {
-    UMDK_IEC61107_ERROR_REPLY        = 0,
-    UMDK_IEC61107_OK_REPLY           = 1,
-    UMDK_IEC61107_NO_RESPONSE_REPLY  = 2,
-	UMDK_IEC61107_WAIT_REPLY		 = 3,
-    UMDK_IEC61107_INVALID_CMD_REPLY  = 0xFF,
+    UMDK_IEC61107_ERROR_REPLY        	= 0,
+    UMDK_IEC61107_OK_REPLY           	= 1,
+    UMDK_IEC61107_NO_RESPONSE_REPLY  	= 2,
+	UMDK_IEC61107_WAIT_REPLY		 	= 3,
+	UMDK_IEC61107_INVALID_FORMAT_REPLY	= 4,
+    UMDK_IEC61107_INVALID_CMD_REPLY  	= 0xFF,
 } iec61107_reply_t;
 
 static char str_dow[7][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
@@ -358,7 +359,7 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 	length_param = length_total;
 	
 	if(length_total < 2) {
-		snprintf(out, bufsize, "%02x", UMDK_IEC61107_INVALID_CMD_REPLY);
+		snprintf(out, bufsize, "%02x", UMDK_IEC61107_INVALID_FORMAT_REPLY);
 		return;				
 	}
 	
@@ -452,9 +453,10 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             add_value_pair(mqtt_msg, "msg", "ok");
         } else if(moddata[0] == UMDK_IEC61107_ERROR_REPLY){
             add_value_pair(mqtt_msg, "msg", "error");
-		}
-		else if(moddata[0] == UMDK_IEC61107_INVALID_CMD_REPLY){
+		} else if(moddata[0] == UMDK_IEC61107_INVALID_CMD_REPLY){
 			add_value_pair(mqtt_msg, "msg", "invalid command");
+		} else if(moddata[0] == UMDK_IEC61107_INVALID_FORMAT_REPLY){
+			add_value_pair(mqtt_msg, "msg", "invalid format");
 		}
         return true;
     }	
