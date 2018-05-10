@@ -72,6 +72,7 @@ typedef enum {
 	UNWDS_IEC61107_MODULE_ID = 55,
     UNWDS_IDCARD_MODULE_ID = 56,
 	UNWDS_DALI_MODULE_ID = 57,
+	UNWDS_WIEGAND_MODULE_ID = 58,
     /* Customer 100 to 125*/
     UNWDS_CUSTOMER_MODULE_ID = 100,
     /* System module 126 */
