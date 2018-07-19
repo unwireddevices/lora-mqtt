@@ -56,7 +56,7 @@
 #define NUM_RETRIES_INV 5
 
 #define UART_POLLING_INTERVAL 100	// milliseconds
-#define QUEUE_POLLING_INTERVAL 1 	// milliseconds
+#define QUEUE_POLLING_INTERVAL 5 	// milliseconds
 #define REPLY_LEN 1024
 
 int msgqid;
@@ -721,7 +721,6 @@ static void* pending_worker(void *arg) {
 		int i;	
 		for (i = 0; i < MAX_PENDING_NODES; i++) {
 			if (pending_free[i]) {
-                usleep(1e3 * QUEUE_POLLING_INTERVAL);
 				continue;
             }
 
@@ -729,14 +728,12 @@ static void* pending_worker(void *arg) {
 			time_t current = time(NULL);
 
 			if (is_fifo_empty(&e->pending_fifo)) {
-                usleep(1e3 * QUEUE_POLLING_INTERVAL);
-				continue;
+                continue;
             }
 
 			/* Messages for Class A devices will be sent only on demand */
 			if (e->nodeclass == LS_ED_CLASS_A && !e->can_send) {
-                usleep(1e3 * QUEUE_POLLING_INTERVAL);
-				continue;
+                continue;
             }
 
 			/* Must wait for device to join before sending messages */
@@ -837,6 +834,7 @@ static void* pending_worker(void *arg) {
 		}
 
 		pthread_mutex_unlock(&mutex_pending);
+        usleep(1e3 * QUEUE_POLLING_INTERVAL);
 	}
 
 	return 0;
