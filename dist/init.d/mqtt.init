@@ -1,0 +1,75 @@
+#! /bin/sh
+
+### BEGIN INIT INFO
+# Provides:             mqtt
+# Required-Start:       $mosquitto
+# Required-Stop:        $remote_fs $syslog
+# Default-Start:        2 3 4 5
+# Default-Stop:         0 1 6
+# Short-Description:    MQTT message parser
+# Description:          MQTT message parser for Unwired Devices LoRa protocol
+### END INIT INFO
+
+
+set -e
+
+DAEMON=/usr/local/bin/mqtt
+
+# /etc/init.d/mqtt: start and stop the MQTT message parser
+
+test -x ${DAEMON} || exit 0
+
+umask 022
+
+. /lib/lsb/init-functions
+
+# Are we running from init?
+run_by_init() {
+    ([ "$previous" ] && [ "$runlevel" ]) || [ "$runlevel" = S ]
+}
+
+export PATH="${PATH:+$PATH:}/usr/local/bin"
+
+case "$1" in
+  start)
+	if init_is_upstart; then
+	    exit 1
+	fi
+	log_daemon_msg "Starting daemon:" "mqtt"
+	if  start-stop-daemon --start --exec ${DAEMON} -- -d ; then
+	    log_end_msg 0
+	else
+	    log_end_msg 1
+	fi
+	;;
+  stop)
+	if init_is_upstart; then
+	    exit 0
+	fi
+	log_daemon_msg "Stopping daemon:" "mqtt"
+	if start-stop-daemon --stop; then
+	    log_end_msg 0
+	else
+	    log_end_msg 1
+	fi
+	;;
+
+  restart)
+	if init_is_upstart; then
+	    exit 1
+	fi
+	log_daemon_msg "Restarting daemon:" "mqtt"
+	start-stop-daemon --stop --quiet --oknodo --retry 30
+	if start-stop-daemon --start --exec ${DAEMON} -- -d ; then
+	    log_end_msg 0
+	else
+	    log_end_msg 1
+	fi
+	;;
+
+  *)
+	log_action_msg "Usage: /etc/init.d/mqtt {start|stop|restart}"
+	exit 1
+esac
+
+exit 0
