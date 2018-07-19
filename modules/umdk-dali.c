@@ -768,8 +768,8 @@ bool umdk_dali_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		case DALI_CMD_QUERY_FADE: {
 			uint8_t fadetime = (data >> 4) & 0x0F;
 			uint8_t faderate = data & 0x0F;
-			char str_time[10] = { 0 };
-			char str_rate[10] = { 0 };
+			char str_time[20] = { 0 };
+			char str_rate[20] = { 0 };
 			
 			if(fadetime > 0){
 				snprintf(str_time, sizeof(str_time), "%.1f", ftime[fadetime]);
