@@ -96,7 +96,7 @@ void umdk_wiegand_command(char *param, char *out, int bufsize)
 		return;
 	}
 
-	snprintf(out, bufsize, "%02x%010lx%04x", cmd, id, time);
+	snprintf(out, bufsize, "%02x%010llx%04x", cmd, id, time);
 	
 	return;
 }
@@ -135,7 +135,7 @@ bool umdk_wiegand_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	
 	card = (facility34 << 16) | id;
 	
-	snprintf(card_buf, sizeof(card_buf), "%ld", card);
+	snprintf(card_buf, sizeof(card_buf), "%llu", card);
 	add_value_pair(mqtt_msg, "card", card_buf);
 	
 	snprintf(id_buf, sizeof(id_buf), "%d,%05d", facility, id);
