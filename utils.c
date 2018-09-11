@@ -114,21 +114,21 @@ void uint16_swap_bytes(uint16_t *num) {
 
 void uint64_to_le(uint64_t *num)
 {
-    if (is_big_endian()) {
+    if (!is_big_endian()) {
         uint64_swap_bytes(num);
     }
 }
 
 void uint32_to_le(uint32_t *num)
 {
-    if (is_big_endian()) {
+    if (!is_big_endian()) {
         uint32_swap_bytes(num);
     }
 }
 
 void uint16_to_le(uint16_t *num)
 {
-    if (is_big_endian()) {
+    if (!is_big_endian()) {
         uint16_swap_bytes(num);
     }
 }
@@ -192,34 +192,36 @@ uint16_t crc16_arc(uint8_t *data, uint16_t len)
    return (crc);
 }
 
-/* GPS binary format decoder */
-/* format is used by umdk-gps, umdk-idcard and other GPS-enabled devices */
-void parse_gps_data(gps_data_t *gps, uint8_t *data, bool decode_nmea) {
-    memset(gps, 0, sizeof(gps_data_t));
-    
-    gps->ready = (data[0] & 1);
-    
-    if (gps->ready) {
-        int lat, lat_d, lon, lon_d;
-        lat = data[2] + (data[3] << 8);
-        lat_d = data[1];
-        lon = data[5] + (data[6] << 8);
-        lon_d = data[4];
-        
-        gps->latitude = (float)lat + (float)lat_d/100.0;
-        gps->longitude = (float)lon + (float)lon_d/100.0;
-        
-        /* Apply sign bits from reply */
-        if ((data[0] >> 5) & 1) {
-            gps->latitude = -gps->latitude;
+void convert_from_be_sam(void *ptr, size_t size) {    
+    switch (size) {
+        case 1: {
+            int8_t v = *(int8_t*)ptr;
+            *(uint8_t*)ptr = (~(v >> 7) & v) | (((v & 0x80) - v) & (v >> 7));
+            break;
         }
-
-        if ((data[0] >> 6) & 1) {
-            gps->longitude = -gps->longitude;
+        case 2: {
+            uint16_to_le((uint16_t *)ptr);
+            
+            int16_t v = *(int16_t*)ptr;
+            *(uint16_t*)ptr = (~(v >> 15) & v) | (((v & 0x8000) - v) & (v >> 15));
+            break;
         }
-        
-        gps->valid = (data[0] >> 7) & 1;
+        case 4: {
+            uint32_to_le((uint32_t *)ptr);
+            
+            int32_t v = *(int32_t*)ptr;
+            *(uint32_t*)ptr = (~(v >> 31) & v) | (((v & 0x80000000) - v) & (v >> 31));
+            break;
+        }
+        case 8: {
+            uint64_to_le((uint64_t *)ptr);
+            
+            int64_t v = *(int64_t*)ptr;
+            *(uint64_t*)ptr = (~(v >> 63) & v) | (((v & (1ULL << 63)) - v) & (v >> 63));
+            break;
+            break;
+        }
+        default:
+            return;
     }
-    
-    return;
 }

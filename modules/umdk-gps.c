@@ -37,6 +37,13 @@
 #include "unwds-modules.h"
 #include "utils.h"
 
+typedef enum {
+	UMDK_GPS_DATA = 0,
+    UMDK_GPS_COMMAND = 1,
+	UMDK_GPS_CMD_POLL = 2,
+	UMDK_GPS_REPLY_ERROR = 0xFF,
+} umdk_gps_cmd_t;
+
 void umdk_gps_command(char *param, char *out, int bufsize) {
     if (strstr(param, "get") == param) {
         snprintf(out, bufsize, "00");
@@ -47,57 +54,42 @@ bool umdk_gps_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     char buf[100];
 
-    if (moddatalen < 1) {
-        return false;
+    if (moddata[0] == UMDK_GPS_DATA) {
+        add_value_pair(mqtt_msg, "valid", (moddata[1] > 0)?"true":"false");
+        
+        int32_t latitude;
+        memcpy((void *)&latitude, &moddata[2], 4);
+        convert_from_be_sam((void *)&latitude, sizeof(latitude));
+        
+        int32_t longitude;
+        memcpy((void *)&longitude, &moddata[6], 4);
+        convert_from_be_sam((void *)&longitude, sizeof(longitude));
+        
+        uint16_t velocity;
+        memcpy((void *)&velocity, &moddata[10], 2);
+        convert_from_be_sam((void *)&velocity, sizeof(velocity));
+        
+        uint16_t direction;
+        memcpy((void *)&direction, &moddata[12], 2);
+        convert_from_be_sam((void *)&direction, sizeof(direction));
+        
+        snprintf(buf, sizeof(buf), "%f", (double)latitude/1000000);
+        add_value_pair(mqtt_msg, "lat", buf);
+        snprintf(buf, sizeof(buf), "%f", (double)longitude/1000000);
+        add_value_pair(mqtt_msg, "lon", buf);
+        snprintf(buf, sizeof(buf), "%d", velocity);
+        add_value_pair(mqtt_msg, "vel", buf);
+        snprintf(buf, sizeof(buf), "%f", (double)direction/100);
+        add_value_pair(mqtt_msg, "dir", buf);
+    }
+    
+    if (moddata[0] == UMDK_GPS_COMMAND) {
+        add_value_pair(mqtt_msg, "msg", "ok");
     }
 
-    uint8_t reply = moddata[0] & 3; /* Last 4 bits is reply type */
-    switch (reply) {
-        case 0: { /* GPS data */
-            if (moddatalen != 1 + 6) { /* There must be 6 bytes of GPS data + 1 byte of reply type */
-                return false;
-            }
-
-            uint8_t *bytes = (uint8_t *) (moddata + 1);
-
-            int lat, lat_d, lon, lon_d;
-
-            /* This code is endian-safe */
-            lat = bytes[0] + (bytes[1] << 8);
-            lat_d = bytes[2];
-            lon = bytes[3] + (bytes[4] << 8);
-            lon_d = bytes[5];
-
-            /* Apply sign bits from reply */
-            if ((moddata[0] >> 5) & 1) {
-                lat = -lat;
-            }
-
-            if ((moddata[0] >> 6) & 1) {
-                lon = -lon;
-            }
-            
-            
-            add_value_pair(mqtt_msg, "valid", (moddata[0]>>7)?"true":"false");
-            snprintf(buf, sizeof(buf), "%03d.%d", lat, lat_d);
-            add_value_pair(mqtt_msg, "lat", buf);
-            snprintf(buf, sizeof(buf), "%04d.%d", lon, lon_d);
-            add_value_pair(mqtt_msg, "lon", buf);
-            break;
-        }
-        case 1: { /* No data yet */
-            add_value_pair(mqtt_msg, "valid", "false");
-            add_value_pair(mqtt_msg, "lat", "null");
-            add_value_pair(mqtt_msg, "lon", "null");
-            break;
-        }
-        case 3: { /* Error occured */
-            add_value_pair(mqtt_msg, "valid", "false");
-            add_value_pair(mqtt_msg, "msg", "error");
-            break;
-        }
-        default:
-            return false;
+    if (moddata[0] == UMDK_GPS_REPLY_ERROR) {
+        add_value_pair(mqtt_msg, "msg", "error");
     }
+    
     return true;
 }
