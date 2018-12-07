@@ -55,7 +55,7 @@ void umdk_irblaster_command(char *param, char *out, int bufsize) {
             return;
         }
 
-        snprintf(out, bufsize, "%02x%02x%s", UMDK_IR_CMD_SEND, strlen(hex)/2, hex);
+        snprintf(out, bufsize, "%02x%02x%s", UMDK_IR_CMD_SEND, (unsigned int)strlen(hex)/2, hex);
     } else {
         return;
     }
