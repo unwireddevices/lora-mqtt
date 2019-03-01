@@ -67,6 +67,7 @@ bool umdk_dali_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_usound_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_modbus_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 bool umdk_wiegand_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
+bool umdk_st95_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg);
 
 void umdk_counter_command(char *param, char *out, int bufsize);
 void umdk_pulse_command(char *param, char *out, int bufsize);
@@ -96,6 +97,7 @@ void umdk_dali_command(char *param, char *out, int bufsize);
 void umdk_usound_command(char *param, char *out, int bufsize);
 void umdk_modbus_command(char *param, char *out, int bufsize);
 void umdk_wiegand_command(char *param, char *out, int bufsize);
+void umdk_st95_command(char *param, char *out, int bufsize);
 
 static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_GPIO_MODULE_ID,      .name = "gpio",      .cmd = &umdk_gpio_command,       .reply = &umdk_gpio_reply      },
@@ -128,6 +130,7 @@ static const unwds_module_desc_t unwds_modules_list[] = {
     { .id = UNWDS_USOUND_MODULE_ID,    .name = "usound",    .cmd = &umdk_usound_command,     .reply = &umdk_usound_reply    },
     { .id = UNWDS_MODBUS_MODULE_ID,    .name = "modbus",    .cmd = &umdk_modbus_command,     .reply = &umdk_modbus_reply    },
     { .id = UNWDS_WIEGAND_MODULE_ID,   .name = "wiegand",   .cmd = &umdk_wiegand_command,    .reply = &umdk_wiegand_reply   },
+    { .id = UNWDS_ST95_MODULE_ID,      .name = "st95",      .cmd = &umdk_st95_command,       .reply = &umdk_st95_reply      },
 };
 
 bool (*umdk_reply_ptr)(uint8_t*, int, mqtt_msg_t*);
