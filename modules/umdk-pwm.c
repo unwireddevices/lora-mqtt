@@ -24,8 +24,8 @@
  * @ingroup
  * @brief
  * @{
- * @file	umdk-mercury.c
- * @brief   umdk-mercury message parser
+ * @file	umdk-pwm.c
+ * @brief   umdk-pwm message parser
  * @author   Mikhail Perkov
  * @author  
  */
