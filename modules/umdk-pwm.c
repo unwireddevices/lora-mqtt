@@ -37,65 +37,60 @@
 #include "unwds-modules.h"
 #include "utils.h"
 
+typedef enum {
+    UMDK_PWM_OK = 0,
+	UMDK_PWM_COMMAND = 1,
+	UMDK_PWM_POLL = 2,
+    UMDK_PWM_FAIL = 0xFF,
+} umdk_pwm_cmd_t;
+
 void umdk_pwm_command(char *param, char *out, int bufsize) {
-	if (strstr(param, "set ") == param) { 
-		param += strlen("set ");    // Skip command
-		uint8_t cmd = 0;
+	if (strstr(param, "pin ") == param) {
+		param += strlen("pin ");
+        uint8_t pin = strtol(param, &param, 10);
 		
 		if(strstr(param, "freq ") == param) {
-			param += strlen("freq ");				// Skip command
-			uint32_t freq = strtol(param, &param, 10);
-			param += strlen(" ");    						// Skip space
+			param += strlen("freq ");
+			uint16_t freq = strtol(param, &param, 10);
+            convert_to_be_sam((void *)&pulses, sizeof(pulses));
+			param += strlen(" ");
 	
-			if(strstr(param, "dev ") == param) {
-				param += strlen("dev ");				// Skip command
-				uint8_t dev = strtol(param, &param, 10);
-				dev--;
-				param += strlen(" ");    						// Skip space				
-				
-				uint8_t mask;
-				if(strstr(param, "on ") == param) {
-					param += strlen("on ");				// Skip command
-					mask = 1;
-				}
-				else if(strstr(param, "off ") == param) {
-					param += strlen("off ");				// Skip command
-					mask = 0;							
-				}
-				
-				if(strstr(param, "ch ") == param) {	
-					param += strlen("ch ");				// Skip command					
-					uint8_t channel = strtol(param, &param, 10); 
-					channel--;
-					param += strlen(" ");    						// Skip space
-					
-					if(strstr(param, "duty ") == param) {							
-						param += strlen("duty ");				// Skip command		
-						uint8_t duty = strtol(param, &param, 10); 				
-						
-						freq = freq & 0x000FFFFF;	
-						uint32_t cmd_freq_dev = (cmd << 28) + (freq << 8) + (dev << 0);
-						uint8_t mask_ch = (mask << 4) + (channel << 0);
-						
-						snprintf(out, bufsize, "%08x%02x%02x", cmd_freq_dev, mask_ch, duty);								
-					}
-				}	
+			if(strstr(param, "duty ") == param) {
+				param += strlen("duty ");
+				uint8_t duty = strtol(param, &param, 10);
+				param += strlen(" ");
+
+                if(strstr(param, "pulses ") == param) {
+                    param += strlen("pulses ");
+                    uint16_t pulses = strtol(param, &param, 10);
+                    convert_to_be_sam((void *)&pulses, sizeof(pulses));
+                    
+                    if(strstr(param, "soft ") == param) {
+                        param += strlen("soft ");
+                        uint8_t soft = strtol(param, &param, 10);
+                                       
+                    snprintf(out, bufsize, "%02x%02x%04x%02x%04x%02x", UMDK_PWM_COMMAND, pin, freq, duty, pulses, soft);	
+                    }                    
+                }
 			}
 		}
 	}
-
 }
 
 bool umdk_pwm_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
-	if (moddatalen == 1) {
-		if (moddata[0] == 0) {
-			add_value_pair(mqtt_msg, "msg", "ok");
-		} else if(moddata[0] == 1){
-			add_value_pair(mqtt_msg, "msg", "error");
-		}
-		return true;
-	}
+    if (moddata[0] == UMDK_PWM_COMMAND) {
+        switch (moddata[1]): {
+            case UMDK_PWM_OK:
+                add_value_pair(mqtt_msg, "msg", "ok");
+                break;
+            case UMDK_PWM_FAIL:
+                add_value_pair(mqtt_msg, "msg", "error");
+                break;
+            default:
+                break;
+        }
+    }
 		
 	return true;
 }
