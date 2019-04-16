@@ -102,8 +102,8 @@ typedef enum {
 } m230_scheduler_t;
 
 typedef enum {
+    M230_OK_REPLY 			= 0x00,
 	M230_ERROR_REPLY 		= 0xF0,
-    M230_OK_REPLY 			= 0xF1,
     M230_NO_RESPONSE_REPLY 	= 0xF2,
 	
 	M230_ERROR_NOT_FOUND	= 0xF3,
@@ -627,39 +627,39 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		return true;
 	}	
 	
-	m230_cmd_t cmd = moddata[0];	
+	m230_cmd_t cmd = moddata[0];
 	
 	// if(cmd < M230_CMD_PROPRIETARY_COMMAND) {
 		
-		uint8_t address = moddata[1];
+		uint8_t address = moddata[2];
 
 		snprintf(buf_addr, sizeof(buf_addr), "%u", address);	
 		add_value_pair(mqtt_msg, "Address", buf_addr);
 							
-		if (moddatalen == 2) {
-			if (moddata[0] == M230_OK_REPLY) {
+		if (moddatalen == 3) {
+			if (moddata[1] == M230_OK_REPLY) {
 				add_value_pair(mqtt_msg, "msg", "ok");
-			} else if(moddata[0] == M230_ERROR_REPLY){
+			} else if(moddata[1] == M230_ERROR_REPLY){
 				add_value_pair(mqtt_msg, "msg", "error");
-			} else if(moddata[0] == M230_NO_RESPONSE_REPLY){
+			} else if(moddata[1] == M230_NO_RESPONSE_REPLY){
 				add_value_pair(mqtt_msg, "msg", "no response");					
-			} else if(moddata[0] == M230_ERROR_NOT_FOUND){
+			} else if(moddata[1] == M230_ERROR_NOT_FOUND){
 				add_value_pair(mqtt_msg, "msg", "device not found");					
-			} else if(moddata[0] == M230_ERROR_OFFLINE){
+			} else if(moddata[1] == M230_ERROR_OFFLINE){
 				add_value_pair(mqtt_msg, "msg", "offline");					
-			} else if(moddata[0] == M230_WRONG_CMD){
+			} else if(moddata[1] == M230_WRONG_CMD){
 				add_value_pair(mqtt_msg, "msg", "invalid parameter");							
-			} else if(moddata[0] == M230_INTERNAL_ERROR){
+			} else if(moddata[1] == M230_INTERNAL_ERROR){
 				add_value_pair(mqtt_msg, "msg", "internal error");							
-			} else if(moddata[0] == M230_ACCESS_ERROR){
+			} else if(moddata[1] == M230_ACCESS_ERROR){
 				add_value_pair(mqtt_msg, "msg", "access error");					
-			} else if(moddata[0] == M230_TIME_CORRECTED){
+			} else if(moddata[1] == M230_TIME_CORRECTED){
 				add_value_pair(mqtt_msg, "msg", "time already corrected");
-			} else if(moddata[0] == M230_OFFLINE){
+			} else if(moddata[1] == M230_OFFLINE){
 				add_value_pair(mqtt_msg, "msg", "offline");					
-			} else if(moddata[0] == M230_OK){
+			} else if(moddata[1] == M230_OK){
 				add_value_pair(mqtt_msg, "msg", "ok");					
-			} else if(moddata[0] == M230_WAIT_REPLY){
+			} else if(moddata[1] == M230_WAIT_REPLY){
 				add_value_pair(mqtt_msg, "msg", "please wait");
 			}
 			return true;
