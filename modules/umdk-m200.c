@@ -85,8 +85,8 @@ typedef enum {
 } m200_scheduler_t;
 
 typedef enum {
-	M200_ERROR_REPLY 		= 0,
-    M200_OK_REPLY 			= 1,
+    M200_OK_REPLY 			= 0,
+    M200_ERROR_REPLY 		= 1,
     M200_NO_RESPONSE_REPLY 	= 2,
 	M200_INVALID_CMD_REPLY 	= 0xFF,
 } m200_reply_t;
@@ -414,9 +414,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
     // for(ii = 0; ii < moddatalen; ii++) {
         // printf(" %02X ", moddata[ii]);
     // }
-   // puts("\n");
-	
-	
+   // puts("\n");	
 
    if (moddatalen == 1) {
         if (moddata[0] == M200_OK_REPLY) {
@@ -430,20 +428,20 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
         return true;
     }	
 	
-	m200_cmd_t cmd = moddata[0];	
+	m200_cmd_t cmd = moddata[0];
 	
 	if(cmd < M200_CMD_PROPRIETARY_COMMAND) {
 				
-		uint32_t address = moddata[1] | moddata[2] << 8 | moddata[3] << 16 | moddata[4] << 24;	
+		uint32_t address = moddata[2] | moddata[3] << 8 | moddata[4] << 16 | moddata[5] << 24;	
 		snprintf(buf_addr, sizeof(buf_addr), "%u", address);
 		add_value_pair(mqtt_msg, "Address", buf_addr);
 		
-		if (moddatalen == 5) {
-			if (moddata[0] == M200_OK_REPLY) {
+		if (moddatalen == 6) {
+			if (moddata[1] == M200_OK_REPLY) {
 				add_value_pair(mqtt_msg, "msg", "ok");
-			} else if(moddata[0] == M200_ERROR_REPLY){
+			} else if(moddata[1] == M200_ERROR_REPLY){
 				add_value_pair(mqtt_msg, "msg", "error");
-			} else if(moddata[0] == M200_NO_RESPONSE_REPLY){
+			} else if(moddata[1] == M200_NO_RESPONSE_REPLY){
 				add_value_pair(mqtt_msg, "msg", "no response");					
 			}
 			return true;
@@ -461,7 +459,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			uint32_t *address_dev;
 			
 			for( i  = 0; i < num_devices; i++) {
-				address_dev = (uint32_t *)(&moddata[4*i + 1]);
+				address_dev = (uint32_t *)(&moddata[4*i + 2]);
 				if(*address_dev != M200_ADDR_DEF) {
 					cnt++;
 					uint32_to_le(address_dev);			
@@ -479,7 +477,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		}		
 			
 		case M200_CMD_GET_SERIAL: {
-			uint32_t *serial = (uint32_t *)(&moddata[5]);
+			uint32_t *serial = (uint32_t *)(&moddata[6]);
 			uint32_to_le(serial);      
 			snprintf(buf, sizeof(buf), "%u", *serial);
 			add_value_pair(mqtt_msg, "Serial number", buf);		
@@ -488,7 +486,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		}
 		
 		case M200_CMD_GET_NUM_TARIFFS: {
-			uint8_t number = moddata[5];  	
+			uint8_t number = moddata[6];  	
 			snprintf(buf, sizeof(buf), "%u", number);
 			add_value_pair(mqtt_msg, "Tariffs", buf);		
 			return true;
@@ -498,7 +496,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		case M200_CMD_GET_TOTAL_VALUE: {
 			uint32_t value[5] = { 0 };
 			for(i = 0; i < 5; i++) {
-				ptr_value = (uint32_t *)(&moddata[4*i + 5]);
+				ptr_value = (uint32_t *)(&moddata[4*i + 6]);
 				uint32_to_le(ptr_value);      
 				value[i] = *ptr_value;
 			}
@@ -521,7 +519,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		case M200_CMD_GET_VALUE: {
 			uint32_t value[5] = { 0 };
 			for(i = 0; i < 5; i++) {
-				ptr_value = (uint32_t *)(&moddata[4*i + 5]);
+				ptr_value = (uint32_t *)(&moddata[4*i + 6]);
 				uint32_to_le(ptr_value);      
 				value[i] = *ptr_value;
 			}
@@ -544,10 +542,10 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		case M200_CMD_GET_SCHEDULE: {
 			
 			char tariff[5] = { };
-			uint8_t num_schedule = (moddatalen  - 5) / 3;
+			uint8_t num_schedule = (moddatalen  - 6) / 3;
 			for(i = 0; i < num_schedule; i++) {
-				snprintf(tariff, sizeof(tariff), "T%02d", moddata[3*i + 5] + 1);		
-				snprintf(buf, sizeof(buf), "%02d:%02d",  moddata[3*i + 6],  moddata[3*i + 7]);
+				snprintf(tariff, sizeof(tariff), "T%02d", moddata[3*i + 6] + 1);		
+				snprintf(buf, sizeof(buf), "%02d:%02d",  moddata[3*i + 7],  moddata[3*i + 8]);
 				add_value_pair(mqtt_msg, tariff, buf);			
 			}
 			
@@ -561,7 +559,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			uint8_t time[7] = { 0 };
 			
 			for(i = 0; i < 7; i++) {
-				time[i] = moddata[i + 5];
+				time[i] = moddata[i + 6];
 			}
 
 			add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
@@ -582,7 +580,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			uint8_t time[7] = { 0 };
 			
 			for(i = 0; i < 7; i++) {
-				time[i] = moddata[i + 5];
+				time[i] = moddata[i + 6];
 			}
 
 			add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
@@ -603,7 +601,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			uint8_t time[7] = { 0 };
 			
 			for(i = 0; i < 7; i++) {
-				time[i] = moddata[i + 5];
+				time[i] = moddata[i + 6];
 			}
 
 			add_value_pair(mqtt_msg, "Day", str_dow[time[0]]);
@@ -624,7 +622,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			uint8_t time[7] = { 0 };
 			
 			for(i = 0; i < 7; i++) {
-				time[i] = moddata[i + 5];
+				time[i] = moddata[i + 6];
 			}
 			
 			if(time[0] < 8) {
@@ -650,7 +648,7 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			uint8_t time[7] = { 0 };
 			
 			for(i = 0; i < 7; i++) {
-				time[i] = moddata[i + 5];
+				time[i] = moddata[i + 6];
 			}
 
 			if(time[0] < 8) {
@@ -674,20 +672,20 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             uint32_t tl = 0, tlb = 0;
    
             /* Working time under voltage */
-            tl =  ( moddata[5] >> 4) * 100000;
-            tl += ( moddata[5] & 0x0F) * 10000;
-            tl += ( moddata[6] >> 4) * 1000;
-            tl += ( moddata[6] & 0x0F) * 100;
-            tl += ( moddata[7] >> 4) * 10;
-            tl += ( moddata[7] & 0x0F) * 1;
+            tl =  ( moddata[6] >> 4) * 100000;
+            tl += ( moddata[6] & 0x0F) * 10000;
+            tl += ( moddata[7] >> 4) * 1000;
+            tl += ( moddata[7] & 0x0F) * 100;
+            tl += ( moddata[8] >> 4) * 10;
+            tl += ( moddata[8] & 0x0F) * 1;
             tl = tl & 0x00FFFFFF;
             /* Working time without voltage(battery) */
-            tlb =  ( moddata[8] >> 4) * 100000;
-            tlb += ( moddata[8] & 0x0F) * 10000;
-            tlb += ( moddata[9] >> 4) * 1000;
-            tlb += ( moddata[9] & 0x0F) * 100;
-            tlb += ( moddata[10] >> 4) * 10;
-            tlb += ( moddata[10] & 0x0F) * 1;
+            tlb =  ( moddata[9] >> 4) * 100000;
+            tlb += ( moddata[9] & 0x0F) * 10000;
+            tlb += ( moddata[10] >> 4) * 1000;
+            tlb += ( moddata[10] & 0x0F) * 100;
+            tlb += ( moddata[11] >> 4) * 10;
+            tlb += ( moddata[11] & 0x0F) * 1;
             tlb = tlb & 0x00FFFFFF;
  
 			snprintf(buf, sizeof(buf), "%u", tl);	
@@ -705,28 +703,28 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
             uint16_t current = 0;
             uint32_t power = 0;
 
-            voltage =  ( moddata[5] >> 4) * 1000;
-            voltage += ( moddata[5] & 0x0F) * 100;
-            voltage += ( moddata[6] >> 4) * 10;
-            voltage += ( moddata[6] & 0x0F) * 1;
+            voltage =  ( moddata[6] >> 4) * 1000;
+            voltage += ( moddata[6] & 0x0F) * 100;
+            voltage += ( moddata[7] >> 4) * 10;
+            voltage += ( moddata[7] & 0x0F) * 1;
 			int_to_float_str(strbuf, voltage, 1);
 			snprintf(buf, sizeof(buf), "%s", strbuf);
 			add_value_pair(mqtt_msg, "Voltage", buf);
 			
-            current =  ( moddata[7] >> 4) * 1000;
-            current += ( moddata[7] & 0x0F) * 100;
-            current += ( moddata[8] >> 4) * 10;
-            current += ( moddata[8] & 0x0F) * 1;
+            current =  ( moddata[8] >> 4) * 1000;
+            current += ( moddata[8] & 0x0F) * 100;
+            current += ( moddata[9] >> 4) * 10;
+            current += ( moddata[9] & 0x0F) * 1;
 			int_to_float_str(strbuf, current, 2);
 			snprintf(buf, sizeof(buf), "%s", strbuf);
 			add_value_pair(mqtt_msg, "Current", buf);
 
-            power =  ( moddata[9] >> 4) * 100000;
-            power += ( moddata[9] & 0x0F) * 10000;
-            power += ( moddata[10] >> 4) * 1000;
-            power += ( moddata[10] & 0x0F) * 100;
-            power += ( moddata[11] >> 4) * 10;
-            power += ( moddata[11] & 0x0F) * 1;
+            power =  ( moddata[10] >> 4) * 100000;
+            power += ( moddata[10] & 0x0F) * 10000;
+            power += ( moddata[11] >> 4) * 1000;
+            power += ( moddata[11] & 0x0F) * 100;
+            power += ( moddata[12] >> 4) * 10;
+            power += ( moddata[12] & 0x0F) * 1;
             power = power & 0x00FFFFFF;
 
 			snprintf(buf, sizeof(buf), "%u", power);	
@@ -739,10 +737,10 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		case M200_CMD_GET_CURR_POWER_LOAD: {
             uint16_t power = 0;
                     
-			power =  ( moddata[5] >> 4) * 1000;
-            power += ( moddata[5] & 0x0F) * 100;
-            power += ( moddata[6] >> 4) * 10;
-            power += ( moddata[6] & 0x0F) * 1;
+			power =  ( moddata[6] >> 4) * 1000;
+            power += ( moddata[6] & 0x0F) * 100;
+            power += ( moddata[7] >> 4) * 10;
+            power += ( moddata[7] & 0x0F) * 1;
 			
 			int_to_float_str(strbuf, power, 2);
 			snprintf(buf, sizeof(buf), "%s", strbuf);
@@ -755,10 +753,10 @@ bool umdk_m200_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		case M200_CMD_GET_LIMIT_POWER: {
             uint16_t power = 0;
                     
-			power =  ( moddata[5] >> 4) * 1000;
-            power += ( moddata[5] & 0x0F) * 100;
-            power += ( moddata[6] >> 4) * 10;
-            power += ( moddata[6] & 0x0F) * 1;
+			power =  ( moddata[6] >> 4) * 1000;
+            power += ( moddata[6] & 0x0F) * 100;
+            power += ( moddata[7] >> 4) * 10;
+            power += ( moddata[7] & 0x0F) * 1;
 			
 			int_to_float_str(strbuf, power, 2);
 			snprintf(buf, sizeof(buf), "%s", strbuf);
