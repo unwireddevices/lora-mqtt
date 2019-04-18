@@ -677,9 +677,8 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			memset(value, 0xFF, sizeof(value));	
 						
             for (i = 0; i < 4; i++) {
-				value[i] = (moddata[4*i + 3] << 24) + (moddata[4*i + 2] << 16) + (moddata[4*i + 5] << 8)  + (moddata[4*i + 4] << 0);
+				value[i] = (moddata[4*i + 4] << 24) + (moddata[4*i + 3] << 16) + (moddata[4*i + 6] << 8)  + (moddata[4*i + 5] << 0);
             }
-
 
 			int_to_float_str(strbuf, value[0], 3);
 			snprintf(buf, sizeof(buf), "%s", strbuf);
@@ -712,7 +711,7 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		}		
 		
 		case M230_CMD_GET_POWER_LIMIT: {			
-			uint32_t power_limit = ((moddata[2] << 16) + (moddata[4] << 8) + moddata[3]) &  0x00FFFFFF; 
+			uint32_t power_limit = ((moddata[3] << 16) + (moddata[5] << 8) + moddata[4]) &  0x00FFFFFF; 
 
 			int_to_float_str(strbuf, power_limit, 2);
 			snprintf(buf, sizeof(buf), "%s", strbuf);
@@ -723,7 +722,7 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		}
 		
 		case M230_CMD_GET_ENERGY_LIMIT: {			
-			uint32_t energy_limit = (moddata[3] << 24) + (moddata[2] << 16) + (moddata[5] << 8) + moddata[4]; 
+			uint32_t energy_limit = (moddata[4] << 24) + (moddata[3] << 16) + (moddata[6] << 8) + moddata[5]; 
 			
 			int_to_float_str(strbuf, energy_limit, 3);
 			snprintf(buf, sizeof(buf), "%s", strbuf);
@@ -738,8 +737,8 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			uint8_t time[8] = { 0 };
 
             for(i = 0; i < (moddatalen - 2); i++) {
-                time[i] = (moddata[i + 2] >> 4) * 10;
-                time[i] += (moddata[i + 2] & 0x0F) * 1;
+                time[i] = (moddata[i + 3] >> 4) * 10;
+                time[i] += (moddata[i + 3] & 0x0F) * 1;
             }
 
 			time[3]--;
@@ -760,10 +759,10 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		case M230_CMD_GET_SERIAL: {			
 			char time_buf[10] = { };
 			    
-			snprintf(buf, sizeof(buf), "%02d%02d%02d%02d", moddata[2], moddata[3], moddata[4], moddata[5]);
+			snprintf(buf, sizeof(buf), "%02d%02d%02d%02d", moddata[3], moddata[4], moddata[5], moddata[6]);
 			add_value_pair(mqtt_msg, "Serial number", buf);		
 			
-			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", moddata[6], moddata[7], moddata[8]);	
+			snprintf(time_buf, sizeof(time_buf), "%02d/%02d/%02d", moddata[7], moddata[8], moddata[9]);	
 			add_value_pair(mqtt_msg, "Release date", time_buf);		
 			
 			return true;
@@ -771,11 +770,11 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		}
 		
 		case M230_CMD_GET_LOAD: {
-			uint8_t mode_load = moddata[2] & 0x01;
-			uint8_t mode_limit_energy = (moddata[2] >> 2) & 0x01;
-			uint8_t mode_limit_power = (moddata[2] >> 1) & 0x01;
+			uint8_t mode_load = moddata[3] & 0x01;
+			uint8_t mode_limit_energy = (moddata[3] >> 2) & 0x01;
+			uint8_t mode_limit_power = (moddata[3] >> 1) & 0x01;
 			
-			uint8_t powerload_on_off = (moddata[3] >> 1) & 0x01;;
+			uint8_t powerload_on_off = (moddata[4] >> 1) & 0x01;;
 			
 			if(mode_limit_energy == 1) {
 				add_value_pair(mqtt_msg, "Energy limit control", "Allowed");
@@ -811,8 +810,8 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		}
 		
 		case M230_CMD_GET_MODE_TARIFF: {
-			uint8_t current_tariff = (moddata[3] & 0x0E) >> 1;
-			uint8_t mode_tariff =  moddata[3] & 0x01;
+			uint8_t current_tariff = (moddata[4] & 0x0E) >> 1;
+			uint8_t mode_tariff =  moddata[4] & 0x01;
 			
 			if(mode_tariff == 0) {
 				add_value_pair(mqtt_msg, "Mode", "Multi-tariff");
@@ -835,7 +834,7 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			uint8_t flag_error = 0;
 			
 			for(i = 0; i < 6; i++) {
-				status = moddata[i + 2];
+				status = moddata[i + 3];
 				for(j = 0; j < 8; j++) {
 					error = (status >> j) & 1;
 					if(error == 1) {
@@ -864,14 +863,14 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 						
 			uint8_t soft[3] = { 0 };
 		
-			soft[0] = ( moddata[2]  >> 4 ) * 10;
-			soft[0] += ( moddata[2] & 0x0F ) * 1;
+			soft[0] = ( moddata[3]  >> 4 ) * 10;
+			soft[0] += ( moddata[3] & 0x0F ) * 1;
 			
-			soft[1] = ( moddata[3] >> 4 ) * 10;
-			soft[1] += ( moddata[3] & 0x0F ) * 1;
+			soft[1] = ( moddata[4] >> 4 ) * 10;
+			soft[1] += ( moddata[4] & 0x0F ) * 1;
 			
-			soft[2] = ( moddata[4] >> 4 ) * 10;
-			soft[2] += ( moddata[4] & 0x0F ) * 1;
+			soft[2] = ( moddata[5] >> 4 ) * 10;
+			soft[2] += ( moddata[5] & 0x0F ) * 1;
 			
 			snprintf(buf, sizeof(buf), "%02d.%02d.%02d", soft[0], soft[1],soft[2]);	
 			add_value_pair(mqtt_msg, "Software version", buf);
@@ -888,11 +887,11 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 			char tariff_str[5] = { };
 			uint16_t point_schedule = 0;
 			for(i = 0; i < 8; i++) {
-				point_schedule = (moddata[2*i + 2] << 8) + moddata[2*i + 3];
+				point_schedule = (moddata[2*i + 3] << 8) + moddata[2*i + 4];
 				if(point_schedule != 0x0038) {
-					min = moddata[2*i + 2];
-					tariff = (moddata[2*i + 3] >> 5) & 0x07;
-					hour = moddata[2*i + 3] & 0x1F;
+					min = moddata[2*i + 3];
+					tariff = (moddata[2*i + 4] >> 5) & 0x07;
+					hour = moddata[2*i + 4] & 0x1F;
 					
 					snprintf(tariff_str, sizeof(tariff_str), "T%02d", tariff);
 					snprintf(buf, sizeof(buf), "%02d:%02d",  hour, min);
@@ -914,7 +913,7 @@ bool umdk_m230_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 
 			num_char = snprintf(buf, sizeof(buf), "[ ");
 			for(i = 0; i < 4; i++) {
-				week = moddata[i + 2];
+				week = moddata[i + 3];
 				for(j = 0; j < 8; j++) {
 					day = (week >> j) & 1;
 					if(day == 1) {
