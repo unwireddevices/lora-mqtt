@@ -57,6 +57,7 @@ void int_to_float_str(char *buf, int decimal, uint8_t precision);
 bool is_number(char* str);
 
 void convert_from_be_sam(void *ptr, size_t size);
+void convert_to_be_sam(void *ptr, size_t size);
 
 uint16_t crc16_arc(uint8_t *data, uint16_t len);
 

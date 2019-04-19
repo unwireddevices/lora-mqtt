@@ -225,3 +225,33 @@ void convert_from_be_sam(void *ptr, size_t size) {
             return;
     }
 }
+
+void convert_to_be_sam(void *ptr, size_t size) {
+    switch (size) {
+        case 1: {
+            int8_t v = *(int8_t*)ptr;
+            *(uint8_t*)ptr = ((v + (v >> 7)) ^ (v >> 7)) | (v & (1 << 7));
+            break;
+        }
+        case 2: {
+            int16_t v = *(int16_t*)ptr;
+            *(uint16_t*)ptr = ((v + (v >> 15)) ^ (v >> 15)) | (v & (1 << 15));
+            uint16_to_le((uint16_t *)ptr);
+            break;
+        }
+        case 4: {
+            int32_t v = *(int32_t*)ptr;
+            *(uint32_t*)ptr = ((v + (v >> 31)) ^ (v >> 31)) | (v & (1 << 31));
+            uint32_to_le((uint32_t *)ptr);
+            break;
+        }
+        case 8: {
+            int64_t v = *(int64_t*)ptr;
+            *(uint64_t*)ptr = ((v + (v >> 63)) ^ (v >> 63)) | (v & (1ULL << 63));
+            uint64_to_le((uint64_t *)ptr);
+            break;
+        }
+        default:
+            return;
+    }
+}

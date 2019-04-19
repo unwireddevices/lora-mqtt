@@ -52,7 +52,7 @@ void umdk_pwm_command(char *param, char *out, int bufsize) {
 		if(strstr(param, "freq ") == param) {
 			param += strlen("freq ");
 			uint16_t freq = strtol(param, &param, 10);
-            convert_to_be_sam((void *)&pulses, sizeof(pulses));
+            convert_to_be_sam((void *)&freq, sizeof(freq));
 			param += strlen(" ");
 	
 			if(strstr(param, "duty ") == param) {
@@ -80,7 +80,7 @@ void umdk_pwm_command(char *param, char *out, int bufsize) {
 bool umdk_pwm_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 {
     if (moddata[0] == UMDK_PWM_COMMAND) {
-        switch (moddata[1]): {
+        switch (moddata[1]) {
             case UMDK_PWM_OK:
                 add_value_pair(mqtt_msg, "msg", "ok");
                 break;
