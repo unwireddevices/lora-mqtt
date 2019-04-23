@@ -45,36 +45,60 @@ typedef enum {
 } umdk_pwm_cmd_t;
 
 void umdk_pwm_command(char *param, char *out, int bufsize) {
-	if (strstr(param, "pin ") == param) {
-		param += strlen("pin ");
-        uint8_t pin = strtol(param, &param, 10);
-		
-		if(strstr(param, "freq ") == param) {
-			param += strlen("freq ");
-			uint16_t freq = strtol(param, &param, 10);
-            convert_to_be_sam((void *)&freq, sizeof(freq));
-			param += strlen(" ");
-	
-			if(strstr(param, "duty ") == param) {
-				param += strlen("duty ");
-				uint8_t duty = strtol(param, &param, 10);
-				param += strlen(" ");
+    uint8_t pin = 0;
+    uint16_t freq = 0;
+    uint8_t duty = 0;
+    uint16_t pulses = 0;
+    uint8_t soft = 0;
+    
+    char *substring = NULL;
+    
+    substring = strstr(param, "pin");
+    if (substring) {
+        substring += strlen("pin");
+        do {
+            substring++;
+        } while (*substring == ' ');
+        pin = strtol(substring, NULL, 10);
+    }
+    
+    substring = strstr(param, "freq");
+    if (substring) {
+        substring += strlen("freq");
+        do {
+            substring++;
+        } while (*substring == ' ');
+        freq = strtol(substring, NULL, 10);
+    }
+    
+    substring = strstr(param, "duty");
+    if (substring) {
+        substring += strlen("duty");
+        do {
+            substring++;
+        } while (*substring == ' ');
+        duty = strtol(substring, NULL, 10);
+    }
+    
+    substring = strstr(param, "pulses");
+    if (substring) {
+        substring += strlen("pulses");
+        do {
+            substring++;
+        } while (*substring == ' ');
+        pulses = strtol(substring, NULL, 10);
+    }
+    
+    substring = strstr(param, "soft");
+    if (substring) {
+        substring += strlen("soft");
+        do {
+            substring++;
+        } while (*substring == ' ');
+        soft = strtol(substring, NULL, 10);
+    }
 
-                if(strstr(param, "pulses ") == param) {
-                    param += strlen("pulses ");
-                    uint16_t pulses = strtol(param, &param, 10);
-                    convert_to_be_sam((void *)&pulses, sizeof(pulses));
-                    
-                    if(strstr(param, "soft ") == param) {
-                        param += strlen("soft ");
-                        uint8_t soft = strtol(param, &param, 10);
-                                       
-                    snprintf(out, bufsize, "%02x%02x%04x%02x%04x%02x", UMDK_PWM_COMMAND, pin, freq, duty, pulses, soft);	
-                    }                    
-                }
-			}
-		}
-	}
+    snprintf(out, bufsize, "%02x%02x%04x%02x%04x%02x", UMDK_PWM_COMMAND, pin, freq, duty, pulses, soft);
 }
 
 bool umdk_pwm_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
