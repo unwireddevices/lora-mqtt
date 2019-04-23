@@ -46,7 +46,7 @@
 #include "unwds-mqtt.h"
 #include "utils.h"
 
-#define VERSION "2.3.0"
+#define VERSION "2.3.1"
 
 #define MAX_PENDING_NODES 1000
 
