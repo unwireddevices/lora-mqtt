@@ -88,8 +88,8 @@ typedef enum {
 } iec61107_database_param_t;
 
 typedef enum {
-    UMDK_IEC61107_ERROR_REPLY        	= 0,
-    UMDK_IEC61107_OK_REPLY           	= 1,
+    UMDK_IEC61107_OK_REPLY           	= 0,
+    UMDK_IEC61107_ERROR_REPLY        	= 1,
     UMDK_IEC61107_NO_RESPONSE_REPLY  	= 2,
 	UMDK_IEC61107_WAIT_REPLY		 	= 3,
 	UMDK_IEC61107_INVALID_FORMAT_REPLY	= 4,
@@ -249,7 +249,7 @@ void umdk_iec61107_command(char *param, char *out, int bufsize) {
 		mode = IEC61107_READ;		
 	}
 	else if (strstr(param, "set time") == param) { 
-		param += strlen("get time");    // Skip command
+		param += strlen("set time");    // Skip command
 		cmd = IEC61107_CMD_TIME;	
 		mode = IEC61107_WRITE;		
 	}	
@@ -461,8 +461,10 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
         return true;
     }	
 	
-	umdk_iec61107_cmd_t cmd = moddata[0];	
-	uint8_t device = moddata[1];
+	umdk_iec61107_cmd_t cmd = moddata[0];
+    // uint8_t mode = cmd = moddata[1];
+    uint8_t code = cmd = moddata[2];
+	uint8_t device = moddata[3];
 	
 	if(cmd < IEC61107_CMD_PROPRIETARY_COMMAND) {
 
@@ -470,13 +472,13 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		add_value_pair(mqtt_msg, "device", buf_addr);
 										
 		if (moddatalen == 2) {
-			if (moddata[0] == UMDK_IEC61107_OK_REPLY) {
+			if (code == UMDK_IEC61107_OK_REPLY) {
 				add_value_pair(mqtt_msg, "msg", "ok");
-			} else if(moddata[0] == UMDK_IEC61107_ERROR_REPLY){
+			} else if(code == UMDK_IEC61107_ERROR_REPLY){
 				add_value_pair(mqtt_msg, "msg", "error");
-			} else if(moddata[0] == UMDK_IEC61107_NO_RESPONSE_REPLY){
+			} else if(code == UMDK_IEC61107_NO_RESPONSE_REPLY){
 				add_value_pair(mqtt_msg, "msg", "no response");					
-			} else if(moddata[0] == UMDK_IEC61107_WAIT_REPLY){
+			} else if(code == UMDK_IEC61107_WAIT_REPLY){
 				add_value_pair(mqtt_msg, "msg", "please wait");					
 			}
 			
@@ -497,9 +499,9 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		snprintf(buf_addr, sizeof(buf_addr), "%d", device);
 		add_value_pair(mqtt_msg, "device", buf_addr);
 		
-		uint8_t *address_ptr = moddata + 2;	
+		uint8_t *address_ptr = moddata + 4;	
 		
-		for(i = 0; i < (moddatalen - 2); i++) {
+		for(i = 0; i < (moddatalen - 4); i++) {
 			symbol = *address_ptr;
 			num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
 			address_ptr++;
@@ -507,10 +509,63 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		add_value_pair(mqtt_msg, "address", buf);		
 		return true;		
 	}
+    
+    if(moddatalen == 4) {
+        
+    if (code == UMDK_IEC61107_OK_REPLY) {
+        add_value_pair(mqtt_msg, "msg", "ok");
+        			return true;
+    } else if(code == UMDK_IEC61107_ERROR_REPLY){
+        add_value_pair(mqtt_msg, "msg", "error");
+        			return true;
+    } else if(code == UMDK_IEC61107_NO_RESPONSE_REPLY){
+        add_value_pair(mqtt_msg, "msg", "no response");	
+			return true;        
+    } else if(code == UMDK_IEC61107_WAIT_REPLY){
+        add_value_pair(mqtt_msg, "msg", "please wait");
+			return true;        
+    }
+    
+    
+    
+        char err_buf[5];
+		uint8_t error = moddata[2];
+		
+		snprintf(err_buf, sizeof(err_buf), "%d", error);
+		add_value_pair(mqtt_msg, "err", err_buf);
+		
+		if(error == 10) {
+			add_value_pair(mqtt_msg, "msg", "invalid number of parameters");
+		}
+		else if(error == 11) {
+			add_value_pair(mqtt_msg, "msg", "not supported");
+		}
+		else if(error == 12) {
+			add_value_pair(mqtt_msg, "msg", "unknown parameter");
+		}
+		else if(error == 13) {
+			add_value_pair(mqtt_msg, "msg", "invalid format");
+		}
+		else if(error == 14) {
+			add_value_pair(mqtt_msg, "msg", "not initialized");
+		}
+		else if(error == 15) {
+			add_value_pair(mqtt_msg, "msg", "access denied");
+		}
+		else if(error == 16) {
+			add_value_pair(mqtt_msg, "msg", "no programming rights");
+		}
+		else if(error == 17) {
+			add_value_pair(mqtt_msg, "msg", "invalid parameter value");
+		}
+		else if(error == 18) {
+			add_value_pair(mqtt_msg, "msg", "nonexistent parameter value");
+		}
+    }
  
 	if(cmd == IEC61107_CMD_TIME) {
-		data_ptr = moddata + 2;	
-		for(i = 2; i < moddatalen; i++) {
+		data_ptr = moddata + 4;	
+		for(i = 4; i < moddatalen; i++) {
 			symbol = *data_ptr;
 			num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
 			data_ptr++;
@@ -519,11 +574,11 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		add_value_pair(mqtt_msg, "time", buf);				
 	}
 	else if(cmd == IEC61107_CMD_DATE) {
-		uint8_t dow = ( moddata[2] - 0x30) * 10 + ( moddata[3] - 0x30);
-		data_ptr = moddata + 5;	
+		uint8_t dow = ( moddata[4] - 0x30) * 10 + ( moddata[5] - 0x30);
+		data_ptr = moddata + 7;	
 		add_value_pair(mqtt_msg, "day", str_dow[dow]);			
 			
-		for(i = 2; i < moddatalen; i++) {
+		for(i = 4; i < moddatalen; i++) {
 			symbol = *data_ptr;
 			num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
 			data_ptr++;
@@ -532,8 +587,8 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		add_value_pair(mqtt_msg, "date", buf);
 	}				
 	else if(cmd == IEC61107_CMD_SERIAL) {
-		data_ptr = moddata + 2;	
-		for(i = 2; i < moddatalen; i++) {
+		data_ptr = moddata + 4;	
+		for(i = 4; i < moddatalen; i++) {
 			symbol = *data_ptr;
 			num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
 			data_ptr++;
@@ -542,8 +597,8 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		add_value_pair(mqtt_msg, "serial", buf);
 	}
 	else if(cmd == IEC61107_CMD_ID_DEV) {
-		data_ptr = moddata + 2;	
-		for(i = 2; i < moddatalen; i++) {
+		data_ptr = moddata + 4;	
+		for(i = 4; i < moddatalen; i++) {
 			symbol = *data_ptr;
 			num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
 			data_ptr++;
@@ -552,8 +607,8 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		add_value_pair(mqtt_msg, "id device", buf);
 	}			
 	else if(cmd == IEC61107_CMD_GET_VOLT) {
-		data_ptr = moddata + 2;	
-		for(i = 2; i < moddatalen; i++) {
+		data_ptr = moddata + 4;	
+		for(i = 4; i < moddatalen; i++) {
 			symbol = *data_ptr;
 			num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
 			data_ptr++;
@@ -562,8 +617,8 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		add_value_pair(mqtt_msg, "voltage", buf);
 	}			
 	else if(cmd == IEC61107_CMD_GET_CURR) {
-		data_ptr = moddata + 2;	
-		for(i = 2; i < moddatalen; i++) {
+		data_ptr = moddata + 4;	
+		for(i = 4; i < moddatalen; i++) {
 			symbol = *data_ptr;
 			num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
 			data_ptr++;
@@ -572,8 +627,8 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		add_value_pair(mqtt_msg, "current", buf);
 	}			
 	else if(cmd == IEC61107_CMD_GET_POWER) {
-		data_ptr = moddata + 2;	
-		for(i = 2; i < moddatalen; i++) {
+		data_ptr = moddata + 4;	
+		for(i = 4; i < moddatalen; i++) {
 			symbol = *data_ptr;
 			num_char += snprintf(buf + num_char, sizeof(buf) - num_char, "%c", symbol);
 			data_ptr++;
@@ -583,15 +638,15 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 	}		
 	else if(cmd == IEC61107_CMD_SCHEDULE) {				
 		char tariff_str[5] = { };
-		uint8_t num_schedule = (moddatalen  - 2) / 2;			
+		uint8_t num_schedule = (moddatalen  - 4) / 2;			
 		uint8_t hour = 0;
 		uint8_t min = 0;
 		uint8_t tariff = 0;
 		
 		for(i = 0; i < num_schedule; i++) {
-			tariff = moddata[2 + 2*i] >> 5;
-			hour = moddata[2 + 2*i] & 0x1F;
-			min = moddata[3 + 2*i];
+			tariff = moddata[4 + 2*i] >> 5;
+			hour = moddata[4 + 2*i] & 0x1F;
+			min = moddata[5 + 2*i];
 			snprintf(tariff_str, sizeof(tariff_str), "T%02d", tariff);		
 			snprintf(buf, sizeof(buf), "%02d:%02d",  hour, min);
 			add_value_pair(mqtt_msg, tariff_str, buf);			
@@ -602,11 +657,11 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		}	
 	}			
 	else if(cmd == IEC61107_CMD_HOLIDAYS) {
-		uint8_t list = moddata[2];
+		uint8_t list = moddata[4];
 		
 		char list_str[5] = { };
 		char schedule_str[10] = { };
-		uint8_t num_holidays = (moddatalen  - 3) / 2;			
+		uint8_t num_holidays = (moddatalen  - 5) / 2;			
 		uint8_t day = 0;
 		uint8_t month = 0;
 		uint8_t schedule = 0;
@@ -615,9 +670,9 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		add_value_pair(mqtt_msg, "holidays list", list_str);		
 		
 		for(i = 0; i < num_holidays; i++) {
-			month = moddata[3 + 2*i] >> 4;
-			day = ((moddata[3 + 2*i] & 0x07) << 2) + ((moddata[4 + 2*i] & 0xC0) >> 6);
-			schedule = moddata[4 + 2*i] & 0x3F;
+			month = moddata[5 + 2*i] >> 4;
+			day = ((moddata[5 + 2*i] & 0x07) << 2) + ((moddata[6 + 2*i] & 0xC0) >> 6);
+			schedule = moddata[6 + 2*i] & 0x3F;
 			snprintf(buf, sizeof(buf), "%02d.%02d", day, month);
 
 			snprintf(schedule_str, sizeof(schedule_str), "%d", schedule);		
@@ -633,7 +688,7 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		uint32_t value[5] = { 0 };
 		uint32_t * ptr_value;
 		for(i = 0; i < 5; i++) {
-			ptr_value = (uint32_t *)(&moddata[4*i + 2]);
+			ptr_value = (uint32_t *)(&moddata[4*i + 4]);
 			uint32_to_le(ptr_value);
 			value[i] = *ptr_value;
 		}
@@ -650,13 +705,13 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		add_value_pair(mqtt_msg, "Total", buf);		
 	}	
 	else if(cmd == IEC61107_CMD_TARIFF_DEFAULT) {
-		data_ptr = moddata + 2;	
+		data_ptr = moddata + 4;	
 		snprintf(buf, sizeof(buf), "%c", *data_ptr + 1);
 		add_value_pair(mqtt_msg, "default tariff", buf);				
 	}
 	else if (cmd == IEC61107_CMD_STATUS){
 		char curr_tariff[5] = { };
-		data_ptr = moddata + 2;	
+		data_ptr = moddata + 4;	
 		
 		uint8_t err_schedule = (*data_ptr & 0x01);
 		data_ptr++;
@@ -667,7 +722,7 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		data_ptr++;
 		uint8_t life_batt = (*data_ptr & 0x08);
 		uint8_t stat_cover = (*data_ptr & 0x02);
-		uint8_t cs_energy = (*data_ptr & 0x02);
+		uint8_t cs_energy = (*data_ptr & 0x01);
 		data_ptr++;
 		uint8_t season = (*data_ptr & 0x04);
 		uint8_t stat_time = (*data_ptr & 0x01);
@@ -787,39 +842,39 @@ bool umdk_iec61107_reply(uint8_t *moddata, int moddatalen, mqtt_msg_t *mqtt_msg)
 		
 	}
 	else if(cmd == IEC61107_ERROR_PROTOCOL_DEVICE) {
-		char err_buf[5];
-		uint8_t error = moddata[2];
+		// char err_buf[5];
+		// uint8_t error = moddata[2];
 		
-		snprintf(err_buf, sizeof(err_buf), "%d", error);
-		add_value_pair(mqtt_msg, "err", err_buf);
+		// snprintf(err_buf, sizeof(err_buf), "%d", error);
+		// add_value_pair(mqtt_msg, "err", err_buf);
 		
-		if(error == 10) {
-			add_value_pair(mqtt_msg, "msg", "invalid number of parameters");
-		}
-		else if(error == 11) {
-			add_value_pair(mqtt_msg, "msg", "not supported");
-		}
-		else if(error == 12) {
-			add_value_pair(mqtt_msg, "msg", "unknown parameter");
-		}
-		else if(error == 13) {
-			add_value_pair(mqtt_msg, "msg", "invalid format");
-		}
-		else if(error == 14) {
-			add_value_pair(mqtt_msg, "msg", "not initialized");
-		}
-		else if(error == 15) {
-			add_value_pair(mqtt_msg, "msg", "access denied");
-		}
-		else if(error == 16) {
-			add_value_pair(mqtt_msg, "msg", "no programming rights");
-		}
-		else if(error == 17) {
-			add_value_pair(mqtt_msg, "msg", "invalid parameter value");
-		}
-		else if(error == 18) {
-			add_value_pair(mqtt_msg, "msg", "nonexistent parameter value");
-		}
+		// if(error == 10) {
+			// add_value_pair(mqtt_msg, "msg", "invalid number of parameters");
+		// }
+		// else if(error == 11) {
+			// add_value_pair(mqtt_msg, "msg", "not supported");
+		// }
+		// else if(error == 12) {
+			// add_value_pair(mqtt_msg, "msg", "unknown parameter");
+		// }
+		// else if(error == 13) {
+			// add_value_pair(mqtt_msg, "msg", "invalid format");
+		// }
+		// else if(error == 14) {
+			// add_value_pair(mqtt_msg, "msg", "not initialized");
+		// }
+		// else if(error == 15) {
+			// add_value_pair(mqtt_msg, "msg", "access denied");
+		// }
+		// else if(error == 16) {
+			// add_value_pair(mqtt_msg, "msg", "no programming rights");
+		// }
+		// else if(error == 17) {
+			// add_value_pair(mqtt_msg, "msg", "invalid parameter value");
+		// }
+		// else if(error == 18) {
+			// add_value_pair(mqtt_msg, "msg", "nonexistent parameter value");
+		// }
 	}
 				
 	return true;
