@@ -81,7 +81,7 @@ static uint8_t mqtt_format;
 static int tx_delay;
 static int tx_maxretr;
 
-char logbuf[1024];
+char logbuf[REPLY_LEN + 100];
 
 typedef struct entry {
 	TAILQ_ENTRY(entry) entries;   /* Circular queue. */	
