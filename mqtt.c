@@ -442,11 +442,13 @@ static void serve_reply(char *str) {
                 return;
 
             char *msg = (char *) malloc(MQTT_MAX_MSG_SIZE);
-            snprintf(msg, MQTT_MAX_MSG_SIZE, "{ \"appid64\": \"0x%s\", \"last_seen\": %d, \"nodeclass\": %d }", 
-                    appid, (unsigned) lseen, (unsigned) cl);
+            if (msg) {
+                snprintf(msg, MQTT_MAX_MSG_SIZE, "{ \"appid64\": \"0x%s\", \"last_seen\": %d, \"nodeclass\": %d }", 
+                        appid, (unsigned) lseen, (unsigned) cl);
 
-            publish_mqtt_message(mosq, addr, "list/", msg, (mqtt_format_t) mqtt_format);
-            free(msg);
+                publish_mqtt_message(mosq, addr, "list/", msg, (mqtt_format_t) mqtt_format);
+                free(msg);
+            }
         }
         break;
 
@@ -497,9 +499,29 @@ static void serve_reply(char *str) {
             uint8_t *moddata = bytes + 1;
 
             char *topic = (char *)malloc(64);
-            char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
+            if (!topic) {
+                snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+                logprint(logbuf);
+                return;
+            }
             
+            char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
+            if (!msg) {
+                free(topic);
+                snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+                logprint(logbuf);
+                return;
+            }
+
             mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+            if (!mqtt_msg) {
+                free(msg);
+                free(topic);
+                snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+                logprint(logbuf);
+                return;
+            }
+            
             memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
             
             mqtt_status_t mqtt_status;           
@@ -553,6 +575,11 @@ static void serve_reply(char *str) {
             logprint(logbuf);
             
             mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+            if (!mqtt_msg) {
+                snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+                logprint(logbuf);
+                return;
+            }
             memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
             
             add_value_pair(mqtt_msg, "joined", "1");            
@@ -561,6 +588,13 @@ static void serve_reply(char *str) {
             mqtt_status_t status = { 0 };
             
             char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
+            if (!msg) {
+                free(mqtt_msg);
+                snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+                logprint(logbuf);
+                return;
+            }
+            
             build_mqtt_message(msg, mqtt_msg, status, addr);           
             publish_mqtt_message(mosq, addr, "device", msg, (mqtt_format_t) mqtt_format);
             free(msg);
@@ -604,11 +638,23 @@ static void serve_reply(char *str) {
                 logprint(logbuf);
                 
                 mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+                if (!mqtt_msg) {
+                    snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+                    logprint(logbuf);
+                    return;
+                }
+                
                 memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
                 add_value_pair(mqtt_msg, "joined", "0");            
                 mqtt_status_t status = { 0 };
                 
                 char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
+                if (!msg) {
+                    free(mqtt_msg);
+                    snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+                    logprint(logbuf);
+                    return;
+                }
                 build_mqtt_message(msg, mqtt_msg, status, addr);           
                 publish_mqtt_message(mosq, addr, "device", msg, (mqtt_format_t) mqtt_format);
                 free(msg);
@@ -695,12 +741,24 @@ static void invite_mote(uint64_t addr)
     logprint(logbuf);
     
     mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+    if (!mqtt_msg) {
+        snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+        logprint(logbuf);
+        return;
+    }
+
     memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
     add_value_pair(mqtt_msg, "invited", "1");
     add_value_pair(mqtt_msg, "message", "sending invitation to the node");
     mqtt_status_t status = { 0 };
     
     char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
+    if (!msg) {
+        free(mqtt_msg);
+        snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+        logprint(logbuf);
+        return;
+    }
     
     char hexbuf[40];
     snprintf(hexbuf, sizeof(hexbuf), "%" PRIx64, addr);
@@ -746,12 +804,24 @@ static void* pending_worker(void *arg) {
                     logprint(logbuf);
 
                     mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+                    if (!mqtt_msg) {
+                        snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+                        logprint(logbuf);
+                        continue;
+                    }
+                    
                     memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
                     add_value_pair(mqtt_msg, "invited", "0");
                     add_value_pair(mqtt_msg, "message", "failed to invite node");
                     mqtt_status_t status = { 0 };
                     
                     char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
+                    if (!msg) {
+                        free(mqtt_msg);
+                        snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+                        logprint(logbuf);
+                        continue;
+                    }
                     
                     char hexbuf[40];
                     snprintf(hexbuf, 40, "%" PRIx64, e->nodeid);
@@ -788,12 +858,24 @@ static void* pending_worker(void *arg) {
                     logprint(logbuf);
                     
                     mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+                    if (!mqtt_msg) {
+                        snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+                        logprint(logbuf);
+                        continue;
+                    }
+                    
                     memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
                     add_value_pair(mqtt_msg, "sent", "0");
                     add_value_pair(mqtt_msg, "message", "failed to send message to the node");
                     mqtt_status_t status = { 0 };
                     
                     char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
+                    if (!msg) {
+                        free(mqtt_msg);
+                        snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+                        logprint(logbuf);
+                        continue;
+                    }
                     char hexbuf[40];
                     snprintf(hexbuf, 40, "%" PRIx64, e->nodeid);
                     build_mqtt_message(msg, mqtt_msg, status, hexbuf);
@@ -1022,12 +1104,25 @@ static void message_to_mote(uint64_t addr, char *payload)
         snprintf(logbuf, sizeof(logbuf), "[error] Mote with id = %" PRIx64 " is not in network, an invite will be sent\n", addr);
         logprint(logbuf);
         mqtt_msg_t *mqtt_msg = (mqtt_msg_t *)malloc(MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
+        if (!mqtt_msg) {
+            free(mqtt_msg);
+            snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+            logprint(logbuf);
+            return;
+        }
         memset((void *)mqtt_msg, 0, MQTT_MSG_MAX_NUM * sizeof(mqtt_msg_t));
         add_value_pair(mqtt_msg, "sent", "2");
         add_value_pair(mqtt_msg, "message", "node not in the network");
         mqtt_status_t status = { 0 };
                     
         char *msg = (char *)malloc(MQTT_MAX_MSG_SIZE);
+        if (!msg) {
+            free(mqtt_msg);
+            snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+            logprint(logbuf);
+            return;
+        }
+
         char hexbuf[40];
         snprintf(hexbuf, sizeof(hexbuf), "%" PRIx64, addr);
         build_mqtt_message(msg, mqtt_msg, status, hexbuf);
@@ -1360,6 +1455,12 @@ int main(int argc, char *argv[])
             if (config)
             {
                 char *line = (char *)malloc(255);
+                if (!line) {
+                    snprintf(logbuf, sizeof(logbuf), "[error] Unable to allocate memory\n");
+                    logprint(logbuf);
+                    return -2;
+                }
+                
                 while(fgets(line, 254, config) != NULL)
                 {
                     token = strtok(line, "\t =\n\r");
