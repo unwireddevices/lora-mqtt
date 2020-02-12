@@ -517,10 +517,13 @@ static void serve_reply(char *str) {
                 if (!convert_to(modid, moddata, moddatalen, topic, mqtt_msg)) {
                     snprintf(logbuf, sizeof(logbuf), "[error] Unable to convert gate reply \"%s\" for module %d\n", str, modid);
                     logprint(logbuf);
+                    free(topic);
+                    free(msg);
+                    free(mqtt_msg);
                     return;
                 }
             }
-            
+
             build_mqtt_message(msg, mqtt_msg, mqtt_status, addr);           
             publish_mqtt_message(mosq, addr, topic, msg, (mqtt_format_t) mqtt_format);
             free(topic);
