@@ -73,12 +73,12 @@ void publish_mqtt_message(struct mosquitto *mosq, const char *addr, const char *
         return;
     }
        
-	// Append an MQTT topic path to the topic from the reply
-	char *mqtt_topic = (char *)malloc(strlen(MQTT_PUBLISH_TO) + strlen(addr) + strlen(topic) + strlen("/miso") + 1);
+    // Append an MQTT topic path to the topic from the reply
+    char *mqtt_topic = (char *)malloc(strlen(MQTT_PUBLISH_TO) + strlen(addr) + strlen(topic) + strlen("/miso") + 1);
 
-	strcpy(mqtt_topic, MQTT_PUBLISH_TO);
-	strcat(mqtt_topic, addr);
-	strcat(mqtt_topic, "/");
+    strcpy(mqtt_topic, MQTT_PUBLISH_TO);
+    strcat(mqtt_topic, addr);
+    strcat(mqtt_topic, "/");
     if (mqtt_sepio) {
         strcat(mqtt_topic, "miso/");
     }
@@ -89,10 +89,10 @@ void publish_mqtt_message(struct mosquitto *mosq, const char *addr, const char *
     }
     
     char *logbuf = (char *) malloc(MQTT_MAX_MSG_SIZE + 50);
-	snprintf(logbuf, MQTT_MAX_MSG_SIZE + 50, "[mqtt] Publishing to the topic %s the message \"%s\"\n", mqtt_topic, msg);
-	logprint(logbuf);
+    snprintf(logbuf, MQTT_MAX_MSG_SIZE + 50, "[mqtt] Publishing to the topic %s the message \"%s\"\n", mqtt_topic, msg);
+    logprint(logbuf);
 
-	int res = mosquitto_publish(mosq, &mqtt_mid, mqtt_topic, strlen(msg), msg, mqtt_qos, mqtt_retain);
+    int res = mosquitto_publish(mosq, &mqtt_mid, mqtt_topic, strlen(msg), msg, mqtt_qos, mqtt_retain);
     
     switch (res) {
         case MOSQ_ERR_SUCCESS:
@@ -116,7 +116,7 @@ void publish_mqtt_message(struct mosquitto *mosq, const char *addr, const char *
     }
     logprint(logbuf);
     free(logbuf);
-	free(mqtt_topic);
+    free(mqtt_topic);
 }
 
 void build_mqtt_message(char *msg, const mqtt_msg_t *mqtt_msg, const mqtt_status_t status, const char *addr) {   

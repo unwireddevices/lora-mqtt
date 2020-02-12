@@ -40,45 +40,45 @@
 #include "utils.h"
 
 bool hex_to_bytes(char *hexstr, uint8_t *bytes, bool reverse_order) {
-	return hex_to_bytesn(hexstr, strlen(hexstr), bytes, reverse_order);
+    return hex_to_bytesn(hexstr, strlen(hexstr), bytes, reverse_order);
 }
 
 bool hex_to_bytesn(char *hexstr, int len, uint8_t *bytes, bool reverse_order) {
-	/* Length must be even */
-	if (len % 2 != 0)
-		return false;
+    /* Length must be even */
+    if (len % 2 != 0)
+        return false;
 
-	/* Move in string by two characters */
-	char *ptr = &(*hexstr);
-	int i = 0;
-	if (reverse_order) {
-		ptr += len - 2;
+    /* Move in string by two characters */
+    char *ptr = &(*hexstr);
+    int i = 0;
+    if (reverse_order) {
+        ptr += len - 2;
 
-		for (; (len >> 1) - i; ptr -= 2) {
-			unsigned int v = 0;
-			sscanf(ptr, "%02x", &v);
+        for (; (len >> 1) - i; ptr -= 2) {
+            unsigned int v = 0;
+            sscanf(ptr, "%02x", &v);
 
-			bytes[i++] = (uint8_t) v;
-		}
-	} else {
-		for (; *ptr; ptr += 2) {
-			unsigned int v = 0;
-			sscanf(ptr, "%02x", &v);
+            bytes[i++] = (uint8_t) v;
+        }
+    } else {
+        for (; *ptr; ptr += 2) {
+            unsigned int v = 0;
+            sscanf(ptr, "%02x", &v);
 
-			bytes[i++] = (uint8_t) v;
-		}
-	}
+            bytes[i++] = (uint8_t) v;
+        }
+    }
 
-	return true;
+    return true;
 }
 
 void bytes_to_hex(uint8_t *bytes, size_t num_bytes, char *str, bool reverse_order) {
-	size_t i;
-	for (i = 0; i < num_bytes; i++) {
-		char buf[3];
-		snprintf(buf, sizeof(buf), "%02X", bytes[(reverse_order) ? num_bytes - 1 - i : i]);
-		strcat(str, buf);
-	}
+    size_t i;
+    for (i = 0; i < num_bytes; i++) {
+        char buf[3];
+        snprintf(buf, sizeof(buf), "%02X", bytes[(reverse_order) ? num_bytes - 1 - i : i]);
+        strcat(str, buf);
+    }
 }
 
 bool is_big_endian(void)
@@ -135,10 +135,10 @@ void uint16_to_le(uint16_t *num)
 
 void logprint(char *str)
 {
-	time_t t = time(NULL);
-	struct tm tm = *localtime(&t);
-	printf("[%02d:%02d:%02d]%s\n", tm.tm_hour, tm.tm_min, tm.tm_sec, str);
-	syslog(LOG_INFO, "%s", str);
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    printf("[%02d:%02d:%02d]%s\n", tm.tm_hour, tm.tm_min, tm.tm_sec, str);
+    syslog(LOG_INFO, "%s", str);
 }
 
 void int_to_float_str(char *buf, int decimal, uint8_t precision) {  
